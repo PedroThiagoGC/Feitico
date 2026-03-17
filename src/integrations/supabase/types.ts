@@ -57,48 +57,70 @@ export type Database = {
           booking_date: string
           booking_time: string | null
           booking_type: string
+          commission_amount: number
           created_at: string
           customer_name: string
           customer_phone: string
           id: string
           notes: string | null
+          professional_id: string | null
+          profit_amount: number
           salon_id: string
           services: Json
           status: string
+          total_buffer_minutes: number
           total_duration: number
+          total_occupied_minutes: number
           total_price: number
         }
         Insert: {
           booking_date: string
           booking_time?: string | null
           booking_type?: string
+          commission_amount?: number
           created_at?: string
           customer_name: string
           customer_phone: string
           id?: string
           notes?: string | null
+          professional_id?: string | null
+          profit_amount?: number
           salon_id: string
           services?: Json
           status?: string
+          total_buffer_minutes?: number
           total_duration?: number
+          total_occupied_minutes?: number
           total_price?: number
         }
         Update: {
           booking_date?: string
           booking_time?: string | null
           booking_type?: string
+          commission_amount?: number
           created_at?: string
           customer_name?: string
           customer_phone?: string
           id?: string
           notes?: string | null
+          professional_id?: string | null
+          profit_amount?: number
           salon_id?: string
           services?: Json
           status?: string
+          total_buffer_minutes?: number
           total_duration?: number
+          total_occupied_minutes?: number
           total_price?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "bookings_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bookings_salon_id_fkey"
             columns: ["salon_id"]
@@ -136,6 +158,174 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "gallery_images_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_availability: {
+        Row: {
+          active: boolean
+          end_time: string
+          id: string
+          professional_id: string
+          start_time: string
+          weekday: number
+        }
+        Insert: {
+          active?: boolean
+          end_time: string
+          id?: string
+          professional_id: string
+          start_time: string
+          weekday: number
+        }
+        Update: {
+          active?: boolean
+          end_time?: string
+          id?: string
+          professional_id?: string
+          start_time?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_availability_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_exceptions: {
+        Row: {
+          created_at: string
+          date: string
+          end_time: string | null
+          id: string
+          professional_id: string
+          reason: string | null
+          start_time: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          end_time?: string | null
+          id?: string
+          professional_id: string
+          reason?: string | null
+          start_time?: string | null
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          end_time?: string | null
+          id?: string
+          professional_id?: string
+          reason?: string | null
+          start_time?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_exceptions_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_services: {
+        Row: {
+          active: boolean
+          commission_override_type: string | null
+          commission_override_value: number | null
+          custom_buffer_minutes: number | null
+          custom_duration_minutes: number | null
+          custom_price: number | null
+          id: string
+          professional_id: string
+          service_id: string
+        }
+        Insert: {
+          active?: boolean
+          commission_override_type?: string | null
+          commission_override_value?: number | null
+          custom_buffer_minutes?: number | null
+          custom_duration_minutes?: number | null
+          custom_price?: number | null
+          id?: string
+          professional_id: string
+          service_id: string
+        }
+        Update: {
+          active?: boolean
+          commission_override_type?: string | null
+          commission_override_value?: number | null
+          custom_buffer_minutes?: number | null
+          custom_duration_minutes?: number | null
+          custom_price?: number | null
+          id?: string
+          professional_id?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_services_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professionals: {
+        Row: {
+          active: boolean
+          commission_type: string
+          commission_value: number
+          created_at: string
+          id: string
+          name: string
+          photo_url: string | null
+          salon_id: string
+        }
+        Insert: {
+          active?: boolean
+          commission_type?: string
+          commission_value?: number
+          created_at?: string
+          id?: string
+          name: string
+          photo_url?: string | null
+          salon_id: string
+        }
+        Update: {
+          active?: boolean
+          commission_type?: string
+          commission_value?: number
+          created_at?: string
+          id?: string
+          name?: string
+          photo_url?: string | null
+          salon_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professionals_salon_id_fkey"
             columns: ["salon_id"]
             isOneToOne: false
             referencedRelation: "salons"
@@ -206,6 +396,7 @@ export type Database = {
       services: {
         Row: {
           active: boolean
+          buffer_minutes: number
           category: string | null
           created_at: string
           description: string | null
@@ -220,6 +411,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          buffer_minutes?: number
           category?: string | null
           created_at?: string
           description?: string | null
@@ -234,6 +426,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          buffer_minutes?: number
           category?: string | null
           created_at?: string
           description?: string | null
