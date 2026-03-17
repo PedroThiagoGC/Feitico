@@ -51,10 +51,10 @@ export default function AdminBookings() {
 
   return (
     <Card className="bg-card border-border">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="font-display text-xl">Agendamentos</CardTitle>
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <CardTitle className="font-display text-lg md:text-xl">Agendamentos</CardTitle>
         <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger className="w-40 bg-secondary border-border font-body"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-40 bg-secondary border-border font-body"><SelectValue /></SelectTrigger>
           <SelectContent className="bg-card border-border">
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="pending">Pendentes</SelectItem>
@@ -72,40 +72,40 @@ export default function AdminBookings() {
             {bookings.map((b) => {
               const services = Array.isArray(b.services) ? b.services : [];
               return (
-                <div key={b.id} className="p-4 rounded-lg bg-secondary border border-border space-y-2">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-body font-semibold text-foreground">{b.customer_name}</p>
-                      <p className="font-body text-sm text-muted-foreground">{b.customer_phone}</p>
+                <div key={b.id} className="p-3 md:p-4 rounded-lg bg-secondary border border-border space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-body font-semibold text-foreground truncate">{b.customer_name}</p>
+                      <p className="font-body text-xs md:text-sm text-muted-foreground">{b.customer_phone}</p>
                     </div>
-                    <span className={`text-xs font-body font-semibold px-2 py-1 rounded ${statusColors[b.status] || ""}`}>
+                    <span className={`text-xs font-body font-semibold px-2 py-1 rounded shrink-0 ${statusColors[b.status] || ""}`}>
                       {statusLabels[b.status] || b.status}
                     </span>
                   </div>
-                  <div className="font-body text-sm text-muted-foreground space-y-0.5">
-                    <p>👤 Profissional: <span className="text-foreground">{getProName(b.professional_id)}</span></p>
+                  <div className="font-body text-xs md:text-sm text-muted-foreground space-y-0.5">
+                    <p>👤 <span className="text-foreground">{getProName(b.professional_id)}</span></p>
                     <p>📅 {format(new Date(b.booking_date + "T12:00:00"), "dd/MM/yyyy")} {b.booking_time ? `às ${b.booking_time}` : "(ordem de chegada)"}</p>
-                    <p>✂️ {services.map((s: any) => s.name).join(", ")}</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-1 mt-1 text-xs">
+                    <p className="truncate">✂️ {services.map((s: any) => s.name).join(", ")}</p>
+                    <div className="grid grid-cols-2 gap-1 mt-1">
                       <span>💰 R$ {Number(b.total_price).toFixed(2)}</span>
-                      <span>⏱️ Duração: {b.total_duration}min</span>
+                      <span>⏱️ {b.total_duration}min</span>
                       <span>🔄 Margem: {b.total_buffer_minutes || 0}min</span>
                       <span>📊 Ocupação: {b.total_occupied_minutes || b.total_duration}min</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-1 mt-1 text-xs">
+                    <div className="grid grid-cols-2 gap-1 mt-1">
                       <span>🏷️ Comissão: R$ {Number(b.commission_amount || 0).toFixed(2)}</span>
                       <span>📈 Lucro: R$ {Number(b.profit_amount || 0).toFixed(2)}</span>
                     </div>
                   </div>
-                  <div className="flex gap-2 pt-1">
+                  <div className="flex flex-wrap gap-2 pt-1">
                     {b.status === "pending" && (
                       <>
-                        <Button size="sm" onClick={() => updateStatus(b.id, "confirmed")} className="bg-green-600 text-white font-body text-xs">Confirmar</Button>
-                        <Button size="sm" variant="destructive" onClick={() => updateStatus(b.id, "cancelled")} className="font-body text-xs">Cancelar</Button>
+                        <Button size="sm" onClick={() => updateStatus(b.id, "confirmed")} className="bg-green-600 text-white font-body text-xs h-8">Confirmar</Button>
+                        <Button size="sm" variant="destructive" onClick={() => updateStatus(b.id, "cancelled")} className="font-body text-xs h-8">Cancelar</Button>
                       </>
                     )}
                     {b.status === "confirmed" && (
-                      <Button size="sm" onClick={() => updateStatus(b.id, "completed")} className="bg-blue-600 text-white font-body text-xs">Concluir</Button>
+                      <Button size="sm" onClick={() => updateStatus(b.id, "completed")} className="bg-blue-600 text-white font-body text-xs h-8">Concluir</Button>
                     )}
                   </div>
                 </div>

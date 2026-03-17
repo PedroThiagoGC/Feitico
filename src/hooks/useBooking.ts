@@ -36,10 +36,6 @@ export function useBookings(salonId: string | undefined, date?: string) {
   });
 }
 
-/**
- * Get available time slots for a professional on a specific date.
- * Uses 5-minute grid, considers availability, exceptions, and existing bookings.
- */
 export function useAvailableSlots(
   professionalId: string | undefined,
   date: string | undefined,
@@ -50,10 +46,8 @@ export function useAvailableSlots(
     queryFn: async () => {
       if (!professionalId || !date || totalOccupiedMinutes <= 0) return [];
 
-      // 1. Get the weekday (0=Sunday, 6=Saturday)
       const dayOfWeek = new Date(date + "T12:00:00").getDay();
 
-      // 2. Get professional recurring availability for this weekday
       const { data: avail } = await supabase
         .from("professional_availability")
         .select("*")
@@ -63,25 +57,20 @@ export function useAvailableSlots(
 
       if (!avail || avail.length === 0) return [];
 
-      // 3. Get exceptions for this date
       const { data: exceptions } = await supabase
         .from("professional_exceptions")
         .select("*")
         .eq("professional_id", professionalId)
         .eq("date", date);
 
-      // Check for full day off
       const dayOff = exceptions?.find(
         (e) => e.type === "day_off" || (e.type === "blocked" && !e.start_time && !e.end_time)
       );
       if (dayOff) return [];
 
-      // Determine effective time windows
       const customHours = exceptions?.find((e) => e.type === "custom_hours" && e.start_time && e.end_time);
-      
-      // Use custom hours if available, otherwise use recurring availability
       const timeWindows: { start: number; end: number }[] = [];
-      
+
       if (customHours) {
         const [sh, sm] = customHours.start_time!.split(":").map(Number);
         const [eh, em] = customHours.end_time!.split(":").map(Number);
@@ -94,7 +83,6 @@ export function useAvailableSlots(
         }
       }
 
-      // Get blocked ranges from exceptions
       const blockedRanges: { start: number; end: number }[] = [];
       for (const ex of exceptions || []) {
         if (ex.type === "blocked" && ex.start_time && ex.end_time) {
@@ -104,7 +92,6 @@ export function useAvailableSlots(
         }
       }
 
-      // 4. Get existing bookings for this professional on this date
       const { data: bookings } = await supabase
         .from("bookings")
         .select("booking_time, total_occupied_minutes, total_duration")
@@ -112,7 +99,6 @@ export function useAvailableSlots(
         .eq("booking_date", date)
         .in("status", ["pending", "confirmed"]);
 
-      // 5. Generate 5-minute grid slots
       const slots: string[] = [];
 
       for (const window of timeWindows) {
@@ -120,13 +106,11 @@ export function useAvailableSlots(
           const slotStart = m;
           const slotEnd = m + totalOccupiedMinutes;
 
-          // Check blocked ranges
           const isBlocked = blockedRanges.some(
             (b) => slotStart < b.end && slotEnd > b.start
           );
           if (isBlocked) continue;
 
-          // Check booking conflicts
           const hasConflict = bookings?.some((b) => {
             if (!b.booking_time) return false;
             const [bh, bm] = b.booking_time.split(":").map(Number);
@@ -214,24 +198,41 @@ export function calculateCommission(
   return 0;
 }
 
-export function generateWhatsAppMessage(
-  booking: CreateBookingData,
-  whatsappNumber: string
-) {
+export interface WhatsAppBookingInfo {
+  booking: CreateBookingData;
+  salonName: string;
+  salonAddress: string;
+  professionalName: string;
+}
+
+const WHATSAPP_NUMBER = "5511961765421";
+
+export function generateWhatsAppMessage(info: WhatsAppBookingInfo) {
+  const { booking, salonName, salonAddress, professionalName } = info;
+
   const servicesList = booking.services
-    .map((s) => `• ${s.name} (R$ ${s.price.toFixed(2)})`)
+    .map((s) => `• ${s.name} — R$ ${s.price.toFixed(2)}`)
     .join("\n");
 
-  const message = `🗓️ *Novo Agendamento*\n\n` +
-    `👤 *Nome:* ${booking.customer_name}\n` +
-    `📱 *Telefone:* ${booking.customer_phone}\n\n` +
-    `✂️ *Serviços:*\n${servicesList}\n\n` +
-    `💰 *Total:* R$ ${booking.total_price.toFixed(2)}\n` +
-    `⏱️ *Duração:* ${booking.total_duration} min\n` +
-    `📅 *Data:* ${new Date(booking.booking_date + "T12:00:00").toLocaleDateString("pt-BR")}\n` +
-    (booking.booking_time ? `🕐 *Horário:* ${booking.booking_time}\n` : `🚶 *Tipo:* Por ordem de chegada\n`) +
-    `\nObrigado pela preferência! ✨`;
+  const bookingTypeLabel = booking.booking_type === "scheduled" ? "Horário marcado" : "Ordem de chegada";
+  const dateFormatted = new Date(booking.booking_date + "T12:00:00").toLocaleDateString("pt-BR");
 
-  const cleanNumber = whatsappNumber.replace(/\D/g, "");
-  return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
+  const message =
+    `Olá, segue novo agendamento confirmado:\n\n` +
+    `👤 *Cliente:* ${booking.customer_name}\n` +
+    `📱 *Telefone:* ${booking.customer_phone}\n\n` +
+    `🏢 *Unidade:* ${salonName}\n` +
+    `📍 *Endereço:* ${salonAddress || "Não informado"}\n\n` +
+    `💈 *Profissional:* ${professionalName}\n\n` +
+    `✂️ *Serviços:*\n${servicesList}\n\n` +
+    `💰 *Valor total:* R$ ${booking.total_price.toFixed(2)}\n` +
+    `⏱️ *Duração total:* ${booking.total_duration} min\n` +
+    `🔄 *Margem operacional:* ${booking.total_buffer_minutes} min\n` +
+    `📊 *Tempo total reservado na agenda:* ${booking.total_occupied_minutes} min\n\n` +
+    `📋 *Tipo de atendimento:* ${bookingTypeLabel}\n` +
+    `📅 *Data:* ${dateFormatted}\n` +
+    (booking.booking_time ? `🕐 *Horário:* ${booking.booking_time}\n` : "") +
+    `\nFavor seguir com a confirmação e atendimento. ✨`;
+
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
 }

@@ -43,7 +43,6 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   const { data: professionals } = useProfessionals(salon?.id);
   const { data: proServices } = useProfessionalServices(selectedProfessionalId || undefined);
 
-  // Filter services the selected professional can do
   const availableServices = useMemo(() => {
     if (!services) return [];
     if (!selectedProfessionalId || !proServices) return services;
@@ -51,7 +50,6 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     return services.filter((s) => linkedIds.has(s.id));
   }, [services, selectedProfessionalId, proServices]);
 
-  // Get effective service values (considering professional overrides)
   function getEffectiveService(service: Service) {
     const override = proServices?.find((ps) => ps.service_id === service.id);
     return {
@@ -93,13 +91,13 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     setSelectedTime("");
   }, []);
 
-  // Get commission info for the selected professional
   function getCommissionInfo() {
     if (!selectedProfessionalId || !professionals) return { type: "percentage", value: 0 };
     const pro = professionals.find((p) => p.id === selectedProfessionalId);
-    // Check for per-service override (simplified: use professional default)
     return { type: pro?.commission_type || "percentage", value: Number(pro?.commission_value || 0) };
   }
+
+  const selectedProfessional = professionals?.find((p) => p.id === selectedProfessionalId);
 
   const onSubmit = async (data: BookingFormData) => {
     if (selectedServices.length === 0) { toast.error("Selecione pelo menos um serviço"); return; }
@@ -131,10 +129,15 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     try {
       await createBooking.mutateAsync(bookingData);
       toast.success("Agendamento realizado com sucesso!");
-      if (salon?.whatsapp) {
-        const whatsappUrl = generateWhatsAppMessage(bookingData, salon.whatsapp);
-        window.open(whatsappUrl, "_blank");
-      }
+
+      const whatsappUrl = generateWhatsAppMessage({
+        booking: bookingData,
+        salonName: salon?.name || "Salão",
+        salonAddress: salon?.address || "",
+        professionalName: selectedProfessional?.name || "",
+      });
+      window.open(whatsappUrl, "_blank");
+
       form.reset();
       setSelectedServices([]);
       setSelectedDate(undefined);
@@ -145,34 +148,34 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   };
 
   return (
-    <section id="booking" className="py-24 bg-background">
+    <section id="booking" className="py-16 md:py-24 bg-background">
       <div className="container px-4 max-w-3xl">
         <div
           ref={ref}
-          className={`text-center mb-12 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+          className={`text-center mb-8 md:mb-12 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
         >
-          <h2 className="font-display text-3xl md:text-5xl font-bold mb-4">
+          <h2 className="font-display text-2xl sm:text-3xl md:text-5xl font-bold mb-4">
             Faça seu <span className="text-gradient-gold">Agendamento</span>
           </h2>
-          <p className="font-body text-muted-foreground">Escolha profissional, serviços, data e horário</p>
+          <p className="font-body text-muted-foreground text-sm md:text-base">Escolha profissional, serviços, data e horário</p>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-gold">
+        <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 md:p-8 shadow-gold">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 md:space-y-8">
               {/* Name & Phone */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField control={form.control} name="customer_name" render={({ field }) => (
                   <FormItem>
                     <FormLabel className="font-body">Nome completo</FormLabel>
-                    <FormControl><Input placeholder="Seu nome" className="bg-secondary border-border font-body" {...field} /></FormControl>
+                    <FormControl><Input placeholder="Seu nome" className="bg-secondary border-border font-body h-12" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="customer_phone" render={({ field }) => (
                   <FormItem>
                     <FormLabel className="font-body">Telefone / WhatsApp</FormLabel>
-                    <FormControl><Input placeholder="(11) 99999-9999" className="bg-secondary border-border font-body" {...field} /></FormControl>
+                    <FormControl><Input placeholder="(11) 99999-9999" className="bg-secondary border-border font-body h-12" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -180,7 +183,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
 
               {/* Professional selection */}
               <div>
-                <h4 className="font-display text-lg font-semibold mb-4 text-foreground">Selecione o profissional</h4>
+                <h4 className="font-display text-base md:text-lg font-semibold mb-3 md:mb-4 text-foreground">Selecione o profissional</h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {professionals?.map((pro) => (
                     <button
@@ -191,18 +194,18 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                         setSelectedServices([]);
                         setSelectedTime("");
                       }}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-all font-body text-sm ${
+                      className={`flex flex-col items-center gap-2 p-3 md:p-4 rounded-lg border transition-all font-body text-sm ${
                         selectedProfessionalId === pro.id
                           ? "border-primary bg-primary/10 text-foreground"
                           : "border-border bg-secondary hover:border-primary/30 text-muted-foreground"
                       }`}
                     >
                       {pro.photo_url ? (
-                        <img src={pro.photo_url} alt={pro.name} className="w-12 h-12 rounded-full object-cover" />
+                        <img src={pro.photo_url} alt={pro.name} className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover" />
                       ) : (
-                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center"><User className="w-6 h-6" /></div>
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-muted flex items-center justify-center"><User className="w-5 h-5 md:w-6 md:h-6" /></div>
                       )}
-                      <span className="font-medium">{pro.name}</span>
+                      <span className="font-medium text-xs md:text-sm text-center">{pro.name}</span>
                     </button>
                   ))}
                 </div>
@@ -211,7 +214,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
               {/* Services */}
               {selectedProfessionalId && (
                 <div>
-                  <h4 className="font-display text-lg font-semibold mb-4 text-foreground">Selecione os serviços</h4>
+                  <h4 className="font-display text-base md:text-lg font-semibold mb-3 md:mb-4 text-foreground">Selecione os serviços</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {availableServices.map((service) => {
                       const eff = getEffectiveService(service);
@@ -227,7 +230,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                               : "border-border bg-secondary hover:border-primary/30 text-muted-foreground"
                           }`}
                         >
-                          <Checkbox checked={isSelected} className="pointer-events-none" />
+                          <Checkbox checked={isSelected} className="pointer-events-none shrink-0" />
                           <div className="flex-1 min-w-0">
                             <span className="block font-medium truncate">{service.name}</span>
                             <span className="text-xs text-muted-foreground">
@@ -257,6 +260,12 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                         <span className="text-muted-foreground font-semibold">Tempo total na agenda:</span>
                         <span className="text-primary font-bold">{totalOccupied} min</span>
                       </div>
+                      {selectedProfessional && (
+                        <div className="flex justify-between border-t border-border pt-1">
+                          <span className="text-muted-foreground">Profissional:</span>
+                          <span className="text-foreground font-medium">{selectedProfessional.name}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -284,7 +293,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                 <label className="font-body text-sm font-medium mb-2 block">Data</label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-left font-body bg-secondary border-border">
+                    <Button variant="outline" className="w-full justify-start text-left font-body bg-secondary border-border h-12">
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {selectedDate ? format(selectedDate, "dd 'de' MMMM, yyyy", { locale: ptBR }) : "Selecione uma data"}
                     </Button>
@@ -304,10 +313,10 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                       <Loader2 className="w-4 h-4 animate-spin" />Carregando horários...
                     </div>
                   ) : slots && slots.length > 0 ? (
-                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                       {slots.map((slot) => (
                         <button type="button" key={slot} onClick={() => setSelectedTime(slot)}
-                          className={`p-2 rounded-lg border text-center font-body text-sm transition-all ${selectedTime === slot ? "border-primary bg-primary text-primary-foreground" : "border-border bg-secondary text-foreground hover:border-primary/30"}`}>
+                          className={`p-2.5 rounded-lg border text-center font-body text-sm transition-all ${selectedTime === slot ? "border-primary bg-primary text-primary-foreground" : "border-border bg-secondary text-foreground hover:border-primary/30"}`}>
                           {slot}
                         </button>
                       ))}
