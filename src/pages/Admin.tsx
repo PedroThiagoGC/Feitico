@@ -13,7 +13,7 @@ import AdminTestimonials from "@/components/admin/AdminTestimonials";
 import AdminAvailability from "@/components/admin/AdminAvailability";
 import AdminProfessionals from "@/components/admin/AdminProfessionals";
 import AdminFinancials from "@/components/admin/AdminFinancials";
-import { LogOut, LayoutDashboard } from "lucide-react";
+import { LogOut, LayoutDashboard, Menu, X } from "lucide-react";
 
 export default function Admin() {
   const [session, setSession] = useState<any>(null);
@@ -21,6 +21,7 @@ export default function Admin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -64,9 +65,9 @@ export default function Admin() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
-              <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-secondary border-border font-body" required />
-              <Input type="password" placeholder="Senha" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-secondary border-border font-body" required />
-              <Button type="submit" className="w-full bg-primary text-primary-foreground font-body" disabled={authLoading}>
+              <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-secondary border-border font-body h-12" required />
+              <Input type="password" placeholder="Senha" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-secondary border-border font-body h-12" required />
+              <Button type="submit" className="w-full bg-primary text-primary-foreground font-body h-12" disabled={authLoading}>
                 {authLoading ? "Entrando..." : "Entrar"}
               </Button>
             </form>
@@ -78,32 +79,34 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <header className="border-b border-border bg-card px-4 md:px-6 py-3 md:py-4 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-2 md:gap-3">
           <LayoutDashboard className="w-5 h-5 text-primary" />
-          <h1 className="font-display text-xl font-bold text-gradient-gold">Painel Admin</h1>
+          <h1 className="font-display text-lg md:text-xl font-bold text-gradient-gold">Painel Admin</h1>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground font-body">{session.user.email}</span>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="w-4 h-4 mr-1" /> Sair
+        <div className="flex items-center gap-2 md:gap-4">
+          <span className="hidden sm:inline text-sm text-muted-foreground font-body truncate max-w-[200px]">{session.user.email}</span>
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="shrink-0">
+            <LogOut className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Sair</span>
           </Button>
         </div>
       </header>
 
-      <div className="container py-8 px-4">
-        <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList className="bg-secondary border border-border flex-wrap h-auto gap-1 p-1">
-            <TabsTrigger value="dashboard" className="font-body text-sm">Dashboard</TabsTrigger>
-            <TabsTrigger value="salon" className="font-body text-sm">Salão</TabsTrigger>
-            <TabsTrigger value="professionals" className="font-body text-sm">Profissionais</TabsTrigger>
-            <TabsTrigger value="services" className="font-body text-sm">Serviços</TabsTrigger>
-            <TabsTrigger value="bookings" className="font-body text-sm">Agendamentos</TabsTrigger>
-            <TabsTrigger value="financials" className="font-body text-sm">Financeiro</TabsTrigger>
-            <TabsTrigger value="availability" className="font-body text-sm">Disponibilidade</TabsTrigger>
-            <TabsTrigger value="gallery" className="font-body text-sm">Galeria</TabsTrigger>
-            <TabsTrigger value="testimonials" className="font-body text-sm">Depoimentos</TabsTrigger>
-          </TabsList>
+      <div className="container py-4 md:py-8 px-3 md:px-4">
+        <Tabs defaultValue="dashboard" className="space-y-4 md:space-y-6">
+          <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
+            <TabsList className="bg-secondary border border-border inline-flex w-auto min-w-full md:min-w-0 h-auto gap-1 p-1">
+              <TabsTrigger value="dashboard" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Dashboard</TabsTrigger>
+              <TabsTrigger value="salon" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Salão</TabsTrigger>
+              <TabsTrigger value="professionals" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Profissionais</TabsTrigger>
+              <TabsTrigger value="services" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Serviços</TabsTrigger>
+              <TabsTrigger value="bookings" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Agendamentos</TabsTrigger>
+              <TabsTrigger value="financials" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Financeiro</TabsTrigger>
+              <TabsTrigger value="availability" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Disponibilidade</TabsTrigger>
+              <TabsTrigger value="gallery" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Galeria</TabsTrigger>
+              <TabsTrigger value="testimonials" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Depoimentos</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="dashboard"><DashboardOverview /></TabsContent>
           <TabsContent value="salon"><AdminSalon /></TabsContent>
@@ -149,12 +152,12 @@ function DashboardOverview() {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
       {cards.map((c) => (
         <Card key={c.label} className="bg-card border-border">
-          <CardContent className="p-6 text-center">
-            <p className="font-body text-sm text-muted-foreground mb-2">{c.label}</p>
-            <p className={`font-display text-4xl font-bold ${c.color}`}>{c.value}</p>
+          <CardContent className="p-4 md:p-6 text-center">
+            <p className="font-body text-xs md:text-sm text-muted-foreground mb-1 md:mb-2">{c.label}</p>
+            <p className={`font-display text-2xl md:text-4xl font-bold ${c.color}`}>{c.value}</p>
           </CardContent>
         </Card>
       ))}
