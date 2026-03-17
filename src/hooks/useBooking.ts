@@ -134,10 +134,17 @@ export function useCreateBooking() {
     mutationFn: async (data: CreateBookingData) => {
       const { data: booking, error } = await supabase
         .from("bookings")
-        .insert({
-          ...data,
-          services: data.services as unknown as Record<string, unknown>,
-        })
+        .insert([{
+          salon_id: data.salon_id,
+          customer_name: data.customer_name,
+          customer_phone: data.customer_phone,
+          services: JSON.parse(JSON.stringify(data.services)),
+          total_price: data.total_price,
+          total_duration: data.total_duration,
+          booking_date: data.booking_date,
+          booking_time: data.booking_time,
+          booking_type: data.booking_type,
+        }])
         .select()
         .single();
       if (error) throw error;
