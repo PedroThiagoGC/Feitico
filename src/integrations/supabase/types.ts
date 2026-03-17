@@ -14,7 +14,289 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      availability: {
+        Row: {
+          created_at: string
+          date: string
+          end_time: string
+          id: string
+          is_closed: boolean
+          salon_id: string
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          end_time?: string
+          id?: string
+          is_closed?: boolean
+          salon_id: string
+          start_time?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          end_time?: string
+          id?: string
+          is_closed?: boolean
+          salon_id?: string
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bookings: {
+        Row: {
+          booking_date: string
+          booking_time: string | null
+          booking_type: string
+          created_at: string
+          customer_name: string
+          customer_phone: string
+          id: string
+          notes: string | null
+          salon_id: string
+          services: Json
+          status: string
+          total_duration: number
+          total_price: number
+        }
+        Insert: {
+          booking_date: string
+          booking_time?: string | null
+          booking_type?: string
+          created_at?: string
+          customer_name: string
+          customer_phone: string
+          id?: string
+          notes?: string | null
+          salon_id: string
+          services?: Json
+          status?: string
+          total_duration?: number
+          total_price?: number
+        }
+        Update: {
+          booking_date?: string
+          booking_time?: string | null
+          booking_type?: string
+          created_at?: string
+          customer_name?: string
+          customer_phone?: string
+          id?: string
+          notes?: string | null
+          salon_id?: string
+          services?: Json
+          status?: string
+          total_duration?: number
+          total_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gallery_images: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          image_url: string
+          salon_id: string
+          sort_order: number
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          image_url: string
+          salon_id: string
+          sort_order?: number
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string
+          salon_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gallery_images_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salons: {
+        Row: {
+          about_text: string | null
+          active: boolean
+          address: string | null
+          created_at: string
+          facebook: string | null
+          hero_image_url: string | null
+          id: string
+          instagram: string | null
+          logo_url: string | null
+          name: string
+          opening_hours: Json | null
+          phone: string | null
+          primary_color: string | null
+          slug: string | null
+          updated_at: string
+          video_url: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          about_text?: string | null
+          active?: boolean
+          address?: string | null
+          created_at?: string
+          facebook?: string | null
+          hero_image_url?: string | null
+          id?: string
+          instagram?: string | null
+          logo_url?: string | null
+          name: string
+          opening_hours?: Json | null
+          phone?: string | null
+          primary_color?: string | null
+          slug?: string | null
+          updated_at?: string
+          video_url?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          about_text?: string | null
+          active?: boolean
+          address?: string | null
+          created_at?: string
+          facebook?: string | null
+          hero_image_url?: string | null
+          id?: string
+          instagram?: string | null
+          logo_url?: string | null
+          name?: string
+          opening_hours?: Json | null
+          phone?: string | null
+          primary_color?: string | null
+          slug?: string | null
+          updated_at?: string
+          video_url?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      services: {
+        Row: {
+          active: boolean
+          category: string | null
+          created_at: string
+          description: string | null
+          duration: number
+          id: string
+          image_url: string | null
+          is_combo: boolean
+          name: string
+          price: number
+          salon_id: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          duration?: number
+          id?: string
+          image_url?: string | null
+          is_combo?: boolean
+          name: string
+          price?: number
+          salon_id: string
+          sort_order?: number
+        }
+        Update: {
+          active?: boolean
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          duration?: number
+          id?: string
+          image_url?: string | null
+          is_combo?: boolean
+          name?: string
+          price?: number
+          salon_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      testimonials: {
+        Row: {
+          active: boolean
+          author_image: string | null
+          author_name: string
+          content: string
+          created_at: string
+          id: string
+          rating: number | null
+          salon_id: string
+        }
+        Insert: {
+          active?: boolean
+          author_image?: string | null
+          author_name: string
+          content: string
+          created_at?: string
+          id?: string
+          rating?: number | null
+          salon_id: string
+        }
+        Update: {
+          active?: boolean
+          author_image?: string | null
+          author_name?: string
+          content?: string
+          created_at?: string
+          id?: string
+          rating?: number | null
+          salon_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "testimonials_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
