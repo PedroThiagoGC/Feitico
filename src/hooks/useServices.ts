@@ -8,6 +8,7 @@ export interface Service {
   description: string | null;
   price: number;
   duration: number;
+  buffer_minutes: number;
   image_url: string | null;
   category: string | null;
   is_combo: boolean;

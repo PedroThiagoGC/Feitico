@@ -5,15 +5,21 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 export default function AdminBookings() {
   const [bookings, setBookings] = useState<any[]>([]);
+  const [professionals, setProfessionals] = useState<any[]>([]);
   const [filter, setFilter] = useState("all");
 
-  useEffect(() => {
-    loadBookings();
-  }, [filter]);
+  useEffect(() => { loadBookings(); loadProfessionals(); }, [filter]);
+
+  async function loadProfessionals() {
+    const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
+    if (salon) {
+      const { data } = await supabase.from("professionals").select("id, name").eq("salon_id", salon.id);
+      setProfessionals(data || []);
+    }
+  }
 
   async function loadBookings() {
     let query = supabase.from("bookings").select("*").order("created_at", { ascending: false });
@@ -28,18 +34,19 @@ export default function AdminBookings() {
     else { toast.success("Status atualizado!"); loadBookings(); }
   }
 
+  function getProName(id: string | null) {
+    if (!id) return "—";
+    return professionals.find((p) => p.id === id)?.name || "—";
+  }
+
   const statusColors: Record<string, string> = {
     pending: "bg-yellow-500/20 text-yellow-400",
     confirmed: "bg-green-500/20 text-green-400",
     completed: "bg-blue-500/20 text-blue-400",
     cancelled: "bg-red-500/20 text-red-400",
   };
-
   const statusLabels: Record<string, string> = {
-    pending: "Pendente",
-    confirmed: "Confirmado",
-    completed: "Concluído",
-    cancelled: "Cancelado",
+    pending: "Pendente", confirmed: "Confirmado", completed: "Concluído", cancelled: "Cancelado",
   };
 
   return (
@@ -47,9 +54,7 @@ export default function AdminBookings() {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="font-display text-xl">Agendamentos</CardTitle>
         <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger className="w-40 bg-secondary border-border font-body">
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger className="w-40 bg-secondary border-border font-body"><SelectValue /></SelectTrigger>
           <SelectContent className="bg-card border-border">
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="pending">Pendentes</SelectItem>
@@ -77,10 +82,20 @@ export default function AdminBookings() {
                       {statusLabels[b.status] || b.status}
                     </span>
                   </div>
-                  <div className="font-body text-sm text-muted-foreground">
+                  <div className="font-body text-sm text-muted-foreground space-y-0.5">
+                    <p>👤 Profissional: <span className="text-foreground">{getProName(b.professional_id)}</span></p>
                     <p>📅 {format(new Date(b.booking_date + "T12:00:00"), "dd/MM/yyyy")} {b.booking_time ? `às ${b.booking_time}` : "(ordem de chegada)"}</p>
                     <p>✂️ {services.map((s: any) => s.name).join(", ")}</p>
-                    <p>💰 R$ {Number(b.total_price).toFixed(2)} · ⏱️ {b.total_duration}min</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-1 mt-1 text-xs">
+                      <span>💰 R$ {Number(b.total_price).toFixed(2)}</span>
+                      <span>⏱️ Duração: {b.total_duration}min</span>
+                      <span>🔄 Margem: {b.total_buffer_minutes || 0}min</span>
+                      <span>📊 Ocupação: {b.total_occupied_minutes || b.total_duration}min</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 mt-1 text-xs">
+                      <span>🏷️ Comissão: R$ {Number(b.commission_amount || 0).toFixed(2)}</span>
+                      <span>📈 Lucro: R$ {Number(b.profit_amount || 0).toFixed(2)}</span>
+                    </div>
                   </div>
                   <div className="flex gap-2 pt-1">
                     {b.status === "pending" && (
