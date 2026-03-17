@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
+import ImageUpload from "./ImageUpload";
 
 export default function AdminGallery() {
   const [images, setImages] = useState<any[]>([]);
@@ -24,6 +25,7 @@ export default function AdminGallery() {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
+    if (!form.image_url) { toast.error("Adicione uma imagem"); return; }
     const { error } = await supabase.from("gallery_images").insert({
       salon_id: salonId, image_url: form.image_url, caption: form.caption || null,
       sort_order: parseInt(form.sort_order),
@@ -44,11 +46,17 @@ export default function AdminGallery() {
         <CardTitle className="font-display text-xl">Galeria</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <form onSubmit={handleAdd} className="flex flex-wrap gap-3 items-end">
-          <Input placeholder="URL da Imagem" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} className="bg-secondary border-border font-body flex-1" required />
-          <Input placeholder="Legenda" value={form.caption} onChange={(e) => setForm({ ...form, caption: e.target.value })} className="bg-secondary border-border font-body w-40" />
-          <Input placeholder="Ordem" type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} className="bg-secondary border-border font-body w-20" />
-          <Button type="submit" className="bg-primary text-primary-foreground font-body"><Plus className="w-4 h-4 mr-1" /> Add</Button>
+        <form onSubmit={handleAdd} className="space-y-3">
+          <ImageUpload
+            value={form.image_url}
+            onChange={(url) => setForm({ ...form, image_url: url })}
+            folder="gallery"
+          />
+          <div className="flex gap-3 items-end">
+            <Input placeholder="Legenda" value={form.caption} onChange={(e) => setForm({ ...form, caption: e.target.value })} className="bg-secondary border-border font-body flex-1" />
+            <Input placeholder="Ordem" type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} className="bg-secondary border-border font-body w-20" />
+            <Button type="submit" className="bg-primary text-primary-foreground font-body"><Plus className="w-4 h-4 mr-1" /> Add</Button>
+          </div>
         </form>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {images.map((img) => (
@@ -57,6 +65,11 @@ export default function AdminGallery() {
               <Button variant="destructive" size="icon" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleDelete(img.id)}>
                 <Trash2 className="w-4 h-4" />
               </Button>
+              {img.caption && (
+                <div className="absolute bottom-0 left-0 right-0 bg-background/80 px-2 py-1">
+                  <p className="font-body text-xs text-foreground truncate">{img.caption}</p>
+                </div>
+              )}
             </div>
           ))}
         </div>

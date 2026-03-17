@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Save } from "lucide-react";
+import ImageUpload from "./ImageUpload";
+import OpeningHoursEditor from "./OpeningHoursEditor";
 
 export default function AdminSalon() {
   const [salon, setSalon] = useState<any>(null);
@@ -21,6 +23,10 @@ export default function AdminSalon() {
     setSalon(data || {
       name: "", phone: "", whatsapp: "", address: "", about_text: "",
       logo_url: "", hero_image_url: "", video_url: "", instagram: "", facebook: "",
+      opening_hours: {
+        mon: "09:00-19:00", tue: "09:00-19:00", wed: "09:00-19:00",
+        thu: "09:00-19:00", fri: "09:00-19:00", sat: "09:00-18:00", sun: "closed",
+      },
     });
     setLoading(false);
   }
@@ -42,16 +48,14 @@ export default function AdminSalon() {
 
   if (loading) return <p className="text-muted-foreground font-body">Carregando...</p>;
 
-  const fields = [
-    { key: "name", label: "Nome do Salão", type: "text" },
-    { key: "phone", label: "Telefone", type: "text" },
-    { key: "whatsapp", label: "WhatsApp (com DDD e DDI)", type: "text" },
-    { key: "address", label: "Endereço", type: "text" },
-    { key: "logo_url", label: "URL do Logo", type: "text" },
-    { key: "hero_image_url", label: "URL Imagem Hero", type: "text" },
-    { key: "video_url", label: "URL do Vídeo (YouTube)", type: "text" },
-    { key: "instagram", label: "Instagram (@usuario)", type: "text" },
-    { key: "facebook", label: "Facebook", type: "text" },
+  const textFields = [
+    { key: "name", label: "Nome do Salão" },
+    { key: "phone", label: "Telefone" },
+    { key: "whatsapp", label: "WhatsApp (com DDD e DDI)" },
+    { key: "address", label: "Endereço" },
+    { key: "video_url", label: "URL do Vídeo (YouTube)" },
+    { key: "instagram", label: "Instagram (@usuario)" },
+    { key: "facebook", label: "Facebook" },
   ];
 
   return (
@@ -60,9 +64,9 @@ export default function AdminSalon() {
         <CardTitle className="font-display text-xl">Configurações do Salão</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSave} className="space-y-4">
+        <form onSubmit={handleSave} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {fields.map((f) => (
+            {textFields.map((f) => (
               <div key={f.key}>
                 <label className="font-body text-sm font-medium mb-1 block">{f.label}</label>
                 <Input
@@ -73,6 +77,28 @@ export default function AdminSalon() {
               </div>
             ))}
           </div>
+
+          {/* Image uploads */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="font-body text-sm font-medium mb-1 block">Logo</label>
+              <ImageUpload
+                value={salon.logo_url || ""}
+                onChange={(url) => setSalon({ ...salon, logo_url: url })}
+                folder="logos"
+              />
+            </div>
+            <div>
+              <label className="font-body text-sm font-medium mb-1 block">Imagem Hero</label>
+              <ImageUpload
+                value={salon.hero_image_url || ""}
+                onChange={(url) => setSalon({ ...salon, hero_image_url: url })}
+                folder="hero"
+              />
+            </div>
+          </div>
+
+          {/* About */}
           <div>
             <label className="font-body text-sm font-medium mb-1 block">Sobre o Salão</label>
             <Textarea
@@ -81,6 +107,13 @@ export default function AdminSalon() {
               className="bg-secondary border-border font-body min-h-[120px]"
             />
           </div>
+
+          {/* Opening Hours */}
+          <OpeningHoursEditor
+            value={salon.opening_hours as Record<string, string> | null}
+            onChange={(hours) => setSalon({ ...salon, opening_hours: hours })}
+          />
+
           <Button type="submit" disabled={saving} className="bg-primary text-primary-foreground font-body">
             <Save className="w-4 h-4 mr-2" />
             {saving ? "Salvando..." : "Salvar"}
