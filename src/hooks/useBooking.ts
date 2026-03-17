@@ -1,18 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { Service } from "./useServices";
 
 export interface Booking {
   id: string;
   salon_id: string;
+  professional_id: string | null;
   customer_name: string;
   customer_phone: string;
-  services: { id: string; name: string; price: number; duration: number }[];
+  services: any;
   total_price: number;
   total_duration: number;
+  total_buffer_minutes: number;
+  total_occupied_minutes: number;
+  commission_amount: number;
+  profit_amount: number;
   booking_date: string;
   booking_time: string | null;
-  booking_type: "scheduled" | "walk_in";
+  booking_type: string;
   status: string;
   notes: string | null;
   created_at: string;
@@ -23,86 +27,115 @@ export function useBookings(salonId: string | undefined, date?: string) {
     queryKey: ["bookings", salonId, date],
     queryFn: async () => {
       let query = supabase.from("bookings").select("*").eq("salon_id", salonId!);
-      if (date) {
-        query = query.eq("booking_date", date);
-      }
+      if (date) query = query.eq("booking_date", date);
       const { data, error } = await query;
       if (error) throw error;
-      return data as Booking[];
+      return data as unknown as Booking[];
     },
     enabled: !!salonId,
   });
 }
 
+/**
+ * Get available time slots for a professional on a specific date.
+ * Uses 5-minute grid, considers availability, exceptions, and existing bookings.
+ */
 export function useAvailableSlots(
-  salonId: string | undefined,
+  professionalId: string | undefined,
   date: string | undefined,
-  totalDuration: number
+  totalOccupiedMinutes: number
 ) {
   return useQuery({
-    queryKey: ["available-slots", salonId, date, totalDuration],
+    queryKey: ["available-slots", professionalId, date, totalOccupiedMinutes],
     queryFn: async () => {
-      if (!salonId || !date || totalDuration <= 0) return [];
+      if (!professionalId || !date || totalOccupiedMinutes <= 0) return [];
 
-      // Get availability for the date
+      // 1. Get the weekday (0=Sunday, 6=Saturday)
+      const dayOfWeek = new Date(date + "T12:00:00").getDay();
+
+      // 2. Get professional recurring availability for this weekday
       const { data: avail } = await supabase
-        .from("availability")
+        .from("professional_availability")
         .select("*")
-        .eq("salon_id", salonId)
-        .eq("date", date)
-        .maybeSingle();
+        .eq("professional_id", professionalId)
+        .eq("weekday", dayOfWeek)
+        .eq("active", true);
 
-      if (avail?.is_closed) return [];
+      if (!avail || avail.length === 0) return [];
 
-      // Get salon opening hours
-      const { data: salon } = await supabase
-        .from("salons")
-        .select("opening_hours")
-        .eq("id", salonId)
-        .single();
+      // 3. Get exceptions for this date
+      const { data: exceptions } = await supabase
+        .from("professional_exceptions")
+        .select("*")
+        .eq("professional_id", professionalId)
+        .eq("date", date);
 
-      const dayOfWeek = new Date(date + "T12:00:00").toLocaleDateString("en-US", {
-        weekday: "short",
-      }).toLowerCase();
-      const dayMap: Record<string, string> = {
-        sun: "sun", mon: "mon", tue: "tue", wed: "wed", thu: "thu", fri: "fri", sat: "sat",
-      };
-      const dayKey = dayMap[dayOfWeek] || dayOfWeek;
-      const hours = (salon?.opening_hours as Record<string, string>)?.[dayKey];
+      // Check for full day off
+      const dayOff = exceptions?.find(
+        (e) => e.type === "day_off" || (e.type === "blocked" && !e.start_time && !e.end_time)
+      );
+      if (dayOff) return [];
 
-      if (!hours || hours === "closed") return [];
+      // Determine effective time windows
+      const customHours = exceptions?.find((e) => e.type === "custom_hours" && e.start_time && e.end_time);
+      
+      // Use custom hours if available, otherwise use recurring availability
+      const timeWindows: { start: number; end: number }[] = [];
+      
+      if (customHours) {
+        const [sh, sm] = customHours.start_time!.split(":").map(Number);
+        const [eh, em] = customHours.end_time!.split(":").map(Number);
+        timeWindows.push({ start: sh * 60 + sm, end: eh * 60 + em });
+      } else {
+        for (const a of avail) {
+          const [sh, sm] = a.start_time.split(":").map(Number);
+          const [eh, em] = a.end_time.split(":").map(Number);
+          timeWindows.push({ start: sh * 60 + sm, end: eh * 60 + em });
+        }
+      }
 
-      const startTime = avail?.start_time || hours.split("-")[0];
-      const endTime = avail?.end_time || hours.split("-")[1];
+      // Get blocked ranges from exceptions
+      const blockedRanges: { start: number; end: number }[] = [];
+      for (const ex of exceptions || []) {
+        if (ex.type === "blocked" && ex.start_time && ex.end_time) {
+          const [sh, sm] = ex.start_time.split(":").map(Number);
+          const [eh, em] = ex.end_time.split(":").map(Number);
+          blockedRanges.push({ start: sh * 60 + sm, end: eh * 60 + em });
+        }
+      }
 
-      // Get existing bookings
+      // 4. Get existing bookings for this professional on this date
       const { data: bookings } = await supabase
         .from("bookings")
-        .select("booking_time, total_duration")
-        .eq("salon_id", salonId)
+        .select("booking_time, total_occupied_minutes, total_duration")
+        .eq("professional_id", professionalId)
         .eq("booking_date", date)
         .in("status", ["pending", "confirmed"]);
 
-      // Generate slots
+      // 5. Generate 5-minute grid slots
       const slots: string[] = [];
-      const [startH, startM] = startTime.split(":").map(Number);
-      const [endH, endM] = endTime.split(":").map(Number);
-      const startMinutes = startH * 60 + startM;
-      const endMinutes = endH * 60 + endM;
 
-      for (let m = startMinutes; m + totalDuration <= endMinutes; m += 30) {
-        const slotStart = m;
-        const slotEnd = m + totalDuration;
+      for (const window of timeWindows) {
+        for (let m = window.start; m + totalOccupiedMinutes <= window.end; m += 5) {
+          const slotStart = m;
+          const slotEnd = m + totalOccupiedMinutes;
 
-        const hasConflict = bookings?.some((b) => {
-          if (!b.booking_time) return false;
-          const [bh, bm] = b.booking_time.split(":").map(Number);
-          const bStart = bh * 60 + bm;
-          const bEnd = bStart + (b.total_duration || 30);
-          return slotStart < bEnd && slotEnd > bStart;
-        });
+          // Check blocked ranges
+          const isBlocked = blockedRanges.some(
+            (b) => slotStart < b.end && slotEnd > b.start
+          );
+          if (isBlocked) continue;
 
-        if (!hasConflict) {
+          // Check booking conflicts
+          const hasConflict = bookings?.some((b) => {
+            if (!b.booking_time) return false;
+            const [bh, bm] = b.booking_time.split(":").map(Number);
+            const bStart = bh * 60 + bm;
+            const bEnd = bStart + (b.total_occupied_minutes || b.total_duration || 30);
+            return slotStart < bEnd && slotEnd > bStart;
+          });
+          if (hasConflict) continue;
+
           const h = Math.floor(m / 60);
           const min = m % 60;
           slots.push(`${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}`);
@@ -111,17 +144,22 @@ export function useAvailableSlots(
 
       return slots;
     },
-    enabled: !!salonId && !!date && totalDuration > 0,
+    enabled: !!professionalId && !!date && totalOccupiedMinutes > 0,
   });
 }
 
-interface CreateBookingData {
+export interface CreateBookingData {
   salon_id: string;
+  professional_id: string;
   customer_name: string;
   customer_phone: string;
-  services: { id: string; name: string; price: number; duration: number }[];
+  services: { id: string; name: string; price: number; duration: number; buffer: number }[];
   total_price: number;
   total_duration: number;
+  total_buffer_minutes: number;
+  total_occupied_minutes: number;
+  commission_amount: number;
+  profit_amount: number;
   booking_date: string;
   booking_time: string | null;
   booking_type: "scheduled" | "walk_in";
@@ -136,11 +174,16 @@ export function useCreateBooking() {
         .from("bookings")
         .insert([{
           salon_id: data.salon_id,
+          professional_id: data.professional_id,
           customer_name: data.customer_name,
           customer_phone: data.customer_phone,
           services: JSON.parse(JSON.stringify(data.services)),
           total_price: data.total_price,
           total_duration: data.total_duration,
+          total_buffer_minutes: data.total_buffer_minutes,
+          total_occupied_minutes: data.total_occupied_minutes,
+          commission_amount: data.commission_amount,
+          profit_amount: data.profit_amount,
           booking_date: data.booking_date,
           booking_time: data.booking_time,
           booking_type: data.booking_type,
@@ -155,6 +198,20 @@ export function useCreateBooking() {
       queryClient.invalidateQueries({ queryKey: ["available-slots"] });
     },
   });
+}
+
+export function calculateCommission(
+  totalPrice: number,
+  commissionType: string,
+  commissionValue: number
+): number {
+  if (commissionType === "percentage") {
+    return totalPrice * (commissionValue / 100);
+  }
+  if (commissionType === "fixed") {
+    return commissionValue;
+  }
+  return 0;
 }
 
 export function generateWhatsAppMessage(

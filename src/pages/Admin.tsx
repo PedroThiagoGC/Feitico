@@ -11,6 +11,8 @@ import AdminSalon from "@/components/admin/AdminSalon";
 import AdminGallery from "@/components/admin/AdminGallery";
 import AdminTestimonials from "@/components/admin/AdminTestimonials";
 import AdminAvailability from "@/components/admin/AdminAvailability";
+import AdminProfessionals from "@/components/admin/AdminProfessionals";
+import AdminFinancials from "@/components/admin/AdminFinancials";
 import { LogOut, LayoutDashboard } from "lucide-react";
 
 export default function Admin() {
@@ -25,12 +27,10 @@ export default function Admin() {
       setSession(session);
       setLoading(false);
     });
-
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
@@ -38,11 +38,7 @@ export default function Admin() {
     e.preventDefault();
     setAuthLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success("Login realizado!");
-    }
+    if (error) toast.error(error.message); else toast.success("Login realizado!");
     setAuthLoading(false);
   };
 
@@ -68,27 +64,9 @@ export default function Admin() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
-              <Input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="bg-secondary border-border font-body"
-                required
-              />
-              <Input
-                type="password"
-                placeholder="Senha"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="bg-secondary border-border font-body"
-                required
-              />
-              <Button
-                type="submit"
-                className="w-full bg-primary text-primary-foreground font-body"
-                disabled={authLoading}
-              >
+              <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-secondary border-border font-body" required />
+              <Input type="password" placeholder="Senha" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-secondary border-border font-body" required />
+              <Button type="submit" className="w-full bg-primary text-primary-foreground font-body" disabled={authLoading}>
                 {authLoading ? "Entrando..." : "Entrar"}
               </Button>
             </form>
@@ -118,34 +96,24 @@ export default function Admin() {
           <TabsList className="bg-secondary border border-border flex-wrap h-auto gap-1 p-1">
             <TabsTrigger value="dashboard" className="font-body text-sm">Dashboard</TabsTrigger>
             <TabsTrigger value="salon" className="font-body text-sm">Salão</TabsTrigger>
+            <TabsTrigger value="professionals" className="font-body text-sm">Profissionais</TabsTrigger>
             <TabsTrigger value="services" className="font-body text-sm">Serviços</TabsTrigger>
             <TabsTrigger value="bookings" className="font-body text-sm">Agendamentos</TabsTrigger>
+            <TabsTrigger value="financials" className="font-body text-sm">Financeiro</TabsTrigger>
             <TabsTrigger value="availability" className="font-body text-sm">Disponibilidade</TabsTrigger>
             <TabsTrigger value="gallery" className="font-body text-sm">Galeria</TabsTrigger>
             <TabsTrigger value="testimonials" className="font-body text-sm">Depoimentos</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="dashboard">
-            <DashboardOverview />
-          </TabsContent>
-          <TabsContent value="salon">
-            <AdminSalon />
-          </TabsContent>
-          <TabsContent value="services">
-            <AdminServices />
-          </TabsContent>
-          <TabsContent value="bookings">
-            <AdminBookings />
-          </TabsContent>
-          <TabsContent value="availability">
-            <AdminAvailability />
-          </TabsContent>
-          <TabsContent value="gallery">
-            <AdminGallery />
-          </TabsContent>
-          <TabsContent value="testimonials">
-            <AdminTestimonials />
-          </TabsContent>
+          <TabsContent value="dashboard"><DashboardOverview /></TabsContent>
+          <TabsContent value="salon"><AdminSalon /></TabsContent>
+          <TabsContent value="professionals"><AdminProfessionals /></TabsContent>
+          <TabsContent value="services"><AdminServices /></TabsContent>
+          <TabsContent value="bookings"><AdminBookings /></TabsContent>
+          <TabsContent value="financials"><AdminFinancials /></TabsContent>
+          <TabsContent value="availability"><AdminAvailability /></TabsContent>
+          <TabsContent value="gallery"><AdminGallery /></TabsContent>
+          <TabsContent value="testimonials"><AdminTestimonials /></TabsContent>
         </Tabs>
       </div>
     </div>
@@ -153,19 +121,21 @@ export default function Admin() {
 }
 
 function DashboardOverview() {
-  const [stats, setStats] = useState({ bookings: 0, services: 0, pending: 0 });
+  const [stats, setStats] = useState({ bookings: 0, services: 0, pending: 0, professionals: 0 });
 
   useEffect(() => {
     async function load() {
-      const [{ count: bookings }, { count: services }, { count: pending }] = await Promise.all([
+      const [{ count: bookings }, { count: services }, { count: pending }, { count: professionals }] = await Promise.all([
         supabase.from("bookings").select("*", { count: "exact", head: true }),
         supabase.from("services").select("*", { count: "exact", head: true }),
         supabase.from("bookings").select("*", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("professionals").select("*", { count: "exact", head: true }),
       ]);
       setStats({
         bookings: bookings || 0,
         services: services || 0,
         pending: pending || 0,
+        professionals: professionals || 0,
       });
     }
     load();
@@ -173,12 +143,13 @@ function DashboardOverview() {
 
   const cards = [
     { label: "Total Agendamentos", value: stats.bookings, color: "text-primary" },
+    { label: "Profissionais", value: stats.professionals, color: "text-foreground" },
     { label: "Serviços Ativos", value: stats.services, color: "text-foreground" },
-    { label: "Agendamentos Pendentes", value: stats.pending, color: "text-destructive" },
+    { label: "Pendentes", value: stats.pending, color: "text-destructive" },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
       {cards.map((c) => (
         <Card key={c.label} className="bg-card border-border">
           <CardContent className="p-6 text-center">

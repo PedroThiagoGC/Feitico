@@ -14,6 +14,7 @@ interface ServiceForm {
   description: string;
   price: string;
   duration: string;
+  buffer_minutes: string;
   image_url: string;
   category: string;
   is_combo: boolean;
@@ -22,9 +23,17 @@ interface ServiceForm {
 }
 
 const emptyService: ServiceForm = {
-  name: "", description: "", price: "0", duration: "30",
+  name: "", description: "", price: "0", duration: "30", buffer_minutes: "0",
   image_url: "", category: "", is_combo: false, active: true, sort_order: "0",
 };
+
+function validateMultipleOf5(value: number, label: string): boolean {
+  if (value % 5 !== 0) {
+    toast.error(`${label} deve ser múltiplo de 5 minutos`);
+    return false;
+  }
+  return true;
+}
 
 export default function AdminServices() {
   const [services, setServices] = useState<any[]>([]);
@@ -33,9 +42,7 @@ export default function AdminServices() {
   const [form, setForm] = useState<ServiceForm>(emptyService);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
@@ -48,13 +55,20 @@ export default function AdminServices() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    const duration = parseInt(form.duration);
+    const buffer = parseInt(form.buffer_minutes);
+    if (!validateMultipleOf5(duration, "Duração")) return;
+    if (!validateMultipleOf5(buffer, "Margem")) return;
+    if (duration < 5) { toast.error("Duração mínima: 5 minutos"); return; }
+
     setSaving(true);
     const payload = {
       salon_id: salonId,
       name: form.name,
       description: form.description || null,
       price: parseFloat(form.price),
-      duration: parseInt(form.duration),
+      duration: duration,
+      buffer_minutes: buffer,
       image_url: form.image_url || null,
       category: form.category || null,
       is_combo: form.is_combo,
@@ -64,12 +78,10 @@ export default function AdminServices() {
 
     if (form.id) {
       const { error } = await supabase.from("services").update(payload).eq("id", form.id);
-      if (error) toast.error(error.message);
-      else toast.success("Serviço atualizado!");
+      if (error) toast.error(error.message); else toast.success("Serviço atualizado!");
     } else {
       const { error } = await supabase.from("services").insert(payload);
-      if (error) toast.error(error.message);
-      else toast.success("Serviço criado!");
+      if (error) toast.error(error.message); else toast.success("Serviço criado!");
     }
     setSaving(false);
     setDialogOpen(false);
@@ -78,10 +90,9 @@ export default function AdminServices() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Tem certeza que deseja excluir?")) return;
+    if (!confirm("Excluir serviço?")) return;
     const { error } = await supabase.from("services").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else { toast.success("Serviço excluído!"); loadData(); }
+    if (error) toast.error(error.message); else { toast.success("Excluído!"); loadData(); }
   }
 
   function openEdit(service: any) {
@@ -91,6 +102,7 @@ export default function AdminServices() {
       description: service.description || "",
       price: String(service.price),
       duration: String(service.duration),
+      buffer_minutes: String(service.buffer_minutes || 0),
       image_url: service.image_url || "",
       category: service.category || "",
       is_combo: service.is_combo,
@@ -117,9 +129,31 @@ export default function AdminServices() {
             <form onSubmit={handleSave} className="space-y-4">
               <Input placeholder="Nome" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="bg-secondary border-border font-body" required />
               <Input placeholder="Descrição" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="bg-secondary border-border font-body" />
+              <Input placeholder="Preço (R$)" type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="bg-secondary border-border font-body" />
               <div className="grid grid-cols-2 gap-3">
-                <Input placeholder="Preço" type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="bg-secondary border-border font-body" />
-                <Input placeholder="Duração (min)" type="number" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="bg-secondary border-border font-body" />
+                <div>
+                  <label className="font-body text-sm">Duração (min)</label>
+                  <Input type="number" step="5" min="5" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="bg-secondary border-border font-body" />
+                </div>
+                <div>
+                  <label className="font-body text-sm">Margem operacional (min)</label>
+                  <Input type="number" step="5" min="0" value={form.buffer_minutes} onChange={(e) => setForm({ ...form, buffer_minutes: e.target.value })} className="bg-secondary border-border font-body" />
+                </div>
+              </div>
+              {/* Occupation summary */}
+              <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 font-body text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Duração do serviço:</span>
+                  <span className="text-foreground font-medium">{form.duration} min</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Margem entre atendimentos:</span>
+                  <span className="text-foreground font-medium">{form.buffer_minutes} min</span>
+                </div>
+                <div className="flex justify-between border-t border-border pt-1">
+                  <span className="text-muted-foreground font-semibold">Tempo total na agenda:</span>
+                  <span className="text-primary font-bold">{parseInt(form.duration || "0") + parseInt(form.buffer_minutes || "0")} min</span>
+                </div>
               </div>
               <Input placeholder="URL da Imagem" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} className="bg-secondary border-border font-body" />
               <Input placeholder="Categoria" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="bg-secondary border-border font-body" />
@@ -149,7 +183,7 @@ export default function AdminServices() {
                 <div className="flex-1 min-w-0">
                   <p className="font-body font-medium text-foreground truncate">{s.name}</p>
                   <p className="font-body text-sm text-muted-foreground">
-                    R$ {Number(s.price).toFixed(2)} · {s.duration}min
+                    R$ {Number(s.price).toFixed(2)} · {s.duration}min + {s.buffer_minutes || 0}min margem = {s.duration + (s.buffer_minutes || 0)}min total
                     {s.is_combo && " · Combo"}
                     {!s.active && " · Inativo"}
                   </p>
