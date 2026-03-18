@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Para o script se qualquer comando falhar
-set -e
+set -euo pipefail
 
 # Função de ajuda
 show_help() {
@@ -52,6 +52,48 @@ set -o allexport
 source "$ENV_FILE"
 set +o allexport
 
+STACK_FILE="${STACK_FILE:-feitico.yaml}"
+
+require_env() {
+    local name="$1"
+    if [ -z "${!name:-}" ]; then
+        echo "ERRO: Variável obrigatória '$name' não está definida em $ENV_FILE"
+        exit 1
+    fi
+}
+
+require_env "REGISTRY"
+require_env "DOMAIN"
+require_env "NODE_ENV"
+require_env "VITE_API_URL"
+require_env "VITE_SUPABASE_URL"
+
+if [ -z "${VITE_SUPABASE_PUBLISHABLE_KEY:-}" ]; then
+    if [ -n "${VITE_SUPABASE_KEY:-}" ]; then
+        VITE_SUPABASE_PUBLISHABLE_KEY="$VITE_SUPABASE_KEY"
+    else
+        echo "ERRO: Defina VITE_SUPABASE_PUBLISHABLE_KEY (ou VITE_SUPABASE_KEY para compatibilidade) em $ENV_FILE"
+        exit 1
+    fi
+fi
+
+require_env "SUPABASE_URL"
+require_env "SUPABASE_SERVICE_ROLE_KEY"
+require_env "JWT_SECRET"
+require_env "FRONTEND_URL"
+
+if [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+    if [ -n "${SUPABASE_KEY:-}" ]; then
+        SUPABASE_ANON_KEY="$SUPABASE_KEY"
+    else
+        echo "ERRO: Defina SUPABASE_ANON_KEY (ou SUPABASE_KEY para compatibilidade) em $ENV_FILE"
+        exit 1
+    fi
+fi
+
+export VITE_SUPABASE_PUBLISHABLE_KEY
+export SUPABASE_ANON_KEY
+
 # --- DEFINIÇÃO DA TAG ---
 if [ -z "$TAG_ARG" ]; then
   # Se nenhuma tag for passada, gera uma baseada no commit + ambiente
@@ -69,7 +111,7 @@ fi
 export IMAGE_TAG
 
 discover_images_from_stack() {
-    envsubst < feitico.yaml | \
+    envsubst < "$STACK_FILE" | \
     awk '
         match($0, /^[[:space:]]*image:[[:space:]]*([^[:space:]]+)[[:space:]]*$/, m) {
             print m[1]
@@ -90,7 +132,7 @@ discover_service_keys_from_stack() {
         in_services && match($0, /^[[:space:]]{2}([a-zA-Z0-9._-]+):[[:space:]]*$/, m) {
             print m[1]
         }
-    ' feitico.yaml
+    ' "$STACK_FILE"
 }
 
 wait_for_remote_image() {
@@ -153,7 +195,7 @@ build_with_bake() {
     mapfile -t IMAGES < <(discover_images_from_stack)
 
     if [ ${#IMAGES[@]} -eq 0 ]; then
-        echo "ERRO: Nenhuma imagem com \${IMAGE_TAG} encontrada em feitico.yaml"
+        echo "ERRO: Nenhuma imagem com \${IMAGE_TAG} encontrada em $STACK_FILE"
         rm -f "$BAKE_FILE"
         exit 1
     fi
@@ -195,9 +237,9 @@ build_with_bake() {
         --progress=plain
         --set "*.args.VITE_API_URL=$VITE_API_URL"
         --set "*.args.VITE_SUPABASE_URL=$VITE_SUPABASE_URL"
-        --set "*.args.VITE_SUPABASE_KEY=$VITE_SUPABASE_KEY"
+        --set "*.args.VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY"
         --set "*.args.SUPABASE_URL=$SUPABASE_URL"
-        --set "*.args.SUPABASE_KEY=$SUPABASE_KEY"
+        --set "*.args.SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
         --set "*.cache-to=type=local,dest=$CACHE_DIR_NEW,mode=max,ignore-error=true"
     )
 
@@ -217,9 +259,9 @@ build_with_bake() {
             --progress=plain
             --set "*.args.VITE_API_URL=$VITE_API_URL"
             --set "*.args.VITE_SUPABASE_URL=$VITE_SUPABASE_URL"
-            --set "*.args.VITE_SUPABASE_KEY=$VITE_SUPABASE_KEY"
+            --set "*.args.VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY"
             --set "*.args.SUPABASE_URL=$SUPABASE_URL"
-            --set "*.args.SUPABASE_KEY=$SUPABASE_KEY"
+            --set "*.args.SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
         )
 
         "${BAKE_CMD_NO_CACHE[@]}"
@@ -240,7 +282,7 @@ build_with_classic_docker() {
     mapfile -t IMAGES < <(discover_images_from_stack)
 
     if [ ${#IMAGES[@]} -eq 0 ]; then
-        echo "ERRO: Nenhuma imagem com \${IMAGE_TAG} encontrada em feitico.yaml"
+        echo "ERRO: Nenhuma imagem com \${IMAGE_TAG} encontrada em $STACK_FILE"
         exit 1
     fi
 
@@ -250,9 +292,9 @@ build_with_classic_docker() {
         docker build \
             --build-arg VITE_API_URL="$VITE_API_URL" \
             --build-arg VITE_SUPABASE_URL="$VITE_SUPABASE_URL" \
-            --build-arg VITE_SUPABASE_KEY="$VITE_SUPABASE_KEY" \
+            --build-arg VITE_SUPABASE_PUBLISHABLE_KEY="$VITE_SUPABASE_PUBLISHABLE_KEY" \
             --build-arg SUPABASE_URL="$SUPABASE_URL" \
-            --build-arg SUPABASE_KEY="$SUPABASE_KEY" \
+            --build-arg SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
             --target "$STAGE_NAME" \
             -t "$IMAGE_NAME:$IMAGE_TAG" \
             .
@@ -299,7 +341,7 @@ echo ">>> Validando imagens..."
 mapfile -t IMAGES < <(discover_images_from_stack)
 
 if [ ${#IMAGES[@]} -eq 0 ]; then
-    echo "ERRO: Nenhuma imagem com \${IMAGE_TAG} encontrada em feitico.yaml"
+    echo "ERRO: Nenhuma imagem com \${IMAGE_TAG} encontrada em $STACK_FILE"
     exit 1
 fi
 
@@ -335,7 +377,7 @@ echo ">>> Versão atual rodando: $CURRENT_TAG"
 # --- ETAPA DE DEPLOY ---
 echo ">>> Deploying stack '$STACK_NAME' com tag '$IMAGE_TAG'..."
 
-if envsubst < feitico.yaml | docker stack deploy --with-registry-auth -c - "$STACK_NAME"; then
+if envsubst < "$STACK_FILE" | docker stack deploy --with-registry-auth -c - "$STACK_NAME"; then
     echo "============================================================"
     echo "Deploy concluído com sucesso no ambiente: $ENVIRONMENT"
     echo "Tag implantada: $IMAGE_TAG"

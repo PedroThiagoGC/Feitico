@@ -79,7 +79,7 @@ npm run dev
 ```bash
 VITE_API_URL=http://localhost:3333/api/v1
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_KEY=your_anon_public_key
+VITE_SUPABASE_PUBLISHABLE_KEY=your_anon_public_key
 ```
 
 ### Backend (`apps/api/.env.development`)
@@ -88,7 +88,7 @@ VITE_SUPABASE_KEY=your_anon_public_key
 NODE_ENV=development
 PORT=3333
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your_anon_public_key
+SUPABASE_ANON_KEY=your_anon_public_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 JWT_SECRET=dev_secret_key
 FRONTEND_URL=http://localhost:8080
@@ -168,10 +168,11 @@ Requer `.env.development` e `.env.production` configurados.
 # Frontend Project
 VITE_API_URL=https://your-api-domain.com/api/v1
 VITE_SUPABASE_URL=...
-VITE_SUPABASE_KEY=...
+VITE_SUPABASE_PUBLISHABLE_KEY=...
 
 # Backend Project
 SUPABASE_URL=...
+SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 JWT_SECRET=...
 ```
