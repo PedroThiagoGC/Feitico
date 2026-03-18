@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { type Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -146,67 +146,101 @@ function DashboardOverview() {
   const [financial, setFinancial] = useState({ revenue: 0, commission: 0, profit: 0, count: 0, pendingRevenue: 0, confirmedCount: 0 });
   const [proStats, setProStats] = useState<FinancialPro[]>([]);
 
-  useEffect(() => {
-    async function load() {
-      const [{ count: bookings }, { count: services }, { count: pending }, { count: professionals }] = await Promise.all([
-        supabase.from("bookings").select("*", { count: "exact", head: true }),
-        supabase.from("services").select("*", { count: "exact", head: true }),
-        supabase.from("bookings").select("*", { count: "exact", head: true }).eq("status", "pending"),
-        supabase.from("professionals").select("*", { count: "exact", head: true }),
-      ]);
-      setStats({
-        bookings: bookings || 0,
-        services: services || 0,
-        pending: pending || 0,
-        professionals: professionals || 0,
-      });
-    }
-    load();
+  const loadStats = useCallback(async () => {
+    const [{ count: bookings }, { count: services }, { count: pending }, { count: professionals }] = await Promise.all([
+      supabase.from("bookings").select("*", { count: "exact", head: true }),
+      supabase.from("services").select("*", { count: "exact", head: true }),
+      supabase.from("bookings").select("*", { count: "exact", head: true }).eq("status", "pending"),
+      supabase.from("professionals").select("*", { count: "exact", head: true }),
+    ]);
+
+    setStats({
+      bookings: bookings || 0,
+      services: services || 0,
+      pending: pending || 0,
+      professionals: professionals || 0,
+    });
   }, []);
 
-  useEffect(() => {
-    async function loadFinancial() {
-      const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
-      if (!salon) return;
-      const { data: pros } = await supabase.from("professionals").select("id, name").eq("salon_id", salon.id);
-      const { data: bks } = await supabase
-        .from("bookings")
-        .select("professional_id, total_price, commission_amount, profit_amount, total_occupied_minutes, total_duration, status")
-        .eq("salon_id", salon.id)
-        .in("status", ["confirmed", "completed"])
-        .gte("booking_date", dateFrom)
-        .lte("booking_date", dateTo);
+  const loadFinancial = useCallback(async () => {
+    const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
+    if (!salon) return;
 
-      const allBookings = bks || [];
-      const completedBookings = allBookings.filter((b) => b.status === "completed");
-      const confirmedBookings = allBookings.filter((b) => b.status === "confirmed");
+    const { data: pros } = await supabase.from("professionals").select("id, name").eq("salon_id", salon.id);
+    const { data: bks } = await supabase
+      .from("bookings")
+      .select("professional_id, total_price, commission_amount, profit_amount, total_occupied_minutes, total_duration, status")
+      .eq("salon_id", salon.id)
+      .in("status", ["confirmed", "completed"])
+      .gte("booking_date", dateFrom)
+      .lte("booking_date", dateTo);
 
-      const totalRevenue = completedBookings.reduce((a, b) => a + Number(b.total_price), 0);
-      const totalCommission = completedBookings.reduce((a, b) => a + Number(b.commission_amount || 0), 0);
-      const totalProfit = completedBookings.reduce((a, b) => a + Number(b.profit_amount || 0), 0);
-      const pendingRevenue = confirmedBookings.reduce((a, b) => a + Number(b.total_price), 0);
-      setFinancial({
-        revenue: totalRevenue,
-        commission: totalCommission,
-        profit: totalProfit,
-        count: completedBookings.length,
-        pendingRevenue,
-        confirmedCount: confirmedBookings.length,
-      });
+    const allBookings = bks || [];
+    const completedBookings = allBookings.filter((b) => b.status === "completed");
+    const confirmedBookings = allBookings.filter((b) => b.status === "confirmed");
 
-      const professionalStats = (pros || []).map((p) => {
+    const totalRevenue = completedBookings.reduce((a, b) => a + Number(b.total_price), 0);
+    const totalCommission = completedBookings.reduce((a, b) => a + Number(b.commission_amount || 0), 0);
+    const totalProfit = completedBookings.reduce((a, b) => a + Number(b.profit_amount || 0), 0);
+    const pendingRevenue = confirmedBookings.reduce((a, b) => a + Number(b.total_price), 0);
+    setFinancial({
+      revenue: totalRevenue,
+      commission: totalCommission,
+      profit: totalProfit,
+      count: completedBookings.length,
+      pendingRevenue,
+      confirmedCount: confirmedBookings.length,
+    });
+
+    const professionalStats = (pros || [])
+      .map((p) => {
         const pBookings = allBookings.filter((b) => b.professional_id === p.id);
         const revenue = pBookings.reduce((a, b) => a + Number(b.total_price), 0);
         const commission = pBookings.reduce((a, b) => a + Number(b.commission_amount || 0), 0);
         const profit = pBookings.reduce((a, b) => a + Number(b.profit_amount || 0), 0);
         const count = pBookings.length;
         const occupied = pBookings.reduce((a, b) => a + (b.total_occupied_minutes || b.total_duration || 0), 0);
-        return { id: p.id, name: p.name, revenue, commission, profit, count, occupied, ticket: count > 0 ? revenue / count : 0 };
-      }).sort((a, b) => b.revenue - a.revenue);
-      setProStats(professionalStats);
-    }
-    loadFinancial();
+        return {
+          id: p.id,
+          name: p.name,
+          revenue,
+          commission,
+          profit,
+          count,
+          occupied,
+          ticket: count > 0 ? revenue / count : 0,
+        };
+      })
+      .sort((a, b) => b.revenue - a.revenue);
+
+    setProStats(professionalStats);
   }, [dateFrom, dateTo]);
+
+  useEffect(() => {
+    void loadStats();
+  }, [loadStats]);
+
+  useEffect(() => {
+    void loadFinancial();
+  }, [loadFinancial]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-dashboard-bookings")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "bookings" },
+        () => {
+          void loadStats();
+          void loadFinancial();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadFinancial, loadStats]);
 
   const summaryCards = [
     { label: "Agendamentos", value: String(stats.bookings), color: "text-primary" },
