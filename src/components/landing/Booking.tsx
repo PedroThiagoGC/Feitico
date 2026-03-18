@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
-import { useAvailableSlots, useCreateBooking, useRealtimeBookings, generateWhatsAppMessage, calculateCommission } from "@/hooks/useBooking";
+import { useAvailableSlots, useCreateBooking, useRealtimeBookings, generateWhatsAppApiFallback, generateWhatsAppMessage, calculateCommission } from "@/hooks/useBooking";
 import { useProfessionals, useProfessionalServices, useProfessionalAvailability } from "@/hooks/useProfessionals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -203,10 +203,18 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
         salonPhone: salon?.phone || undefined,
         professionalName: selectedProfessional?.name || "",
       });
+      const whatsappApiFallbackUrl = generateWhatsAppApiFallback({
+        booking: bookingData,
+        salonName: salon?.name || "Salão",
+        salonAddress: salon?.address || "",
+        salonWhatsapp: salon?.whatsapp || undefined,
+        salonPhone: salon?.phone || undefined,
+        professionalName: selectedProfessional?.name || "",
+      });
 
       const tab = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
       if (!tab) {
-        window.location.assign(whatsappUrl);
+        window.location.assign(whatsappApiFallbackUrl);
       }
 
       form.reset();

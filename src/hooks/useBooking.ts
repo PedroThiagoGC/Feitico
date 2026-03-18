@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { buildWhatsAppUrl, normalizeWhatsAppPhone } from "@/lib/phone";
+import { buildWhatsAppApiUrl, buildWhatsAppUrl, normalizeWhatsAppPhone } from "@/lib/phone";
 
 export interface Booking {
   id: string;
@@ -238,7 +238,7 @@ export interface WhatsAppBookingInfo {
   professionalName: string;
 }
 
-export function generateWhatsAppMessage(info: WhatsAppBookingInfo) {
+function buildBookingWhatsAppText(info: WhatsAppBookingInfo): string {
   const { booking, salonName, salonAddress, professionalName } = info;
 
   const servicesList = booking.services
@@ -248,7 +248,7 @@ export function generateWhatsAppMessage(info: WhatsAppBookingInfo) {
   const bookingTypeLabel = booking.booking_type === "scheduled" ? "Horário marcado" : "Ordem de chegada";
   const dateFormatted = new Date(booking.booking_date + "T12:00:00").toLocaleDateString("pt-BR");
 
-  const message =
+  return (
     `Olá, segue novo agendamento confirmado:\n\n` +
     `👤 *Cliente:* ${booking.customer_name}\n` +
     `📱 *Telefone:* ${booking.customer_phone}\n\n` +
@@ -263,7 +263,12 @@ export function generateWhatsAppMessage(info: WhatsAppBookingInfo) {
     `📋 *Tipo de atendimento:* ${bookingTypeLabel}\n` +
     `📅 *Data:* ${dateFormatted}\n` +
     (booking.booking_time ? `🕐 *Horário:* ${booking.booking_time}\n` : "") +
-    `\nFavor seguir com a confirmação e atendimento. ✨`;
+    `\nFavor seguir com a confirmação e atendimento. ✨`
+  );
+}
+
+export function generateWhatsAppMessage(info: WhatsAppBookingInfo) {
+  const message = buildBookingWhatsAppText(info);
 
   // Usa WhatsApp do salão, com fallback para telefone.
   const normalizedPhone =
@@ -274,5 +279,20 @@ export function generateWhatsAppMessage(info: WhatsAppBookingInfo) {
     return `https://api.whatsapp.com/send/?text=${encodeURIComponent(message)}&type=phone_number&app_absent=0`;
   }
 
+  // Prioriza wa.me (mais estável em alguns ambientes) e mantém fallback em API via Booking.tsx.
   return buildWhatsAppUrl(normalizedPhone, message);
+}
+
+export function generateWhatsAppApiFallback(info: WhatsAppBookingInfo) {
+  const message = buildBookingWhatsAppText(info);
+
+  const normalizedPhone =
+    normalizeWhatsAppPhone(info.salonWhatsapp) ||
+    normalizeWhatsAppPhone(info.salonPhone);
+
+  if (!normalizedPhone) {
+    return `https://api.whatsapp.com/send/?text=${encodeURIComponent(message)}&type=phone_number&app_absent=0`;
+  }
+
+  return buildWhatsAppApiUrl(normalizedPhone, message);
 }

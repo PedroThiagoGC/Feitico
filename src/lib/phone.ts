@@ -61,5 +61,10 @@ export function splitWhatsAppPhone(raw: string | null | undefined, defaultCountr
 
 export function buildWhatsAppUrl(phone: string, message: string): string {
   const encodedMessage = encodeURIComponent(message);
+  return `https://wa.me/${phone}?text=${encodedMessage}`;
+}
+
+export function buildWhatsAppApiUrl(phone: string, message: string): string {
+  const encodedMessage = encodeURIComponent(message);
   return `https://api.whatsapp.com/send/?phone=${phone}&text=${encodedMessage}&type=phone_number&app_absent=0`;
 }
