@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import PwaAssistant from "@/components/pwa/PwaAssistant";
 import Index from "./pages/Index";
 import Admin from "./pages/Admin";
@@ -17,9 +18,30 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="*" element={<NotFound />} />
+          <Route
+            path="/"
+            element={
+              <ErrorBoundary fallbackTitle="Erro na página inicial">
+                <Index />
+              </ErrorBoundary>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ErrorBoundary fallbackTitle="Erro no painel administrativo">
+                <Admin />
+              </ErrorBoundary>
+            }
+          />
+          <Route
+            path="*"
+            element={
+              <ErrorBoundary fallbackTitle="Erro na página">
+                <NotFound />
+              </ErrorBoundary>
+            }
+          />
         </Routes>
       </BrowserRouter>
       <PwaAssistant />
