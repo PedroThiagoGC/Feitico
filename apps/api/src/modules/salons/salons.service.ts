@@ -1,27 +1,22 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { SupabaseService } from "../../services/supabase.service";
+﻿import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { Salon } from "../../entities/salon.entity";
 
 @Injectable()
 export class SalonsService {
   private readonly logger = new Logger(SalonsService.name);
 
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(
+    @InjectRepository(Salon)
+    private readonly salonRepo: Repository<Salon>,
+  ) {}
 
   async findCurrent() {
     try {
-      const { data, error } = await this.supabaseService
-        .getClient()
-        .from("salons")
-        .select("*")
-        .eq("active", true)
-        .limit(1)
-        .single();
-
-      if (error || !data) {
-        throw new NotFoundException("Active salon not found");
-      }
-
-      return data;
+      const salon = await this.salonRepo.findOne({ where: { active: true } });
+      if (!salon) throw new NotFoundException("Active salon not found");
+      return salon;
     } catch (error) {
       this.logger.error("Error loading current salon", error);
       throw error;
@@ -29,43 +24,18 @@ export class SalonsService {
   }
 
   async findById(id: string) {
-    const { data, error } = await this.supabaseService.findById("salons", id);
-
-    if (error || !data) {
-      throw new NotFoundException("Salon not found");
-    }
-
-    return data;
+    const salon = await this.salonRepo.findOneBy({ id });
+    if (!salon) throw new NotFoundException("Salon not found");
+    return salon;
   }
 
-  async create(createData: Record<string, unknown>) {
-    const payload = {
-      ...createData,
-      active: true,
-    };
-
-    const { data, error } = await this.supabaseService.create(
-      "salons",
-      payload,
-    );
-
-    if (error || !data) {
-      throw new NotFoundException("Failed to create salon");
-    }
-
-    return data;
+  async create(createData: Partial<Salon>) {
+    const salon = this.salonRepo.create({ ...createData, active: true });
+    return this.salonRepo.save(salon);
   }
 
-  async update(id: string, updateData: Record<string, unknown>) {
-    const { data, error } = await this.supabaseService.update("salons", id, {
-      ...updateData,
-      updated_at: new Date().toISOString(),
-    });
-
-    if (error || !data) {
-      throw new NotFoundException("Failed to update salon");
-    }
-
-    return data;
+  async update(id: string, updateData: Partial<Salon>) {
+    await this.salonRepo.update(id, updateData);
+    return this.findById(id);
   }
 }

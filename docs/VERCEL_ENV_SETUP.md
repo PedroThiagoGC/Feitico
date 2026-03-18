@@ -1,6 +1,7 @@
 # Vercel + Supabase Environment Setup
 
 Use dois projetos na Vercel:
+
 - `web` apontando para `apps/web`
 - `api` apontando para `apps/api`
 
@@ -13,6 +14,7 @@ Copie de `vercel-frontend.env.example`:
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 
 ### Como obter
+
 - `VITE_API_URL`: URL publica do backend + `/api/v1`.
   - Exemplo: `https://api.seudominio.com/api/v1`
 - `VITE_SUPABASE_URL`: no painel Supabase em `Settings > API > Project URL`.
@@ -31,6 +33,7 @@ Copie de `vercel-backend.env.example`:
 - `ADMIN_EMAILS` (opcional, recomendado)
 
 ### Como obter
+
 - `FRONTEND_URL`: URL publica do frontend.
   - Exemplo: `https://app.seudominio.com`
 - `JWT_SECRET`: gerar um segredo forte.

@@ -1,17 +1,22 @@
-import {
-  Injectable,
+﻿import {
   BadRequestException,
+  Injectable,
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { SupabaseService } from "../../services/supabase.service";
+import { InjectRepository } from "@nestjs/typeorm";
+import { In, Repository } from "typeorm";
+import { Booking } from "../../entities/booking.entity";
 import { BookingStatus, CreateBookingInput } from "../../common/types";
 
 @Injectable()
 export class BookingsService {
   private readonly logger = new Logger(BookingsService.name);
 
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(
+    @InjectRepository(Booking)
+    private readonly bookingRepo: Repository<Booking>,
+  ) {}
 
   async findAll(filters?: {
     salonId?: string;
@@ -21,56 +26,22 @@ export class BookingsService {
     statuses?: BookingStatus[];
   }) {
     try {
-      let query = this.supabaseService.getClient().from("bookings").select(`
-        id,
-        salon_id,
-        professional_id,
-        customer_name,
-        customer_phone,
-        services,
-        total_price,
-        total_duration,
-        total_buffer_minutes,
-        total_occupied_minutes,
-        commission_amount,
-        profit_amount,
-        booking_date,
-        booking_time,
-        booking_type,
-        status,
-        notes,
-        created_at,
-        professionals:professional_id(id, name, photo_url, commission_type, commission_value)
-      `);
+      const qb = this.bookingRepo
+        .createQueryBuilder("b")
+        .leftJoinAndSelect("b.professional", "professional")
+        .orderBy("b.bookingDate", "DESC")
+        .addOrderBy("b.bookingTime", "DESC");
 
-      if (filters?.salonId) {
-        query = query.eq("salon_id", filters.salonId);
-      }
-
-      if (filters?.professionalId) {
-        query = query.eq("professional_id", filters.professionalId);
-      }
-
-      if (filters?.date) {
-        query = query.eq("booking_date", filters.date);
-      }
-
+      if (filters?.salonId) qb.andWhere("b.salonId = :salonId", { salonId: filters.salonId });
+      if (filters?.professionalId) qb.andWhere("b.professionalId = :pid", { pid: filters.professionalId });
+      if (filters?.date) qb.andWhere("b.bookingDate = :date", { date: filters.date });
       if (filters?.statuses?.length) {
-        query = query.in("status", filters.statuses);
+        qb.andWhere("b.status IN (:...statuses)", { statuses: filters.statuses });
       } else if (filters?.status) {
-        query = query.eq("status", filters.status);
+        qb.andWhere("b.status = :status", { status: filters.status });
       }
 
-      const { data, error } = await query
-        .order("booking_date", { ascending: false })
-        .order("booking_time", { ascending: false, nullsFirst: false });
-
-      if (error) {
-        this.logger.error("Failed to fetch bookings", error);
-        throw new BadRequestException("Failed to fetch bookings");
-      }
-
-      return data || [];
+      return await qb.getMany();
     } catch (error) {
       this.logger.error("Error in findAll", error);
       throw error;
@@ -79,119 +50,52 @@ export class BookingsService {
 
   async findById(id: string) {
     try {
-      const { data, error } = await this.supabaseService
-        .getClient()
-        .from("bookings")
-        .select(
-          `
-          id,
-          salon_id,
-          professional_id,
-          customer_name,
-          customer_phone,
-          services,
-          total_price,
-          total_duration,
-          total_buffer_minutes,
-          total_occupied_minutes,
-          commission_amount,
-          profit_amount,
-          booking_date,
-          booking_time,
-          booking_type,
-          status,
-          notes,
-          created_at,
-          professionals:professional_id(*)
-        `,
-        )
-        .eq("id", id)
-        .single();
-
-      if (error || !data) {
-        throw new NotFoundException("Booking not found");
-      }
-
-      return data;
+      const booking = await this.bookingRepo.findOne({
+        where: { id },
+        relations: ["professional"],
+      });
+      if (!booking) throw new NotFoundException("Booking not found");
+      return booking;
     } catch (error) {
       this.logger.error(`Error finding booking ${id}`, error);
       throw error;
     }
   }
 
-  async create(createBookingInput: CreateBookingInput) {
+  async create(input: CreateBookingInput) {
     try {
-      const { data: salon } = await this.supabaseService.findById(
-        "salons",
-        createBookingInput.salon_id,
-      );
-
-      if (!salon) {
-        throw new NotFoundException("Salon not found");
-      }
-
-      const { data: professional } = await this.supabaseService.findById(
-        "professionals",
-        createBookingInput.professional_id,
-      );
-
-      if (!professional) {
-        throw new NotFoundException("Professional not found");
-      }
-
-      const { data: conflictingBookings, error: conflictError } =
-        await this.supabaseService
-          .getClient()
-          .from("bookings")
-          .select("id")
-          .eq("professional_id", createBookingInput.professional_id)
-          .eq("booking_date", createBookingInput.booking_date)
-          .eq("booking_time", createBookingInput.booking_time)
-          .in("status", [BookingStatus.PENDING, BookingStatus.CONFIRMED]);
-
-      if (conflictError) {
-        this.logger.error("Failed to validate booking conflict", conflictError);
-        throw new BadRequestException(
-          "Failed to validate booking availability",
-        );
-      }
-
-      if (createBookingInput.booking_time && conflictingBookings?.length) {
-        throw new BadRequestException("Time slot is not available");
-      }
-
-      const { data, error } = await this.supabaseService
-        .getClient()
-        .from("bookings")
-        .insert([
-          {
-            salon_id: createBookingInput.salon_id,
-            professional_id: createBookingInput.professional_id,
-            customer_name: createBookingInput.customer_name,
-            customer_phone: createBookingInput.customer_phone,
-            services: createBookingInput.services,
-            total_price: createBookingInput.total_price,
-            total_duration: createBookingInput.total_duration,
-            total_buffer_minutes: createBookingInput.total_buffer_minutes,
-            total_occupied_minutes: createBookingInput.total_occupied_minutes,
-            commission_amount: 0,
-            profit_amount: createBookingInput.total_price,
-            booking_date: createBookingInput.booking_date,
-            booking_time: createBookingInput.booking_time ?? null,
-            booking_type: createBookingInput.booking_type,
-            status: BookingStatus.PENDING,
-            notes: createBookingInput.notes || null,
+      if (input.booking_time) {
+        const conflict = await this.bookingRepo.findOne({
+          where: {
+            professionalId: input.professional_id,
+            bookingDate: input.booking_date,
+            bookingTime: input.booking_time,
+            status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
           },
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        this.logger.error("Failed to create booking", error);
-        throw new BadRequestException("Failed to create booking");
+        });
+        if (conflict) throw new BadRequestException("Time slot is not available");
       }
 
-      return data;
+      const booking = this.bookingRepo.create({
+        salonId: input.salon_id,
+        professionalId: input.professional_id,
+        customerName: input.customer_name,
+        customerPhone: input.customer_phone,
+        services: input.services as object[],
+        totalPrice: input.total_price,
+        totalDuration: input.total_duration,
+        totalBufferMinutes: input.total_buffer_minutes ?? 0,
+        totalOccupiedMinutes: input.total_occupied_minutes ?? 0,
+        commissionAmount: 0,
+        profitAmount: input.total_price,
+        bookingDate: input.booking_date,
+        bookingTime: input.booking_time ?? null,
+        bookingType: input.booking_type as "scheduled" | "walk_in",
+        status: BookingStatus.PENDING as "pending",
+        notes: input.notes ?? null,
+      });
+
+      return await this.bookingRepo.save(booking);
     } catch (error) {
       this.logger.error("Error creating booking", error);
       throw error;
@@ -200,51 +104,23 @@ export class BookingsService {
 
   async update(id: string, updateData: Partial<CreateBookingInput>) {
     try {
-      const { data, error } = await this.supabaseService.update(
-        "bookings",
-        id,
-        {
-          ...(updateData.salon_id && { salon_id: updateData.salon_id }),
-          ...(updateData.professional_id && {
-            professional_id: updateData.professional_id,
-          }),
-          ...(updateData.customer_name && {
-            customer_name: updateData.customer_name,
-          }),
-          ...(updateData.customer_phone && {
-            customer_phone: updateData.customer_phone,
-          }),
-          ...(updateData.services && { services: updateData.services }),
-          ...(updateData.total_price !== undefined && {
-            total_price: updateData.total_price,
-          }),
-          ...(updateData.total_duration !== undefined && {
-            total_duration: updateData.total_duration,
-          }),
-          ...(updateData.total_buffer_minutes !== undefined && {
-            total_buffer_minutes: updateData.total_buffer_minutes,
-          }),
-          ...(updateData.total_occupied_minutes !== undefined && {
-            total_occupied_minutes: updateData.total_occupied_minutes,
-          }),
-          ...(updateData.booking_date && {
-            booking_date: updateData.booking_date,
-          }),
-          ...(updateData.booking_time !== undefined && {
-            booking_time: updateData.booking_time,
-          }),
-          ...(updateData.booking_type && {
-            booking_type: updateData.booking_type,
-          }),
-          ...(updateData.notes && { notes: updateData.notes }),
-        },
-      );
+      const patch: Partial<Booking> = {};
+      if (updateData.salon_id) patch.salonId = updateData.salon_id;
+      if (updateData.professional_id) patch.professionalId = updateData.professional_id;
+      if (updateData.customer_name) patch.customerName = updateData.customer_name;
+      if (updateData.customer_phone) patch.customerPhone = updateData.customer_phone;
+      if (updateData.services) patch.services = updateData.services as object[];
+      if (updateData.total_price !== undefined) patch.totalPrice = updateData.total_price;
+      if (updateData.total_duration !== undefined) patch.totalDuration = updateData.total_duration;
+      if (updateData.total_buffer_minutes !== undefined) patch.totalBufferMinutes = updateData.total_buffer_minutes;
+      if (updateData.total_occupied_minutes !== undefined) patch.totalOccupiedMinutes = updateData.total_occupied_minutes;
+      if (updateData.booking_date) patch.bookingDate = updateData.booking_date;
+      if (updateData.booking_time !== undefined) patch.bookingTime = updateData.booking_time ?? null;
+      if (updateData.booking_type) patch.bookingType = updateData.booking_type as "scheduled" | "walk_in";
+      if (updateData.notes) patch.notes = updateData.notes;
 
-      if (error || !data) {
-        throw new NotFoundException("Booking not found or update failed");
-      }
-
-      return data;
+      await this.bookingRepo.update(id, patch);
+      return this.findById(id);
     } catch (error) {
       this.logger.error(`Error updating booking ${id}`, error);
       throw error;
@@ -253,19 +129,9 @@ export class BookingsService {
 
   async updateStatus(id: string, status: BookingStatus) {
     try {
-      const { data, error } = await this.supabaseService.update(
-        "bookings",
-        id,
-        {
-          status,
-        },
-      );
-
-      if (error || !data) {
-        throw new NotFoundException("Booking not found");
-      }
-
-      return data;
+      const result = await this.bookingRepo.update(id, { status: status as Booking["status"] });
+      if (!result.affected) throw new NotFoundException("Booking not found");
+      return this.findById(id);
     } catch (error) {
       this.logger.error(`Error updating booking status ${id}`, error);
       throw error;
@@ -274,12 +140,8 @@ export class BookingsService {
 
   async delete(id: string) {
     try {
-      const { error } = await this.supabaseService.delete("bookings", id);
-
-      if (error) {
-        throw new NotFoundException("Booking not found");
-      }
-
+      const result = await this.bookingRepo.delete(id);
+      if (!result.affected) throw new NotFoundException("Booking not found");
       return { success: true, message: "Booking deleted successfully" };
     } catch (error) {
       this.logger.error(`Error deleting booking ${id}`, error);
@@ -289,46 +151,17 @@ export class BookingsService {
 
   async getStats() {
     try {
-      const { data, error } = await this.supabaseService
-        .getClient()
-        .from("bookings")
-        .select("status");
-
-      if (error) {
-        this.logger.error("Failed to get booking stats", error);
-        return {
-          total: 0,
-          pending: 0,
-          confirmed: 0,
-          completed: 0,
-          cancelled: 0,
-        };
-      }
-
+      const bookings = await this.bookingRepo.find({ select: ["status"] });
       return {
-        total: data?.length || 0,
-        pending:
-          data?.filter((booking) => booking.status === BookingStatus.PENDING)
-            .length || 0,
-        confirmed:
-          data?.filter((booking) => booking.status === BookingStatus.CONFIRMED)
-            .length || 0,
-        completed:
-          data?.filter((booking) => booking.status === BookingStatus.COMPLETED)
-            .length || 0,
-        cancelled:
-          data?.filter((booking) => booking.status === BookingStatus.CANCELLED)
-            .length || 0,
+        total: bookings.length,
+        pending: bookings.filter((b) => b.status === "pending").length,
+        confirmed: bookings.filter((b) => b.status === "confirmed").length,
+        completed: bookings.filter((b) => b.status === "completed").length,
+        cancelled: bookings.filter((b) => b.status === "cancelled").length,
       };
     } catch (error) {
       this.logger.error("Error getting booking stats", error);
-      return {
-        total: 0,
-        pending: 0,
-        confirmed: 0,
-        completed: 0,
-        cancelled: 0,
-      };
+      return { total: 0, pending: 0, confirmed: 0, completed: 0, cancelled: 0 };
     }
   }
 }
