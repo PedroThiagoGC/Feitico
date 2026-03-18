@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -84,16 +84,16 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     return services.filter((s) => linkedIds.has(s.id));
   }, [services, selectedProfessionalId, proServices]);
 
-  // When professional is selected, filter selectedServices to only valid ones
-  const lastFilteredProId = useState<string>("");
+  // When professional changes, filter selectedServices to only valid ones
+  const lastFilteredProId = useRef("");
   useEffect(() => {
-    if (selectedProfessionalId && proServices && selectedProfessionalId !== lastFilteredProId[0]) {
-      lastFilteredProId[1](selectedProfessionalId);
+    if (selectedProfessionalId && proServices && selectedProfessionalId !== lastFilteredProId.current) {
+      lastFilteredProId.current = selectedProfessionalId;
       const linkedIds = new Set(proServices.map((ps) => ps.service_id));
-      const filtered = selectedServices.filter((s) => linkedIds.has(s.id));
-      if (filtered.length !== selectedServices.length) {
-        setSelectedServices(filtered);
-      }
+      setSelectedServices((prev) => {
+        const filtered = prev.filter((s) => linkedIds.has(s.id));
+        return filtered.length === prev.length ? prev : filtered;
+      });
     }
   }, [selectedProfessionalId, proServices]);
 
