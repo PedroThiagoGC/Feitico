@@ -338,12 +338,11 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                       </button>
                     ))}
                   </div>
-                  {/* Show which services this professional can do vs not */}
                   {selectedProfessionalId && proServices && (
                     <div className="mt-3 font-body text-xs text-muted-foreground">
-                      {selectedServices.filter(s => !availableServices.some(as => as.id === s.id)).length > 0 && (
+                      {incompatibleSelectedServices.length > 0 && (
                         <p className="text-destructive">
-                          ⚠ Este profissional não realiza: {selectedServices.filter(s => !availableServices.some(as => as.id === s.id)).map(s => s.name).join(", ")}
+                          ⚠ Este profissional não realiza: {incompatibleSelectedServices.map((s) => s.name).join(", ")}
                         </p>
                       )}
                     </div>
