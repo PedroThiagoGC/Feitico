@@ -20,6 +20,7 @@ Feitico/
 ## 🚀 Stack
 
 ### Frontend (apps/web)
+
 - **React** 18.3 + TypeScript 5
 - **Vite** 8 (build tool)
 - **Tailwind CSS** + shadcn/ui (Radix components)
@@ -29,6 +30,7 @@ Feitico/
 - **Vitest** + Playwright (testing)
 
 ### Backend (apps/api)
+
 - **NestJS** 10 + TypeScript (Enterprise framework)
 - **Supabase** (database + auth)
 - **Zod** (runtime validation)
@@ -37,6 +39,7 @@ Feitico/
 - **Jest** (testing)
 
 ### DevOps & Deployment
+
 - **Turborepo** (monorepo orchestration)
 - **Docker** multi-stage build
 - **GitHub Actions** (CI/CD)
@@ -72,6 +75,7 @@ npm run dev
 ## 📄 Variáveis de Ambiente
 
 ### Frontend (`apps/web/.env.development`)
+
 ```bash
 VITE_API_URL=http://localhost:3333/api/v1
 VITE_SUPABASE_URL=https://your-project.supabase.co
@@ -79,6 +83,7 @@ VITE_SUPABASE_KEY=your_anon_public_key
 ```
 
 ### Backend (`apps/api/.env.development`)
+
 ```bash
 NODE_ENV=development
 PORT=3333
@@ -253,7 +258,6 @@ MIT
 3. Commit suas mudanças (`git commit -m 'Add AmazingFeature'`)
 4. Push para a branch (`git push origin feature/AmazingFeature`)
 5. Abra um Pull Request
-
 
 - Root Directory: `apps/web`
 - Framework: Vite

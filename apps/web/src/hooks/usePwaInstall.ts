@@ -23,7 +23,7 @@ export function usePwaInstall() {
   const isIos = /iphone|ipad|ipod/i.test(ua);
   const isAndroid = /android/i.test(ua);
   const browserName = detectBrowser(ua);
-  const isLovableHost = host === "lovable.dev" || host.endsWith(".lovable.dev");
+    const isDevEnvironment = host === "localhost" || host.startsWith("127.");
 
   useEffect(() => {
     const checkStandalone = () => {
@@ -53,13 +53,9 @@ export function usePwaInstall() {
     };
   }, []);
 
-  const canPromptInstall = Boolean(deferredPrompt) && !isLovableHost;
+    const canPromptInstall = Boolean(deferredPrompt) && !isDevEnvironment;
 
   const installInstructions = useMemo(() => {
-    if (isLovableHost) {
-      return "Instale o app pelo dominio oficial do projeto. Em lovable.dev o atalho abre o proprio lovable.";
-    }
-
     if (canPromptInstall) return "Clique em Instalar app para adicionar na tela inicial.";
 
     if (isIos) {
@@ -92,7 +88,6 @@ export function usePwaInstall() {
     canPromptInstall,
     installInstructions,
     isIos,
-    isLovableHost,
     isStandalone,
     promptInstall,
   };
