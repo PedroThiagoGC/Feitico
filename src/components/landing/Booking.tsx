@@ -401,7 +401,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                     <div className="mt-6">
                       <h4 className="font-display text-base md:text-lg font-semibold mb-3 md:mb-4 text-foreground flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">4</span>
-                        Selecione o horário
+                        Escolha seu horário
                         <span className="text-xs font-normal text-muted-foreground ml-auto">{totalDuration}min necessários</span>
                       </h4>
                       {slotsLoading ? (
@@ -413,38 +413,42 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                           const morning = slots.filter(s => parseInt(s) < 12);
                           const afternoon = slots.filter(s => parseInt(s) >= 12 && parseInt(s) < 18);
                           const evening = slots.filter(s => parseInt(s) >= 18);
-                          const groups = [
-                            { label: "Manhã", icon: "☀️", items: morning },
-                            { label: "Tarde", icon: "🌤️", items: afternoon },
-                            { label: "Noite", icon: "🌙", items: evening },
-                          ].filter(g => g.items.length > 0);
 
                           return (
-                            <div className="space-y-4">
-                              {groups.map(group => (
-                                <div key={group.label}>
-                                  <p className="text-xs font-body text-muted-foreground mb-2 flex items-center gap-1">
-                                    <span>{group.icon}</span> {group.label}
-                                  </p>
-                                  <div className="flex flex-wrap gap-2">
-                                    {group.items.map((slot) => (
-                                      <button
-                                        type="button"
-                                        key={slot}
-                                        onClick={() => { setSelectedTime(slot); setShowConfirmation(false); }}
-                                        className={`px-3 py-2 rounded-full font-body text-sm transition-all ${
-                                          selectedTime === slot
-                                            ? "bg-primary text-primary-foreground shadow-gold font-semibold"
-                                            : "bg-secondary border border-border text-foreground hover:border-primary/40 hover:bg-primary/10"
-                                        }`}
-                                      >
-                                        {slot}
-                                      </button>
+                            <Select
+                              value={selectedTime}
+                              onValueChange={(val) => { setSelectedTime(val); setShowConfirmation(false); }}
+                            >
+                              <SelectTrigger className="w-full h-12 bg-secondary border-border font-body text-sm">
+                                <SelectValue placeholder={`Horários disponíveis de ${selectedProfessional?.name || "profissional"}`} />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-72">
+                                {morning.length > 0 && (
+                                  <SelectGroup>
+                                    <SelectLabel className="font-display text-xs text-primary tracking-wider">☀️ MANHÃ</SelectLabel>
+                                    {morning.map((slot) => (
+                                      <SelectItem key={slot} value={slot} className="font-body">{slot}</SelectItem>
                                     ))}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                                  </SelectGroup>
+                                )}
+                                {afternoon.length > 0 && (
+                                  <SelectGroup>
+                                    <SelectLabel className="font-display text-xs text-primary tracking-wider">🌤️ TARDE</SelectLabel>
+                                    {afternoon.map((slot) => (
+                                      <SelectItem key={slot} value={slot} className="font-body">{slot}</SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                )}
+                                {evening.length > 0 && (
+                                  <SelectGroup>
+                                    <SelectLabel className="font-display text-xs text-primary tracking-wider">🌙 NOITE</SelectLabel>
+                                    {evening.map((slot) => (
+                                      <SelectItem key={slot} value={slot} className="font-body">{slot}</SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                )}
+                              </SelectContent>
+                            </Select>
                           );
                         })()
                       ) : (
