@@ -42,6 +42,17 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
 
   const { data: professionals } = useProfessionals(salon?.id);
   const { data: proServices } = useProfessionalServices(selectedProfessionalId || undefined);
+  const { data: proAvailability } = useProfessionalAvailability(selectedProfessionalId || undefined);
+
+  // Disable days where the professional has no availability
+  const disabledDays = useMemo(() => {
+    if (!proAvailability || proAvailability.length === 0) return undefined;
+    const activeWeekdays = new Set(proAvailability.map((a) => a.weekday));
+    return (date: Date) => {
+      if (date < new Date(new Date().setHours(0, 0, 0, 0))) return true;
+      return !activeWeekdays.has(date.getDay());
+    };
+  }, [proAvailability]);
 
   const availableServices = useMemo(() => {
     if (!services) return [];
