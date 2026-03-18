@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { type Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,38 +14,65 @@ import AdminAvailability from "@/components/admin/AdminAvailability";
 import AdminProfessionals from "@/components/admin/AdminProfessionals";
 import AdminCalendar from "@/components/admin/AdminCalendar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { LogOut, LayoutDashboard, Menu, X } from "lucide-react";
+import { LogOut, LayoutDashboard } from "lucide-react";
+
+interface AdminUser {
+  id: string;
+  email: string;
+  role?: string;
+}
 
 export default function Admin() {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setLoading(false);
-    });
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-    return () => subscription.unsubscribe();
+    const bootstrap = async () => {
+      const token = localStorage.getItem("authToken");
+      const savedUser = localStorage.getItem("authUser");
+
+      if (!token || !savedUser) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        await api.verifyToken(token);
+        setSession(JSON.parse(savedUser) as AdminUser);
+      } catch {
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("authUser");
+        setSession(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void bootstrap();
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) appToast.error(error.message); else appToast.success("Login realizado!");
-    setAuthLoading(false);
+    try {
+      const result = await api.login(email, password);
+      localStorage.setItem("authToken", result.access_token);
+      localStorage.setItem("authUser", JSON.stringify(result.user));
+      setSession(result.user as AdminUser);
+      appToast.success("Login realizado!");
+    } catch (error) {
+      appToast.error(error instanceof Error ? error.message : "Falha no login");
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("authUser");
+    setSession(null);
     appToast.success("Logout realizado!");
   };
 
@@ -87,7 +113,7 @@ export default function Admin() {
           <h1 className="font-display text-lg md:text-xl font-bold text-gradient-gold">Painel Admin</h1>
         </div>
         <div className="flex items-center gap-2 md:gap-4">
-          <span className="hidden sm:inline text-sm text-muted-foreground font-body truncate max-w-[200px]">{session.user.email}</span>
+          <span className="hidden sm:inline text-sm text-muted-foreground font-body truncate max-w-[200px]">{session.email}</span>
           <Button variant="ghost" size="sm" onClick={handleLogout} className="shrink-0">
             <LogOut className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Sair</span>
           </Button>
@@ -147,35 +173,40 @@ function DashboardOverview() {
   const [proStats, setProStats] = useState<FinancialPro[]>([]);
 
   const loadStats = useCallback(async () => {
-    const [{ count: bookings }, { count: services }, { count: pending }, { count: professionals }] = await Promise.all([
-      supabase.from("bookings").select("*", { count: "exact", head: true }),
-      supabase.from("services").select("*", { count: "exact", head: true }),
-      supabase.from("bookings").select("*", { count: "exact", head: true }).eq("status", "pending"),
-      supabase.from("professionals").select("*", { count: "exact", head: true }),
+    const salon = await api.getSalon();
+
+    const [bookings, services, pending, professionals] = await Promise.all([
+      api.getBookings({ salonId: salon.id }),
+      api.getServices(salon.id),
+      api.getBookings({ salonId: salon.id, status: "pending" }),
+      api.getProfessionals(salon.id),
     ]);
 
     setStats({
-      bookings: bookings || 0,
-      services: services || 0,
-      pending: pending || 0,
-      professionals: professionals || 0,
+      bookings: bookings.length || 0,
+      services: services.length || 0,
+      pending: pending.length || 0,
+      professionals: professionals.length || 0,
     });
   }, []);
 
   const loadFinancial = useCallback(async () => {
-    const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
-    if (!salon) return;
+    const salon = await api.getSalon();
 
-    const { data: pros } = await supabase.from("professionals").select("id, name").eq("salon_id", salon.id);
-    const { data: bks } = await supabase
-      .from("bookings")
-      .select("professional_id, total_price, commission_amount, profit_amount, total_occupied_minutes, total_duration, status")
-      .eq("salon_id", salon.id)
-      .in("status", ["confirmed", "completed"])
-      .gte("booking_date", dateFrom)
-      .lte("booking_date", dateTo);
+    const [pros, bks] = await Promise.all([
+      api.getProfessionals(salon.id),
+      api.getBookings({
+        salonId: salon.id,
+        statuses: ["confirmed", "completed"],
+      }),
+    ]);
 
-    const allBookings = bks || [];
+    const filteredBookings = (bks || []).filter((booking) => {
+      if (!booking.booking_date) return false;
+      return booking.booking_date >= dateFrom && booking.booking_date <= dateTo;
+    });
+
+    const allBookings = filteredBookings || [];
     const completedBookings = allBookings.filter((b) => b.status === "completed");
     const confirmedBookings = allBookings.filter((b) => b.status === "confirmed");
 
@@ -225,20 +256,13 @@ function DashboardOverview() {
   }, [loadFinancial]);
 
   useEffect(() => {
-    const channel = supabase
-      .channel("admin-dashboard-bookings")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "bookings" },
-        () => {
-          void loadStats();
-          void loadFinancial();
-        },
-      )
-      .subscribe();
+    const intervalId = window.setInterval(() => {
+      void loadStats();
+      void loadFinancial();
+    }, 30000);
 
     return () => {
-      supabase.removeChannel(channel);
+      window.clearInterval(intervalId);
     };
   }, [loadFinancial, loadStats]);
 

@@ -1,5 +1,9 @@
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/services/api";
 import type { Booking, CreateBookingData, WhatsAppBookingInfo } from "@/hooks/useBooking";
+import {
+  fetchProfessionalAvailability,
+  fetchProfessionalExceptions,
+} from "@/services/professionalService";
 import { buildWhatsAppApiUrl, buildWhatsAppUrl, normalizeWhatsAppPhone } from "@/lib/phone";
 
 /* ── Queries ─────────────────────────────────────────────── */
@@ -8,11 +12,7 @@ export async function fetchBookings(
   salonId: string,
   date?: string
 ): Promise<Booking[]> {
-  let query = supabase.from("bookings").select("*").eq("salon_id", salonId);
-  if (date) query = query.eq("booking_date", date);
-  const { data, error } = await query;
-  if (error) throw error;
-  return data as unknown as Booking[];
+  return api.getBookings({ salonId, date }) as Promise<Booking[]>;
 }
 
 /* ── Slot calculation ────────────────────────────────────── */
@@ -103,27 +103,20 @@ export async function fetchAvailableSlots(
 
   const dayOfWeek = new Date(date + "T12:00:00").getDay();
 
-  const { data: avail } = await supabase
-    .from("professional_availability")
-    .select("*")
-    .eq("professional_id", professionalId)
-    .eq("weekday", dayOfWeek)
-    .eq("active", true);
+  const availability = await fetchProfessionalAvailability(professionalId);
+  const avail = availability.filter((item) => item.weekday === dayOfWeek);
 
   if (!avail || avail.length === 0) return [];
 
-  const { data: exceptions } = await supabase
-    .from("professional_exceptions")
-    .select("*")
-    .eq("professional_id", professionalId)
-    .eq("date", date);
+  const exceptions = await fetchProfessionalExceptions(professionalId, date.slice(0, 7));
+  const dayExceptions = exceptions.filter((item) => item.date === date);
 
-  const dayOff = exceptions?.find(
+  const dayOff = dayExceptions?.find(
     (e) => e.type === "day_off" || (e.type === "blocked" && !e.start_time && !e.end_time)
   );
   if (dayOff) return [];
 
-  const customHours = exceptions?.find(
+  const customHours = dayExceptions?.find(
     (e) => e.type === "custom_hours" && e.start_time && e.end_time
   );
 
@@ -142,7 +135,7 @@ export async function fetchAvailableSlots(
   }
 
   const blockedRanges: TimeRange[] = [];
-  for (const ex of exceptions || []) {
+  for (const ex of dayExceptions || []) {
     if (ex.type === "blocked" && ex.start_time && ex.end_time) {
       const [sh, sm] = ex.start_time.split(":").map(Number);
       const [eh, em] = ex.end_time.split(":").map(Number);
@@ -150,12 +143,11 @@ export async function fetchAvailableSlots(
     }
   }
 
-  const { data: bookings } = await supabase
-    .from("bookings")
-    .select("booking_time, total_occupied_minutes, total_duration")
-    .eq("professional_id", professionalId)
-    .eq("booking_date", date)
-    .in("status", ["pending", "confirmed"]);
+  const bookings = (await api.getBookings({
+    professionalId,
+    date,
+    statuses: ["pending", "confirmed"],
+  })) as ExistingBooking[];
 
   return computeSlotGrid(timeWindows, blockedRanges, bookings || [], totalOccupiedMinutes);
 }
@@ -170,12 +162,11 @@ export async function checkDoubleBooking(
 ): Promise<boolean> {
   if (!time) return false;
 
-  const { data: bookings } = await supabase
-    .from("bookings")
-    .select("booking_time, total_occupied_minutes, total_duration")
-    .eq("professional_id", professionalId)
-    .eq("booking_date", date)
-    .in("status", ["pending", "confirmed"]);
+  const bookings = (await api.getBookings({
+    professionalId,
+    date,
+    statuses: ["pending", "confirmed"],
+  })) as ExistingBooking[];
 
   if (!bookings || bookings.length === 0) return false;
 
@@ -198,28 +189,7 @@ export async function createBooking(data: CreateBookingData) {
     }
   }
 
-  const { data: booking, error } = await supabase
-    .from("bookings")
-    .insert([{
-      salon_id: data.salon_id,
-      professional_id: data.professional_id,
-      customer_name: data.customer_name,
-      customer_phone: data.customer_phone,
-      services: JSON.parse(JSON.stringify(data.services)),
-      total_price: data.total_price,
-      total_duration: data.total_duration,
-      total_buffer_minutes: data.total_buffer_minutes,
-      total_occupied_minutes: data.total_occupied_minutes,
-      commission_amount: data.commission_amount,
-      profit_amount: data.profit_amount,
-      booking_date: data.booking_date,
-      booking_time: data.booking_time,
-      booking_type: data.booking_type,
-    }])
-    .select()
-    .single();
-  if (error) throw error;
-  return booking;
+  return api.createBooking(data);
 }
 
 /* ── Commission ──────────────────────────────────────────── */

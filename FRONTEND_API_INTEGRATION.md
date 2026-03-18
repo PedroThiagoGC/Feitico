@@ -5,18 +5,20 @@ Este documento descreve como integrar o novo `ApiClient` nos componentes React e
 ## Visão Geral da Migração
 
 ### Antes (Supabase Direto)
+
 ```typescript
 // ❌ Chamadas diretas ao Supabase
 const { data: bookings } = await supabase
-  .from('bookings')
-  .select('*')
-  .eq('user_id', userId);
+  .from("bookings")
+  .select("*")
+  .eq("user_id", userId);
 ```
 
 ### Depois (Via Backend API)
+
 ```typescript
 // ✅ Através do Backend
-import { api } from '@/services/api';
+import { api } from "@/services/api";
 
 const bookings = await api.getBookings();
 ```
@@ -34,37 +36,39 @@ const bookings = await api.getBookings();
 ### Exemplo: `useBooking.ts`
 
 **Antes:**
+
 ```typescript
 // ❌ Supabase direto
 export const useBooking = () => {
   const [bookings, setBookings] = useState([]);
-  
+
   useEffect(() => {
     const loadBookings = async () => {
       const { data } = await supabase
-        .from('bookings')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .from("bookings")
+        .select("*")
+        .order("created_at", { ascending: false });
       setBookings(data);
     };
-    
+
     loadBookings();
   }, []);
-  
+
   return { bookings };
 };
 ```
 
 **Depois:**
+
 ```typescript
 // ✅ Use API Client
-import { api } from '@/services/api';
+import { api } from "@/services/api";
 
 export const useBooking = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   useEffect(() => {
     const loadBookings = async () => {
       try {
@@ -72,18 +76,20 @@ export const useBooking = () => {
         const data = await api.getBookings();
         setBookings(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erro ao carregar reservas');
+        setError(
+          err instanceof Error ? err.message : "Erro ao carregar reservas",
+        );
       } finally {
         setLoading(false);
       }
     };
-    
+
     loadBookings();
   }, []);
-  
-  return { 
-    bookings, 
-    loading, 
+
+  return {
+    bookings,
+    loading,
     error,
     createBooking: async (booking) => {
       const newBooking = await api.createBooking(booking);
@@ -92,13 +98,13 @@ export const useBooking = () => {
     },
     updateBooking: async (id, updates) => {
       const updated = await api.updateBooking(id, updates);
-      setBookings(bookings.map(b => b.id === id ? updated : b));
+      setBookings(bookings.map((b) => (b.id === id ? updated : b)));
       return updated;
     },
     deleteBooking: async (id) => {
       await api.deleteBooking(id);
-      setBookings(bookings.filter(b => b.id !== id));
-    }
+      setBookings(bookings.filter((b) => b.id !== id));
+    },
   };
 };
 ```
@@ -108,23 +114,25 @@ export const useBooking = () => {
 ### AdminBookings.tsx
 
 **Antes:**
+
 ```typescript
 export const AdminBookings = () => {
   const [bookings, setBookings] = useState([]);
-  
+
   useEffect(() => {
-    const { data } = await supabase.from('bookings').select('*');
+    const { data } = await supabase.from("bookings").select("*");
     setBookings(data);
   }, []);
-  
+
   const handleCreate = async (booking) => {
-    await supabase.from('bookings').insert([booking]);
+    await supabase.from("bookings").insert([booking]);
     // Refetch manualmente
   };
 };
 ```
 
 **Depois:**
+
 ```typescript
 import { api } from '@/services/api';
 import { useBooking } from '@/hooks/useBooking';
@@ -132,7 +140,7 @@ import { useBooking } from '@/hooks/useBooking';
 export const AdminBookings = () => {
   const { bookings, loading, createBooking, updateBooking, deleteBooking } = useBooking();
   const [error, setError] = useState<string | null>(null);
-  
+
   const handleCreate = async (formData: CreateBookingInput) => {
     try {
       setError(null);
@@ -145,7 +153,7 @@ export const AdminBookings = () => {
       toast.error(message);
     }
   };
-  
+
   const handleUpdate = async (id: string, updates: any) => {
     try {
       setError(null);
@@ -157,10 +165,10 @@ export const AdminBookings = () => {
       toast.error(message);
     }
   };
-  
+
   const handleDelete = async (id: string) => {
     if (!confirm('Confirma exclusão?')) return;
-    
+
     try {
       setError(null);
       await deleteBooking(id);
@@ -171,17 +179,17 @@ export const AdminBookings = () => {
       toast.error(message);
     }
   };
-  
+
   if (loading) return <div>Carregando...</div>;
   if (error) return <div className="text-red-500">{error}</div>;
-  
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Reservas</h2>
         <button onClick={() => {/* open dialog */}}>+ Nova Reserva</button>
       </div>
-      
+
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -202,7 +210,7 @@ export const AdminBookings = () => {
                 <td>{booking.professional?.name || '-'}</td>
                 <td>{booking.service?.name || '-'}</td>
                 <td>
-                  <select 
+                  <select
                     value={booking.status}
                     onChange={(e) => handleUpdate(booking.id, { status: e.target.value })}
                     className="px-2 py-1 border rounded"
@@ -233,26 +241,30 @@ export const AdminBookings = () => {
 ### Booking.tsx (Agendar Serviço)
 
 **Antes:**
+
 ```typescript
 export const Booking = () => {
   const handleSubmit = async (data) => {
-    await supabase.from('bookings').insert([{
-      client_name: data.name,
-      client_email: data.email,
-      scheduled_at: data.date,
-      // ...
-    }]);
+    await supabase.from("bookings").insert([
+      {
+        client_name: data.name,
+        client_email: data.email,
+        scheduled_at: data.date,
+        // ...
+      },
+    ]);
   };
 };
 ```
 
 **Depois:**
+
 ```typescript
 import { api } from '@/services/api';
 
 export const Booking = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const handleSubmit = async (data: BookingFormData) => {
     try {
       setIsSubmitting(true);
@@ -265,7 +277,7 @@ export const Booking = () => {
         professional_id: data.professionalId,
         notes: data.notes,
       });
-      
+
       toast.success('Reserva realizada com sucesso!');
       // Redirecionar ou fechar dialog
     } catch (error) {
@@ -275,12 +287,12 @@ export const Booking = () => {
       setIsSubmitting(false);
     }
   };
-  
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* form fields */}
-      <button 
-        type="submit" 
+      <button
+        type="submit"
         disabled={isSubmitting}
         className="w-full bg-purple-600 text-white py-2 rounded"
       >
@@ -305,7 +317,7 @@ export const useProfessionals = () => {
   const [professionals, setProfessionals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -317,10 +329,10 @@ export const useProfessionals = () => {
         setLoading(false);
       }
     };
-    
+
     load();
   }, []);
-  
+
   return {
     professionals,
     loading,
@@ -349,7 +361,7 @@ export const useProfessionals = () => {
 // Uso em componente
 export const ProfessionalsPage = () => {
   const { professionals, loading, error, create, update, delete: deleteProfessional } = useProfessionals();
-  
+
   return (
     <div>
       {professionals.map(p => (
@@ -368,6 +380,7 @@ export const ProfessionalsPage = () => {
 ### Login via Backend
 
 **Antes:**
+
 ```typescript
 // ❌ Supabase auth diretamente
 const { data, error } = await supabase.auth.signInWithPassword({
@@ -377,22 +390,23 @@ const { data, error } = await supabase.auth.signInWithPassword({
 ```
 
 **Depois:**
+
 ```typescript
 // ✅ Via Backend API
-import { api } from '@/services/api';
+import { api } from "@/services/api";
 
 const handleLogin = async (email: string, password: string) => {
   try {
     const response = await api.login(email, password);
-    
+
     // API retorna: { token: jwt, user: {...} }
-    localStorage.setItem('authToken', response.token);
-    localStorage.setItem('user', JSON.stringify(response.user));
-    
+    localStorage.setItem("authToken", response.token);
+    localStorage.setItem("user", JSON.stringify(response.user));
+
     // Redirecionar para dashboard
-    navigate('/admin');
+    navigate("/admin");
   } catch (error) {
-    toast.error('Email ou senha inválidos');
+    toast.error("Email ou senha inválidos");
   }
 };
 ```
@@ -417,12 +431,12 @@ export const AuthContext = createContext<{
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  
+
   useEffect(() => {
     // Verificar se tem token guardado
     const token = localStorage.getItem('authToken');
     const savedUser = localStorage.getItem('user');
-    
+
     if (token && savedUser) {
       try {
         // Verificar se token ainda é válido
@@ -439,14 +453,14 @@ export const AuthProvider = ({ children }) => {
       }
     }
   }, []);
-  
+
   const logout = () => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
     setUser(null);
     setIsAuthenticated(false);
   };
-  
+
   return (
     <AuthContext.Provider value={{ user, isAuthenticated, logout }}>
       {children}
@@ -468,9 +482,9 @@ private async request<T>(
   body?: any,
 ): Promise<T> {
   // ... código existente ...
-  
+
   const response = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
-  
+
   if (!response.ok) {
     if (response.status === 401) {
       // Token expirado
@@ -478,23 +492,23 @@ private async request<T>(
       window.location.href = '/login';
       throw new Error('Sessão expirada. Faça login novamente.');
     }
-    
+
     if (response.status === 403) {
       throw new Error('Você não tem permissão para esta ação');
     }
-    
+
     if (response.status === 404) {
       throw new Error('Recurso não encontrado');
     }
-    
+
     if (response.status === 409) {
       const error = await response.json();
       throw new Error(error.message || 'Conflito nos dados');
     }
-    
+
     throw new Error(`Erro ${response.status}: ${response.statusText}`);
   }
-  
+
   return response.json();
 }
 ```
@@ -503,36 +517,36 @@ private async request<T>(
 
 ```typescript
 // test/api-integration.test.ts
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { api } from '@/services/api';
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { api } from "@/services/api";
 
-describe('API Client Integration', () => {
+describe("API Client Integration", () => {
   beforeAll(() => {
     // Setup: login
-    localStorage.setItem('authToken', 'test_token_here');
+    localStorage.setItem("authToken", "test_token_here");
   });
-  
+
   afterAll(() => {
-    localStorage.removeItem('authToken');
+    localStorage.removeItem("authToken");
   });
-  
-  it('should health check', async () => {
+
+  it("should health check", async () => {
     const health = await api.health();
-    expect(health.status).toBe('ok');
+    expect(health.status).toBe("ok");
   });
-  
-  it('should fetch professionals', async () => {
+
+  it("should fetch professionals", async () => {
     const professionals = await api.getProfessionals();
     expect(Array.isArray(professionals)).toBe(true);
   });
-  
-  it('should create booking', async () => {
+
+  it("should create booking", async () => {
     const booking = await api.createBooking({
-      client_name: 'Test Client',
-      client_email: 'test@example.com',
+      client_name: "Test Client",
+      client_email: "test@example.com",
       scheduled_at: new Date().toISOString(),
-      service_id: 'service_1',
-      professional_id: 'prof_1',
+      service_id: "service_1",
+      professional_id: "prof_1",
     });
     expect(booking.id).toBeDefined();
   });
@@ -567,11 +581,13 @@ Por arquivo de componente:
 ## Suporte
 
 Se algum componente não conseguir migrar:
+
 - Verificar se o método existe em `api.ts`
 - Verificar se o backend implementou o endpoint correspondente
 - Verificar logs do backend em Supabase
 
 Exemplo: Se `AdminGallery.tsx` precisa filtrar por categoria:
+
 ```typescript
 // Adicionar em apps/api/src/modules/gallery/services.ts
 async findByCategory(category: string) {

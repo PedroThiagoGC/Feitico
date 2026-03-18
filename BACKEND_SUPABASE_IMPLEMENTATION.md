@@ -31,8 +31,8 @@ Este documento descreve como implementar os serviços NestJS para retornar **dad
 Já existe em `apps/api/src/integrations/supabase/supabase.service.ts`:
 
 ```typescript
-import { Injectable } from '@nestjs/common';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Injectable } from "@nestjs/common";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 @Injectable()
 export class SupabaseService {
@@ -51,8 +51,9 @@ export class SupabaseService {
 
   // Helper methods
   async query(table: string, filter?: any) {
-    let query = this.supabase.from(table).select('*');
-    if (filter) Object.entries(filter).forEach(([k, v]) => query = query.eq(k, v));
+    let query = this.supabase.from(table).select("*");
+    if (filter)
+      Object.entries(filter).forEach(([k, v]) => (query = query.eq(k, v)));
     return query;
   }
 }
@@ -65,9 +66,13 @@ export class SupabaseService {
 **Arquivo:** `apps/api/src/modules/bookings/services/bookings.service.ts`
 
 ```typescript
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { SupabaseService } from '@/integrations/supabase/supabase.service';
-import { CreateBookingDto, UpdateBookingDto, BookingStatus } from '../dto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { SupabaseService } from "@/integrations/supabase/supabase.service";
+import { CreateBookingDto, UpdateBookingDto, BookingStatus } from "../dto";
 
 @Injectable()
 export class BookingsService {
@@ -79,7 +84,7 @@ export class BookingsService {
   async findAll(status?: BookingStatus, professionalId?: string) {
     let query = this.supabase
       .getClient()
-      .from('bookings')
+      .from("bookings")
       .select(
         `
         *,
@@ -91,18 +96,20 @@ export class BookingsService {
 
     // Aplicar filtros
     if (status) {
-      query = query.eq('status', status);
+      query = query.eq("status", status);
     }
     if (professionalId) {
-      query = query.eq('professional_id', professionalId);
+      query = query.eq("professional_id", professionalId);
     }
 
-    const { data, error } = await query.order('scheduled_at', {
+    const { data, error } = await query.order("scheduled_at", {
       ascending: false,
     });
 
     if (error) {
-      throw new BadRequestException(`Erro ao buscar reservas: ${error.message}`);
+      throw new BadRequestException(
+        `Erro ao buscar reservas: ${error.message}`,
+      );
     }
 
     return data || [];
@@ -114,7 +121,7 @@ export class BookingsService {
   async findOne(id: string) {
     const { data, error } = await this.supabase
       .getClient()
-      .from('bookings')
+      .from("bookings")
       .select(
         `
         *,
@@ -123,7 +130,7 @@ export class BookingsService {
         service_id(id, name, duration, price)
       `,
       )
-      .eq('id', id)
+      .eq("id", id)
       .single();
 
     if (error || !data) {
@@ -140,28 +147,28 @@ export class BookingsService {
     // Validar conflito de horário
     const existingBooking = await this.supabase
       .getClient()
-      .from('bookings')
-      .select('*')
-      .eq('professional_id', dto.professional_id)
-      .eq('scheduled_at', new Date(dto.scheduled_at).toISOString())
-      .eq('status', 'confirmed');
+      .from("bookings")
+      .select("*")
+      .eq("professional_id", dto.professional_id)
+      .eq("scheduled_at", new Date(dto.scheduled_at).toISOString())
+      .eq("status", "confirmed");
 
     if (existingBooking.data && existingBooking.data.length > 0) {
       throw new BadRequestException(
-        'Profissional já tem reserva neste horário',
+        "Profissional já tem reserva neste horário",
       );
     }
 
     // Obter duração do serviço
     const { data: service } = await this.supabase
       .getClient()
-      .from('services')
-      .select('duration')
-      .eq('id', dto.service_id)
+      .from("services")
+      .select("duration")
+      .eq("id", dto.service_id)
       .single();
 
     if (!service) {
-      throw new BadRequestException('Serviço não encontrado');
+      throw new BadRequestException("Serviço não encontrado");
     }
 
     // Calcular end_time
@@ -170,7 +177,7 @@ export class BookingsService {
 
     const { data, error } = await this.supabase
       .getClient()
-      .from('bookings')
+      .from("bookings")
       .insert([
         {
           client_id: dto.client_id,
@@ -178,7 +185,7 @@ export class BookingsService {
           service_id: dto.service_id,
           scheduled_at: dto.scheduled_at,
           end_time: endTime.toISOString(),
-          status: 'pending',
+          status: "pending",
           notes: dto.notes || null,
           created_at: new Date().toISOString(),
         },
@@ -207,14 +214,16 @@ export class BookingsService {
       if (dto.professional_id) {
         const { data: service } = await this.supabase
           .getClient()
-          .from('services')
-          .select('duration')
-          .eq('id', dto.service_id || (await this.findOne(id)).service_id)
+          .from("services")
+          .select("duration")
+          .eq("id", dto.service_id || (await this.findOne(id)).service_id)
           .single();
 
         if (service) {
           const startTime = new Date(dto.scheduled_at);
-          const endTime = new Date(startTime.getTime() + service.duration * 60000);
+          const endTime = new Date(
+            startTime.getTime() + service.duration * 60000,
+          );
           updates.end_time = endTime.toISOString();
         }
       }
@@ -224,14 +233,16 @@ export class BookingsService {
 
     const { data, error } = await this.supabase
       .getClient()
-      .from('bookings')
+      .from("bookings")
       .update(updates)
-      .eq('id', id)
+      .eq("id", id)
       .select()
       .single();
 
     if (error) {
-      throw new BadRequestException(`Erro ao atualizar reserva: ${error.message}`);
+      throw new BadRequestException(
+        `Erro ao atualizar reserva: ${error.message}`,
+      );
     }
 
     return data;
@@ -243,15 +254,17 @@ export class BookingsService {
   async delete(id: string) {
     const { error } = await this.supabase
       .getClient()
-      .from('bookings')
+      .from("bookings")
       .delete()
-      .eq('id', id);
+      .eq("id", id);
 
     if (error) {
-      throw new BadRequestException(`Erro ao deletar reserva: ${error.message}`);
+      throw new BadRequestException(
+        `Erro ao deletar reserva: ${error.message}`,
+      );
     }
 
-    return { message: 'Reserva deletada com sucesso' };
+    return { message: "Reserva deletada com sucesso" };
   }
 
   /**
@@ -260,20 +273,20 @@ export class BookingsService {
   async getStats() {
     const { data: allBookings, error: allError } = await this.supabase
       .getClient()
-      .from('bookings')
-      .select('status');
+      .from("bookings")
+      .select("status");
 
     if (allError) throw new BadRequestException(allError.message);
 
     const stats = {
       total: allBookings?.length || 0,
-      pending: allBookings?.filter((b) => b.status === 'pending').length || 0,
+      pending: allBookings?.filter((b) => b.status === "pending").length || 0,
       confirmed:
-        allBookings?.filter((b) => b.status === 'confirmed').length || 0,
+        allBookings?.filter((b) => b.status === "confirmed").length || 0,
       cancelled:
-        allBookings?.filter((b) => b.status === 'cancelled').length || 0,
+        allBookings?.filter((b) => b.status === "cancelled").length || 0,
       completed:
-        allBookings?.filter((b) => b.status === 'completed').length || 0,
+        allBookings?.filter((b) => b.status === "completed").length || 0,
     };
 
     return stats;
@@ -286,9 +299,13 @@ export class BookingsService {
 **Arquivo:** `apps/api/src/modules/professionals/services/professionals.service.ts`
 
 ```typescript
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { SupabaseService } from '@/integrations/supabase/supabase.service';
-import { CreateProfessionalDto, UpdateProfessionalDto } from '../dto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { SupabaseService } from "@/integrations/supabase/supabase.service";
+import { CreateProfessionalDto, UpdateProfessionalDto } from "../dto";
 
 @Injectable()
 export class ProfessionalsService {
@@ -297,7 +314,7 @@ export class ProfessionalsService {
   async findAll() {
     const { data, error } = await this.supabase
       .getClient()
-      .from('professionals')
+      .from("professionals")
       .select(
         `
         *,
@@ -305,11 +322,13 @@ export class ProfessionalsService {
         opening_hours(day_of_week, start_time, end_time)
       `,
       )
-      .eq('is_active', true)
-      .order('name');
+      .eq("is_active", true)
+      .order("name");
 
     if (error) {
-      throw new BadRequestException(`Erro ao buscar profissionais: ${error.message}`);
+      throw new BadRequestException(
+        `Erro ao buscar profissionais: ${error.message}`,
+      );
     }
 
     return data || [];
@@ -318,7 +337,7 @@ export class ProfessionalsService {
   async findOne(id: string) {
     const { data, error } = await this.supabase
       .getClient()
-      .from('professionals')
+      .from("professionals")
       .select(
         `
         *,
@@ -326,7 +345,7 @@ export class ProfessionalsService {
         opening_hours(day_of_week, start_time, end_time)
       `,
       )
-      .eq('id', id)
+      .eq("id", id)
       .single();
 
     if (error || !data) {
@@ -339,7 +358,7 @@ export class ProfessionalsService {
   async create(dto: CreateProfessionalDto) {
     const { data, error } = await this.supabase
       .getClient()
-      .from('professionals')
+      .from("professionals")
       .insert([
         {
           name: dto.name,
@@ -369,7 +388,7 @@ export class ProfessionalsService {
 
       await this.supabase
         .getClient()
-        .from('professional_specialties')
+        .from("professional_specialties")
         .insert(specialtyLinks);
     }
 
@@ -390,9 +409,9 @@ export class ProfessionalsService {
 
     const { data, error } = await this.supabase
       .getClient()
-      .from('professionals')
+      .from("professionals")
       .update(updates)
-      .eq('id', id)
+      .eq("id", id)
       .select()
       .single();
 
@@ -409,9 +428,9 @@ export class ProfessionalsService {
     // Soft delete (marcar como inativo)
     const { error } = await this.supabase
       .getClient()
-      .from('professionals')
+      .from("professionals")
       .update({ is_active: false })
-      .eq('id', id);
+      .eq("id", id);
 
     if (error) {
       throw new BadRequestException(
@@ -419,7 +438,7 @@ export class ProfessionalsService {
       );
     }
 
-    return { message: 'Profissional deletado' };
+    return { message: "Profissional deletado" };
   }
 
   /**
@@ -427,20 +446,23 @@ export class ProfessionalsService {
    */
   async getAvailableSlots(professionalId: string, date: string) {
     // Obter horário de funcionamento para o dia
-    const dayOfWeek = new Date(date).toLocaleDateString('pt-BR', {
-      weekday: 'long',
+    const dayOfWeek = new Date(date).toLocaleDateString("pt-BR", {
+      weekday: "long",
     });
 
     const { data: hours } = await this.supabase
       .getClient()
-      .from('opening_hours')
-      .select('*')
-      .eq('professional_id', professionalId)
-      .eq('day_of_week', dayOfWeek)
+      .from("opening_hours")
+      .select("*")
+      .eq("professional_id", professionalId)
+      .eq("day_of_week", dayOfWeek)
       .single();
 
     if (!hours) {
-      return { available: false, message: 'Profissional não trabalha neste dia' };
+      return {
+        available: false,
+        message: "Profissional não trabalha neste dia",
+      };
     }
 
     // Obter reservas já agendadas para este dia
@@ -449,12 +471,12 @@ export class ProfessionalsService {
 
     const { data: bookings } = await this.supabase
       .getClient()
-      .from('bookings')
-      .select('scheduled_at, end_time')
-      .eq('professional_id', professionalId)
-      .gte('scheduled_at', new Date(startOfDay).toISOString())
-      .lte('scheduled_at', new Date(endOfDay).toISOString())
-      .eq('status', 'confirmed');
+      .from("bookings")
+      .select("scheduled_at, end_time")
+      .eq("professional_id", professionalId)
+      .gte("scheduled_at", new Date(startOfDay).toISOString())
+      .lte("scheduled_at", new Date(endOfDay).toISOString())
+      .eq("status", "confirmed");
 
     // Gerar slots disponíveis (ex: a cada 30 min)
     const slots: string[] = [];
@@ -489,25 +511,31 @@ export class ProfessionalsService {
 **Arquivo:** `apps/api/src/modules/services/services.service.ts`
 
 ```typescript
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { SupabaseService } from '@/integrations/supabase/supabase.service';
-import { CreateServiceDto, UpdateServiceDto } from '../dto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { SupabaseService } from "@/integrations/supabase/supabase.service";
+import { CreateServiceDto, UpdateServiceDto } from "../dto";
 
 @Injectable()
 export class ServicesService {
   constructor(private supabase: SupabaseService) {}
 
   async findAll(category?: string) {
-    let query = this.supabase.getClient().from('services').select('*');
+    let query = this.supabase.getClient().from("services").select("*");
 
     if (category) {
-      query = query.eq('category', category);
+      query = query.eq("category", category);
     }
 
-    const { data, error } = await query.order('name');
+    const { data, error } = await query.order("name");
 
     if (error) {
-      throw new BadRequestException(`Erro ao buscar serviços: ${error.message}`);
+      throw new BadRequestException(
+        `Erro ao buscar serviços: ${error.message}`,
+      );
     }
 
     return data || [];
@@ -516,9 +544,9 @@ export class ServicesService {
   async findOne(id: string) {
     const { data, error } = await this.supabase
       .getClient()
-      .from('services')
-      .select('*')
-      .eq('id', id)
+      .from("services")
+      .select("*")
+      .eq("id", id)
       .single();
 
     if (error || !data) {
@@ -531,14 +559,14 @@ export class ServicesService {
   async create(dto: CreateServiceDto) {
     const { data, error } = await this.supabase
       .getClient()
-      .from('services')
+      .from("services")
       .insert([
         {
           name: dto.name,
           description: dto.description || null,
           price: dto.price,
           duration: dto.duration,
-          category: dto.category || 'general',
+          category: dto.category || "general",
           image: dto.image || null,
           created_at: new Date().toISOString(),
         },
@@ -567,9 +595,9 @@ export class ServicesService {
 
     const { data, error } = await this.supabase
       .getClient()
-      .from('services')
+      .from("services")
       .update(updates)
-      .eq('id', id)
+      .eq("id", id)
       .select()
       .single();
 
@@ -585,15 +613,17 @@ export class ServicesService {
   async delete(id: string) {
     const { error } = await this.supabase
       .getClient()
-      .from('services')
+      .from("services")
       .delete()
-      .eq('id', id);
+      .eq("id", id);
 
     if (error) {
-      throw new BadRequestException(`Erro ao deletar serviço: ${error.message}`);
+      throw new BadRequestException(
+        `Erro ao deletar serviço: ${error.message}`,
+      );
     }
 
-    return { message: 'Serviço deletado' };
+    return { message: "Serviço deletado" };
   }
 }
 ```
@@ -601,9 +631,13 @@ export class ServicesService {
 ### 4. GalleryService
 
 ```typescript
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { SupabaseService } from '@/integrations/supabase/supabase.service';
-import { CreateGalleryImageDto, UpdateGalleryImageDto } from '../dto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { SupabaseService } from "@/integrations/supabase/supabase.service";
+import { CreateGalleryImageDto, UpdateGalleryImageDto } from "../dto";
 
 @Injectable()
 export class GalleryService {
@@ -612,15 +646,15 @@ export class GalleryService {
   async findAll(category?: string) {
     let query = this.supabase
       .getClient()
-      .from('gallery')
-      .select('*, professional_id(name, image)')
-      .eq('is_published', true);
+      .from("gallery")
+      .select("*, professional_id(name, image)")
+      .eq("is_published", true);
 
     if (category) {
-      query = query.eq('category', category);
+      query = query.eq("category", category);
     }
 
-    const { data, error } = await query.order('created_at', {
+    const { data, error } = await query.order("created_at", {
       ascending: false,
     });
 
@@ -634,9 +668,9 @@ export class GalleryService {
   async findOne(id: string) {
     const { data, error } = await this.supabase
       .getClient()
-      .from('gallery')
-      .select('*')
-      .eq('id', id)
+      .from("gallery")
+      .select("*")
+      .eq("id", id)
       .single();
 
     if (error || !data) {
@@ -649,14 +683,14 @@ export class GalleryService {
   async create(dto: CreateGalleryImageDto) {
     const { data, error } = await this.supabase
       .getClient()
-      .from('gallery')
+      .from("gallery")
       .insert([
         {
           professional_id: dto.professional_id,
           image_url: dto.image_url,
           title: dto.title || null,
           description: dto.description || null,
-          category: dto.category || 'general',
+          category: dto.category || "general",
           is_published: dto.is_published || false,
           created_at: new Date().toISOString(),
         },
@@ -683,14 +717,16 @@ export class GalleryService {
 
     const { data, error } = await this.supabase
       .getClient()
-      .from('gallery')
+      .from("gallery")
       .update(updates)
-      .eq('id', id)
+      .eq("id", id)
       .select()
       .single();
 
     if (error) {
-      throw new BadRequestException(`Erro ao atualizar imagem: ${error.message}`);
+      throw new BadRequestException(
+        `Erro ao atualizar imagem: ${error.message}`,
+      );
     }
 
     return data;
@@ -699,15 +735,15 @@ export class GalleryService {
   async delete(id: string) {
     const { error } = await this.supabase
       .getClient()
-      .from('gallery')
+      .from("gallery")
       .delete()
-      .eq('id', id);
+      .eq("id", id);
 
     if (error) {
       throw new BadRequestException(`Erro ao deletar imagem: ${error.message}`);
     }
 
-    return { message: 'Imagem deletada' };
+    return { message: "Imagem deletada" };
   }
 }
 ```
@@ -715,22 +751,26 @@ export class GalleryService {
 ### 5. TestimonialsService
 
 ```typescript
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { SupabaseService } from '@/integrations/supabase/supabase.service';
-import { CreateTestimonialDto, UpdateTestimonialDto } from '../dto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { SupabaseService } from "@/integrations/supabase/supabase.service";
+import { CreateTestimonialDto, UpdateTestimonialDto } from "../dto";
 
 @Injectable()
 export class TestimonialsService {
   constructor(private supabase: SupabaseService) {}
 
   async findAll(isApproved?: boolean) {
-    let query = this.supabase.getClient().from('testimonials').select('*');
+    let query = this.supabase.getClient().from("testimonials").select("*");
 
     if (isApproved !== undefined) {
-      query = query.eq('is_approved', isApproved);
+      query = query.eq("is_approved", isApproved);
     }
 
-    const { data, error } = await query.order('created_at', {
+    const { data, error } = await query.order("created_at", {
       ascending: false,
     });
 
@@ -746,9 +786,9 @@ export class TestimonialsService {
   async findOne(id: string) {
     const { data, error } = await this.supabase
       .getClient()
-      .from('testimonials')
-      .select('*')
-      .eq('id', id)
+      .from("testimonials")
+      .select("*")
+      .eq("id", id)
       .single();
 
     if (error || !data) {
@@ -761,7 +801,7 @@ export class TestimonialsService {
   async create(dto: CreateTestimonialDto) {
     const { data, error } = await this.supabase
       .getClient()
-      .from('testimonials')
+      .from("testimonials")
       .insert([
         {
           client_name: dto.client_name,
@@ -797,9 +837,9 @@ export class TestimonialsService {
 
     const { data, error } = await this.supabase
       .getClient()
-      .from('testimonials')
+      .from("testimonials")
       .update(updates)
-      .eq('id', id)
+      .eq("id", id)
       .select()
       .single();
 
@@ -815,9 +855,9 @@ export class TestimonialsService {
   async delete(id: string) {
     const { error } = await this.supabase
       .getClient()
-      .from('testimonials')
+      .from("testimonials")
       .delete()
-      .eq('id', id);
+      .eq("id", id);
 
     if (error) {
       throw new BadRequestException(
@@ -825,7 +865,7 @@ export class TestimonialsService {
       );
     }
 
-    return { message: 'Depoimento deletado' };
+    return { message: "Depoimento deletado" };
   }
 }
 ```
@@ -840,6 +880,7 @@ npm run dev
 ```
 
 Expected output:
+
 ```
 [Nest] 12345  - 01/20/2025, 10:30 AM     LOG [NestFactory] Starting Nest application...
 [Nest] 12345  - 01/20/2025, 10:30 AM     LOG [InstanceLoader] SupabaseModule dependencies initialized
@@ -975,6 +1016,7 @@ cat apps/api/.env.development
 ## Suporte
 
 Se um endpoint continuar com erro:
+
 - Abrir issue com stack trace
 - Incluir: endpoint, método, status code
 - Incluir: resposta de erro do Supabase

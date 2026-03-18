@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,9 +10,22 @@ import { Save } from "lucide-react";
 import ImageUpload from "./ImageUpload";
 import OpeningHoursEditor from "./OpeningHoursEditor";
 import { normalizeWhatsAppPhone, splitWhatsAppPhone } from "@/lib/phone";
-import { type Database } from "@/integrations/supabase/types";
 
-type SalonRow = Database["public"]["Tables"]["salons"]["Row"];
+type SalonRow = {
+  id: string;
+  name: string;
+  phone: string | null;
+  whatsapp: string | null;
+  address: string | null;
+  about_text: string | null;
+  logo_url: string | null;
+  hero_image_url: string | null;
+  video_url: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  opening_hours: Record<string, string> | null;
+  active: boolean;
+};
 
 export default function AdminSalon() {
   const [salon, setSalon] = useState<Partial<SalonRow> | null>(null);
@@ -26,7 +39,7 @@ export default function AdminSalon() {
   }, []);
 
   async function loadSalon() {
-    const { data } = await supabase.from("salons").select("*").limit(1).maybeSingle();
+    const data = await api.getSalon();
     const initialSalon = data || {
       name: "", phone: "", whatsapp: "", address: "", about_text: "",
       logo_url: "", hero_image_url: "", video_url: "", instagram: "", facebook: "",
@@ -75,16 +88,21 @@ export default function AdminSalon() {
     };
 
     if (salon.id) {
-      const { error } = await supabase.from("salons").update(payload).eq("id", salon.id);
-      if (error) appToast.error(error.message);
-      else {
+      try {
+        await api.updateSalon(salon.id, payload);
         setSalon(payload);
         appToast.success("Salão atualizado!");
+      } catch (error) {
+        appToast.error(error instanceof Error ? error.message : "Erro ao atualizar salão");
       }
     } else {
-      const { data, error } = await supabase.from("salons").insert({ ...payload, active: true } as Database["public"]["Tables"]["salons"]["Insert"]).select().single();
-      if (error) appToast.error(error.message);
-      else { setSalon(data); appToast.success("Salão criado!"); }
+      try {
+        const data = await api.createSalon(payload);
+        setSalon(data);
+        appToast.success("Salão criado!");
+      } catch (error) {
+        appToast.error(error instanceof Error ? error.message : "Erro ao criar salão");
+      }
     }
     setSaving(false);
   }

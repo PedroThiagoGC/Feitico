@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,10 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { appToast } from "@/lib/toast";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Star } from "lucide-react";
-import { type Database } from "@/integrations/supabase/types";
 import ImageUpload from "./ImageUpload";
 
-type Testimonial = Database["public"]["Tables"]["testimonials"]["Row"];
+type Testimonial = {
+  id: string;
+  salon_id: string;
+  author_name: string;
+  author_image: string | null;
+  content: string;
+  rating: number;
+  active: boolean;
+};
 
 export default function AdminTestimonials() {
   const [items, setItems] = useState<Testimonial[]>([]);
@@ -20,12 +27,12 @@ export default function AdminTestimonials() {
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
-    const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
-    if (salon) {
-      setSalonId(salon.id);
-      const { data } = await supabase.from("testimonials").select("*").eq("salon_id", salon.id);
-      setItems(data || []);
-    }
+    const salon = await api.getSalon();
+    if (!salon?.id) return;
+
+    setSalonId(salon.id);
+    const data = await api.getTestimonials({ salonId: salon.id });
+    setItems((data || []) as Testimonial[]);
   }
 
   function resetForm() {
@@ -44,15 +51,17 @@ export default function AdminTestimonials() {
       active: true,
     };
 
-    const { error } = form.id
-      ? await supabase.from("testimonials").update(payload).eq("id", form.id)
-      : await supabase.from("testimonials").insert(payload);
-
-    if (error) appToast.error(error.message);
-    else {
+    try {
+      if (form.id) {
+        await api.updateTestimonial(form.id, payload);
+      } else {
+        await api.createTestimonial(payload);
+      }
       appToast.success(form.id ? "Depoimento atualizado!" : "Depoimento adicionado!");
       loadData();
       resetForm();
+    } catch (error) {
+      appToast.error(error instanceof Error ? error.message : "Erro ao salvar depoimento");
     }
   }
 
@@ -67,12 +76,13 @@ export default function AdminTestimonials() {
   }
 
   async function handleDelete(id: string) {
-    const { error } = await supabase.from("testimonials").delete().eq("id", id);
-    if (error) appToast.error(error.message);
-    else {
+    try {
+      await api.deleteTestimonial(id);
       appToast.success("Removido!");
       if (form.id === id) resetForm();
       loadData();
+    } catch (error) {
+      appToast.error(error instanceof Error ? error.message : "Erro ao remover depoimento");
     }
   }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,13 +12,56 @@ import { professionalSchema } from "@/schemas/professional.schema";
 import { Plus, Pencil, Trash2, Clock, Calendar, Settings2 } from "lucide-react";
 import { MinutesSelect } from "@/components/ui/minutes-select";
 import ImageUpload from "./ImageUpload";
-import { type Database } from "@/integrations/supabase/types";
 
-type Professional = Database["public"]["Tables"]["professionals"]["Row"];
-type Service = Database["public"]["Tables"]["services"]["Row"];
-type ProfessionalAvailability = Database["public"]["Tables"]["professional_availability"]["Row"];
-type ProfessionalException = Database["public"]["Tables"]["professional_exceptions"]["Row"];
-type ProfessionalService = Database["public"]["Tables"]["professional_services"]["Row"];
+type Professional = {
+  id: string;
+  salon_id: string;
+  name: string;
+  photo_url: string | null;
+  commission_type: string;
+  commission_value: number;
+  active: boolean;
+};
+
+type Service = {
+  id: string;
+  salon_id: string;
+  name: string;
+  price: number;
+  duration: number;
+  buffer_minutes: number;
+  sort_order: number;
+};
+
+type ProfessionalAvailability = {
+  id: string;
+  professional_id: string;
+  weekday: number;
+  start_time: string;
+  end_time: string;
+  active: boolean;
+};
+
+type ProfessionalException = {
+  id: string;
+  professional_id: string;
+  date: string;
+  type: string;
+  start_time: string | null;
+  end_time: string | null;
+  reason: string | null;
+};
+
+type ProfessionalService = {
+  id: string;
+  professional_id: string;
+  service_id: string;
+  custom_price: number | null;
+  custom_duration_minutes: number | null;
+  custom_buffer_minutes: number | null;
+  commission_override_type: string | null;
+  commission_override_value: number | null;
+};
 
 const WEEKDAY_LABELS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -40,14 +83,17 @@ export default function AdminProfessionals() {
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
-    const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
-    if (salon) {
-      setSalonId(salon.id);
-      const { data: pros } = await supabase.from("professionals").select("*").eq("salon_id", salon.id).order("name");
-      setProfessionals(pros || []);
-      const { data: svcs } = await supabase.from("services").select("*").eq("salon_id", salon.id).order("sort_order");
-      setServices(svcs || []);
-    }
+    const salon = await api.getSalon();
+    if (!salon?.id) return;
+
+    setSalonId(salon.id);
+    const [pros, svcs] = await Promise.all([
+      api.getProfessionals(salon.id),
+      api.getServices(salon.id),
+    ]);
+
+    setProfessionals((pros || []) as Professional[]);
+    setServices((svcs || []) as Service[]);
   }
 
   async function handleSavePro(e: React.FormEvent) {
@@ -75,12 +121,16 @@ export default function AdminProfessionals() {
       commission_value: parsed.commission_value,
       active: parsed.active,
     };
-    if (form.id) {
-      const { error } = await supabase.from("professionals").update(payload).eq("id", form.id);
-      if (error) appToast.error(error.message); else appToast.success("Profissional atualizado!");
-    } else {
-      const { error } = await supabase.from("professionals").insert(payload);
-      if (error) appToast.error(error.message); else appToast.success("Profissional criado!");
+    try {
+      if (form.id) {
+        await api.updateProfessional(form.id, payload);
+        appToast.success("Profissional atualizado!");
+      } else {
+        await api.createProfessional(payload);
+        appToast.success("Profissional criado!");
+      }
+    } catch (error) {
+      appToast.error(error instanceof Error ? error.message : "Erro ao salvar profissional");
     }
     setDialogOpen(false);
     resetForm();
@@ -89,8 +139,13 @@ export default function AdminProfessionals() {
 
   async function handleDeletePro(id: string) {
     if (!confirm("Excluir profissional?")) return;
-    const { error } = await supabase.from("professionals").delete().eq("id", id);
-    if (error) appToast.error(error.message); else { appToast.success("Excluído!"); loadData(); }
+    try {
+      await api.deleteProfessional(id);
+      appToast.success("Excluído!");
+      loadData();
+    } catch (error) {
+      appToast.error(error instanceof Error ? error.message : "Erro ao excluir profissional");
+    }
   }
 
   function resetForm() {
@@ -227,24 +282,34 @@ function ProfessionalAvailabilityEditor({ professionalId }: { professionalId: st
   useEffect(() => { load(); }, [professionalId]);
 
   async function load() {
-    const { data } = await supabase.from("professional_availability").select("*").eq("professional_id", professionalId).order("weekday");
-    setItems(data || []);
+    const data = await api.getProfessionalAvailability(professionalId);
+    setItems((data || []) as ProfessionalAvailability[]);
   }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-    const { error } = await supabase.from("professional_availability").insert({
-      professional_id: professionalId,
-      weekday: parseInt(form.weekday),
-      start_time: form.start_time,
-      end_time: form.end_time,
-    });
-    if (error) appToast.error(error.message); else { appToast.success("Salvo!"); load(); }
+    try {
+      await api.createProfessionalAvailability(professionalId, {
+        weekday: parseInt(form.weekday, 10),
+        start_time: form.start_time,
+        end_time: form.end_time,
+        active: true,
+      });
+      appToast.success("Salvo!");
+      load();
+    } catch (error) {
+      appToast.error(error instanceof Error ? error.message : "Erro ao salvar disponibilidade");
+    }
   }
 
   async function handleDelete(id: string) {
-    await supabase.from("professional_availability").delete().eq("id", id);
-    appToast.success("Removido!"); load();
+    try {
+      await api.deleteProfessionalAvailability(id);
+      appToast.success("Removido!");
+      load();
+    } catch (error) {
+      appToast.error(error instanceof Error ? error.message : "Erro ao remover disponibilidade");
+    }
   }
 
   return (
@@ -291,27 +356,37 @@ function ProfessionalExceptionsEditor({ professionalId }: { professionalId: stri
   useEffect(() => { load(); }, [professionalId]);
 
   async function load() {
-    const { data } = await supabase.from("professional_exceptions").select("*").eq("professional_id", professionalId).order("date");
-    setItems(data || []);
+    const data = await api.getProfessionalExceptions(professionalId);
+    setItems((data || []) as ProfessionalException[]);
   }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!form.date) return;
-    const { error } = await supabase.from("professional_exceptions").insert({
-      professional_id: professionalId,
-      date: form.date,
-      type: form.type,
-      start_time: form.start_time || null,
-      end_time: form.end_time || null,
-      reason: form.reason || null,
-    });
-    if (error) appToast.error(error.message); else { appToast.success("Exceção salva!"); load(); setForm({ date: "", type: "day_off", start_time: "", end_time: "", reason: "" }); }
+    try {
+      await api.createProfessionalException(professionalId, {
+        date: form.date,
+        type: form.type,
+        start_time: form.start_time || null,
+        end_time: form.end_time || null,
+        reason: form.reason || null,
+      });
+      appToast.success("Exceção salva!");
+      load();
+      setForm({ date: "", type: "day_off", start_time: "", end_time: "", reason: "" });
+    } catch (error) {
+      appToast.error(error instanceof Error ? error.message : "Erro ao salvar exceção");
+    }
   }
 
   async function handleDelete(id: string) {
-    await supabase.from("professional_exceptions").delete().eq("id", id);
-    appToast.success("Removido!"); load();
+    try {
+      await api.deleteProfessionalException(id);
+      appToast.success("Removido!");
+      load();
+    } catch (error) {
+      appToast.error(error instanceof Error ? error.message : "Erro ao remover exceção");
+    }
   }
 
   const typeLabels: Record<string, string> = { day_off: "Folga", blocked: "Bloqueio", custom_hours: "Horário especial" };
@@ -377,16 +452,16 @@ function ProfessionalServicesEditor({ professionalId, services }: { professional
   useEffect(() => { load(); }, [professionalId]);
 
   async function load() {
-    const { data } = await supabase.from("professional_services").select("*").eq("professional_id", professionalId);
-    setLinks(data || []);
+    const data = await api.getProfessionalServices(professionalId);
+    setLinks((data || []) as ProfessionalService[]);
   }
 
   async function toggleService(serviceId: string) {
     const existing = links.find((l) => l.service_id === serviceId);
     if (existing) {
-      await supabase.from("professional_services").delete().eq("id", existing.id);
+      await api.deleteProfessionalServiceLink(existing.id);
     } else {
-      await supabase.from("professional_services").insert({ professional_id: professionalId, service_id: serviceId });
+      await api.createProfessionalServiceLink(professionalId, { service_id: serviceId, active: true });
     }
     load();
   }
@@ -396,8 +471,12 @@ function ProfessionalServicesEditor({ professionalId, services }: { professional
   }
 
   async function updateOverride(linkId: string, field: string, value: string | number | null) {
-    const { error } = await supabase.from("professional_services").update({ [field]: value || null }).eq("id", linkId);
-    if (error) appToast.error(error.message); else load();
+    try {
+      await api.updateProfessionalServiceLink(linkId, { [field]: value || null });
+      load();
+    } catch (error) {
+      appToast.error(error instanceof Error ? error.message : "Erro ao atualizar vínculo");
+    }
   }
 
   return (

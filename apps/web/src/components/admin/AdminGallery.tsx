@@ -1,14 +1,19 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { appToast } from "@/lib/toast";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import ImageUpload from "./ImageUpload";
-import { type Database } from "@/integrations/supabase/types";
 
-type GalleryImage = Database["public"]["Tables"]["gallery_images"]["Row"];
+type GalleryImage = {
+  id: string;
+  salon_id: string;
+  image_url: string;
+  caption: string | null;
+  sort_order: number;
+};
 
 export default function AdminGallery() {
   const [images, setImages] = useState<GalleryImage[]>([]);
@@ -18,12 +23,12 @@ export default function AdminGallery() {
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
-    const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
-    if (salon) {
-      setSalonId(salon.id);
-      const { data } = await supabase.from("gallery_images").select("*").eq("salon_id", salon.id).order("sort_order");
-      setImages(data || []);
-    }
+    const salon = await api.getSalon();
+    if (!salon?.id) return;
+
+    setSalonId(salon.id);
+    const data = await api.getGallery(salon.id);
+    setImages((data || []) as GalleryImage[]);
   }
 
   function resetForm() {
@@ -41,15 +46,17 @@ export default function AdminGallery() {
       sort_order: parseInt(form.sort_order) || 0,
     };
 
-    const { error } = form.id
-      ? await supabase.from("gallery_images").update(payload).eq("id", form.id)
-      : await supabase.from("gallery_images").insert(payload);
-
-    if (error) appToast.error(error.message);
-    else {
+    try {
+      if (form.id) {
+        await api.updateGalleryImage(form.id, payload);
+      } else {
+        await api.createGalleryImage(payload);
+      }
       appToast.success(form.id ? "Imagem atualizada!" : "Imagem adicionada!");
       loadData();
       resetForm();
+    } catch (error) {
+      appToast.error(error instanceof Error ? error.message : "Erro ao salvar imagem");
     }
   }
 
@@ -63,12 +70,13 @@ export default function AdminGallery() {
   }
 
   async function handleDelete(id: string) {
-    const { error } = await supabase.from("gallery_images").delete().eq("id", id);
-    if (error) appToast.error(error.message);
-    else {
+    try {
+      await api.deleteGalleryImage(id);
       appToast.success("Removido!");
       if (form.id === id) resetForm();
       loadData();
+    } catch (error) {
+      appToast.error(error instanceof Error ? error.message : "Erro ao remover imagem");
     }
   }
 

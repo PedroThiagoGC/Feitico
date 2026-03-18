@@ -23,7 +23,7 @@ export function usePwaInstall() {
   const isIos = /iphone|ipad|ipod/i.test(ua);
   const isAndroid = /android/i.test(ua);
   const browserName = detectBrowser(ua);
-    const isDevEnvironment = host === "localhost" || host.startsWith("127.");
+  const isDevEnvironment = host === "localhost" || host.startsWith("127.");
 
   useEffect(() => {
     const checkStandalone = () => {
@@ -53,7 +53,7 @@ export function usePwaInstall() {
     };
   }, []);
 
-    const canPromptInstall = Boolean(deferredPrompt) && !isDevEnvironment;
+  const canPromptInstall = Boolean(deferredPrompt) && !isDevEnvironment;
 
   const installInstructions = useMemo(() => {
     if (canPromptInstall) return "Clique em Instalar app para adicionar na tela inicial.";
@@ -67,7 +67,7 @@ export function usePwaInstall() {
     }
 
     return `No ${browserName}: abra o menu do navegador e procure por Instalar app ou Adicionar a tela inicial.`;
-  }, [canPromptInstall, isIos, isAndroid, browserName, isLovableHost]);
+  }, [canPromptInstall, isIos, isAndroid, browserName]);
 
   const promptInstall = useCallback(async () => {
     if (!deferredPrompt) return null;

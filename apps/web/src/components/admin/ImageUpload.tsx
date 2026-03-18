@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { appToast } from "@/lib/toast";
@@ -16,6 +16,15 @@ export default function ImageUpload({ value, onChange, folder = "general", class
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  async function fileToBase64(file: File) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Falha ao ler arquivo"));
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -31,21 +40,22 @@ export default function ImageUpload({ value, onChange, folder = "general", class
     }
 
     setUploading(true);
-    const ext = file.name.split(".").pop();
-    const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    try {
+      const dataBase64 = await fileToBase64(file);
+      const result = await api.uploadImage({
+        folder,
+        fileName: file.name,
+        mimeType: file.type,
+        dataBase64,
+      });
 
-    const { error } = await supabase.storage.from("salon-images").upload(fileName, file);
-
-    if (error) {
-      appToast.error("Erro ao fazer upload: " + error.message);
+      onChange(result.url);
+      appToast.success("Imagem enviada!");
+    } catch (error) {
+      appToast.error(error instanceof Error ? `Erro ao fazer upload: ${error.message}` : "Erro ao fazer upload");
+    } finally {
       setUploading(false);
-      return;
     }
-
-    const { data: urlData } = supabase.storage.from("salon-images").getPublicUrl(fileName);
-    onChange(urlData.publicUrl);
-    setUploading(false);
-    appToast.success("Imagem enviada!");
   }
 
   return (
@@ -62,6 +72,8 @@ export default function ImageUpload({ value, onChange, folder = "general", class
           type="file"
           accept="image/*"
           className="hidden"
+          aria-label="Selecionar imagem"
+          title="Selecionar imagem"
           onChange={handleUpload}
         />
         <Button

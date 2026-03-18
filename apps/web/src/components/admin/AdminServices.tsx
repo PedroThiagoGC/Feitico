@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,9 +9,21 @@ import { appToast } from "@/lib/toast";
 import { serviceSchema } from "@/schemas/service.schema";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { MinutesSelect } from "@/components/ui/minutes-select";
-import { type Database } from "@/integrations/supabase/types";
 
-type ServiceRow = Database["public"]["Tables"]["services"]["Row"];
+type ServiceRow = {
+  id: string;
+  salon_id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  duration: number;
+  buffer_minutes: number;
+  image_url: string | null;
+  category: string | null;
+  is_combo: boolean;
+  active: boolean;
+  sort_order: number;
+};
 
 interface ServiceForm {
   id?: string;
@@ -42,12 +54,12 @@ export default function AdminServices() {
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
-    const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
-    if (salon) {
-      setSalonId(salon.id);
-      const { data } = await supabase.from("services").select("*").eq("salon_id", salon.id).order("sort_order");
-      setServices(data || []);
-    }
+    const salon = await api.getSalon();
+    if (!salon?.id) return;
+
+    setSalonId(salon.id);
+    const data = await api.getServices(salon.id);
+    setServices((data || []) as ServiceRow[]);
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -88,11 +100,19 @@ export default function AdminServices() {
     };
 
     if (form.id) {
-      const { error } = await supabase.from("services").update(payload).eq("id", form.id);
-      appToast.fromResult({ error }, "Serviço atualizado!");
+      try {
+        await api.updateService(form.id, payload);
+        appToast.success("Serviço atualizado!");
+      } catch (error) {
+        appToast.error(error instanceof Error ? error.message : "Erro ao atualizar serviço");
+      }
     } else {
-      const { error } = await supabase.from("services").insert(payload);
-      appToast.fromResult({ error }, "Serviço criado!");
+      try {
+        await api.createService(payload);
+        appToast.success("Serviço criado!");
+      } catch (error) {
+        appToast.error(error instanceof Error ? error.message : "Erro ao criar serviço");
+      }
     }
     setSaving(false);
     setDialogOpen(false);
@@ -102,8 +122,13 @@ export default function AdminServices() {
 
   async function handleDelete(id: string) {
     if (!confirm("Excluir serviço?")) return;
-    const { error } = await supabase.from("services").delete().eq("id", id);
-    if (error) appToast.error(error.message); else { appToast.success("Excluído!"); loadData(); }
+    try {
+      await api.deleteService(id);
+      appToast.success("Excluído!");
+      loadData();
+    } catch (error) {
+      appToast.error(error instanceof Error ? error.message : "Erro ao excluir serviço");
+    }
   }
 
   function openEdit(service: ServiceRow) {

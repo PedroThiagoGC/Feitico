@@ -7,7 +7,7 @@ import {
   Body,
   Param,
   HttpCode,
-  Version,
+  Query,
 } from '@nestjs/common';
 import { ServicesService } from './services.service';
 
@@ -17,8 +17,8 @@ export class ServicesController {
 
   @Get()
   @HttpCode(200)
-  async findAll() {
-    return this.servicesService.findAll();
+  async findAll(@Query('salonId') salonId?: string) {
+    return this.servicesService.findAll(salonId);
   }
 
   @Get(':id')

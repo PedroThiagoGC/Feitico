@@ -5,7 +5,7 @@ import { bookingFormSchema, type BookingFormData } from "@/schemas/booking.schem
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { useAvailableSlots, useCreateBooking, useRealtimeBookings, generateWhatsAppApiFallback, generateWhatsAppMessage, calculateCommission } from "@/hooks/useBooking";
 import { useProfessionals, useProfessionalServices, useProfessionalAvailability } from "@/hooks/useProfessionals";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchProfessionalServiceLinks } from "@/services/professionalService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -57,32 +57,27 @@ export default function Booking({ salon, services, preselectedServices, preselec
     setPendingPreselectedIds(ids);
 
     void (async () => {
-      const { data, error } = await supabase
-        .from("professional_services")
-        .select("professional_id")
-        .in("service_id", ids)
-        .eq("active", true);
+      try {
+        const data = await fetchProfessionalServiceLinks(ids);
+        const candidateIds = Array.from(new Set((data || []).map((row) => row.professional_id)));
+        const activeCandidates = professionals.filter((p) => candidateIds.includes(p.id));
 
-      if (error) {
+        if (activeCandidates.length === 1) {
+          setSelectedProfessionalId(activeCandidates[0].id);
+        } else if (activeCandidates.length > 1) {
+          setSelectedProfessionalId(activeCandidates[0].id);
+          setServicePrefillHint(`Serviço pré-selecionado com ${activeCandidates[0].name}. Você pode trocar o profissional.`);
+        } else {
+          setSelectedProfessionalId("");
+          setServicePrefillHint("Selecione um profissional para aplicar o serviço escolhido.");
+        }
+
+        bookingCardRef.current?.classList.add("ring-2", "ring-primary/40");
+        setTimeout(() => bookingCardRef.current?.classList.remove("ring-2", "ring-primary/40"), 1400);
+      } catch {
         appToast.error("Não foi possível pré-selecionar o serviço automaticamente.");
         return;
       }
-
-      const candidateIds = Array.from(new Set((data || []).map((row) => row.professional_id)));
-      const activeCandidates = professionals.filter((p) => candidateIds.includes(p.id));
-
-      if (activeCandidates.length === 1) {
-        setSelectedProfessionalId(activeCandidates[0].id);
-      } else if (activeCandidates.length > 1) {
-        setSelectedProfessionalId(activeCandidates[0].id);
-        setServicePrefillHint(`Serviço pré-selecionado com ${activeCandidates[0].name}. Você pode trocar o profissional.`);
-      } else {
-        setSelectedProfessionalId("");
-        setServicePrefillHint("Selecione um profissional para aplicar o serviço escolhido.");
-      }
-
-      bookingCardRef.current?.classList.add("ring-2", "ring-primary/40");
-      setTimeout(() => bookingCardRef.current?.classList.remove("ring-2", "ring-primary/40"), 1400);
     })();
   }, [preselectedServices, preselectionToken, professionals]);
 

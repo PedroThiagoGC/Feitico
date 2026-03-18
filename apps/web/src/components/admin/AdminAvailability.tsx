@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,31 +71,24 @@ export default function AdminAvailability() {
   }, [selectedProId]);
 
   async function loadProfessionals() {
-    const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
-    if (!salon) return;
-    const { data } = await supabase.from("professionals").select("id, name, photo_url").eq("salon_id", salon.id).eq("active", true).order("name");
+    const salon = await api.getSalon();
+    if (!salon?.id) return;
+    const data = await api.getProfessionals(salon.id);
     if (data && data.length > 0) {
-      setProfessionals(data);
+      setProfessionals(data as Professional[]);
       setSelectedProId(data[0].id);
     }
   }
 
   async function loadAvailability() {
-    const { data } = await supabase
-      .from("professional_availability")
-      .select("*")
-      .eq("professional_id", selectedProId)
-      .order("weekday");
-    setAvailability(data as AvailabilityRow[] || []);
+    const data = await api.getProfessionalAvailability(selectedProId);
+    const sorted = [...(data || [])].sort((a, b) => a.weekday - b.weekday);
+    setAvailability((sorted as AvailabilityRow[]) || []);
   }
 
   async function loadExceptions() {
-    const { data } = await supabase
-      .from("professional_exceptions")
-      .select("*")
-      .eq("professional_id", selectedProId)
-      .order("date");
-    setExceptions(data as ExceptionRow[] || []);
+    const data = await api.getProfessionalExceptions(selectedProId);
+    setExceptions((data as ExceptionRow[]) || []);
   }
 
   // Build a map: weekday -> row (or null if not set)
@@ -105,20 +98,25 @@ export default function AdminAvailability() {
   async function toggleWeekday(weekday: number) {
     const existing = weekdayMap.get(weekday);
     if (existing) {
-      // Toggle active
-      const { error } = await supabase
-        .from("professional_availability")
-        .update({ active: !existing.active })
-        .eq("id", existing.id);
-      if (error) appToast.error(error.message);
-      else loadAvailability();
+      try {
+        await api.updateProfessionalAvailability(existing.id, { active: !existing.active });
+        loadAvailability();
+      } catch (error) {
+        appToast.error(error instanceof Error ? error.message : "Erro ao atualizar dia");
+      }
     } else {
-      // Create with defaults 09:00-19:00
-      const { error } = await supabase
-        .from("professional_availability")
-        .insert({ professional_id: selectedProId, weekday, start_time: "09:00", end_time: "19:00", active: true });
-      if (error) appToast.error(error.message);
-      else { appToast.success("Dia adicionado!"); loadAvailability(); }
+      try {
+        await api.createProfessionalAvailability(selectedProId, {
+          weekday,
+          start_time: "09:00",
+          end_time: "19:00",
+          active: true,
+        });
+        appToast.success("Dia adicionado!");
+        loadAvailability();
+      } catch (error) {
+        appToast.error(error instanceof Error ? error.message : "Erro ao adicionar dia");
+      }
     }
   }
 
@@ -132,11 +130,10 @@ export default function AdminAvailability() {
     setSaving(true);
     try {
       for (const row of availability) {
-        const { error } = await supabase
-          .from("professional_availability")
-          .update({ start_time: row.start_time, end_time: row.end_time })
-          .eq("id", row.id);
-        if (error) throw error;
+        await api.updateProfessionalAvailability(row.id, {
+          start_time: row.start_time,
+          end_time: row.end_time,
+        });
       }
       appToast.success("Horários salvos!");
     } catch (err: unknown) {
@@ -146,9 +143,13 @@ export default function AdminAvailability() {
   }
 
   async function deleteAvailability(id: string) {
-    const { error } = await supabase.from("professional_availability").delete().eq("id", id);
-    if (error) appToast.error(error.message);
-    else { appToast.success("Removido!"); loadAvailability(); }
+    try {
+      await api.deleteProfessionalAvailability(id);
+      appToast.success("Removido!");
+      loadAvailability();
+    } catch (error) {
+      appToast.error(error instanceof Error ? error.message : "Erro ao remover disponibilidade");
+    }
   }
 
   async function addException(e: React.FormEvent) {
@@ -171,19 +172,24 @@ export default function AdminAvailability() {
       payload.start_time = excForm.start_time || null;
       payload.end_time = excForm.end_time || null;
     }
-    const { error } = await supabase.from("professional_exceptions").insert(payload);
-    if (error) appToast.error(error.message);
-    else {
+    try {
+      await api.createProfessionalException(selectedProId, payload);
       appToast.success("Exceção adicionada!");
       loadExceptions();
       setExcForm({ date: "", type: "day_off", start_time: "", end_time: "", reason: "" });
+    } catch (error) {
+      appToast.error(error instanceof Error ? error.message : "Erro ao adicionar exceção");
     }
   }
 
   async function deleteException(id: string) {
-    const { error } = await supabase.from("professional_exceptions").delete().eq("id", id);
-    if (error) appToast.error(error.message);
-    else { appToast.success("Removido!"); loadExceptions(); }
+    try {
+      await api.deleteProfessionalException(id);
+      appToast.success("Removido!");
+      loadExceptions();
+    } catch (error) {
+      appToast.error(error instanceof Error ? error.message : "Erro ao remover exceção");
+    }
   }
 
   const selectedPro = professionals.find((p) => p.id === selectedProId);

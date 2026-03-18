@@ -26,7 +26,7 @@ Este documento descreve o processo completo para fazer deploy da aplicação no 
 ## Pré-requisitos
 
 1. ✅ Conta GitHub com repositório Feitico criado
-2. ✅ Turborepo monorepo estruturado (apps/web, apps/api, packages/*)
+2. ✅ Turborepo monorepo estruturado (apps/web, apps/api, packages/\*)
 3. ✅ Arquivos `vercel.json` configurados em ambas as pastas
 4. ✅ Credenciais Supabase para ambiente produção
 5. ✅ Node.js 18+ instalado localmente
@@ -87,6 +87,7 @@ VITE_SUPABASE_KEY=your_production_anon_key
 ```
 
 **Obter valores Supabase:**
+
 ```bash
 # No seu projeto Supabase:
 # Settings → API
@@ -128,6 +129,7 @@ cd apps/api
 No dashboard Vercel (apps/api project settings → Environment Variables):
 
 **Production Environment:**
+
 ```env
 NODE_ENV=production
 PORT=3000
@@ -148,6 +150,7 @@ LOG_LEVEL=info
 ```
 
 **Preview Environment (staging):**
+
 ```env
 NODE_ENV=production
 SUPABASE_URL=https://your-supabase-project.supabase.co
@@ -157,7 +160,8 @@ JWT_SECRET=your_secure_production_jwt_secret_min_32_chars
 CORS_ORIGIN=https://preview-*.vercel.app
 ```
 
-⚠️ **SEGURANÇA:** 
+⚠️ **SEGURANÇA:**
+
 - Nunca commit `JWT_SECRET` ou `SUPABASE_SERVICE_ROLE_KEY`
 - Use Vercel Secrets (não plain text)
 - Gire JWT_SECRET se um preview URL vazar
@@ -174,6 +178,7 @@ git push origin main
 ## Verificação Pós-Deploy
 
 ### Testar Frontend
+
 ```bash
 # Via navegador
 curl https://feitico-salon.vercel.app
@@ -184,6 +189,7 @@ open https://feitico-salon.vercel.app
 ```
 
 ### Testar Backend
+
 ```bash
 # Health check
 curl https://api-feitico-salon.vercel.app/health
@@ -199,6 +205,7 @@ curl https://api-feitico-salon.vercel.app/api/v1/professionals
 ```
 
 ### Testar Conexão Frontend → Backend
+
 ```bash
 # Abrir DevTools da aplicação
 # Fazer login ou navegar para página que chama API
@@ -215,6 +222,7 @@ curl https://api-feitico-salon.vercel.app/api/v1/professionals
 ### Erro 502 ou 503 no Backend
 
 **Causa:** Supabase keys inválidas ou não configuradas
+
 ```bash
 # Solução:
 1. Dashboard Vercel → apps/api → Settings → Environment Variables
@@ -227,6 +235,7 @@ curl https://api-feitico-salon.vercel.app/api/v1/professionals
 ### CORS Errors no Frontend
 
 **Erro:** "Access to XMLHttpRequest... blocked by CORS policy"
+
 ```bash
 # Solução:
 1. Backend apps/api/src/main.ts verificar:
@@ -256,11 +265,13 @@ VITE_API_URL=http://localhost:3333/api/v1 npm run dev
 ## CI/CD Automático via GitHub Actions
 
 Já configurado em `.github/workflows/deploy.yml`:
+
 - Cada push para `main` → build testado
 - Se testes passarem → deploy automático no Vercel
 - Se testes falharem → deploy bloqueado
 
 Ver logs:
+
 ```bash
 # GitHub → Actions → Workflow runs
 # ou: https://github.com/seu-usuario/feitico/actions
@@ -286,6 +297,7 @@ git push origin main
 ## Monitoramento Contínuo
 
 ### Logs em Tempo Real
+
 ```bash
 vercel logs [project-name] --follow
 
@@ -294,11 +306,13 @@ vercel logs [project-name] --follow
 ```
 
 ### Analytics e Performance
+
 - Vercel Dashboard → Analytics tab
 - Veja: FCP, LCP, CLS, Requests/min, Errors
 - Alerte se Error Rate > 1%
 
 ### Supabase Logs
+
 - Supabase Dashboard → Logs
 - Monitore queries lentas
 - Alerte se rate limit atingido

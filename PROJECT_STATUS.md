@@ -57,14 +57,14 @@
 
 ## 📚 Documentações Essenciais
 
-| Arquivo | Propósito | Prioridade |
-|---------|-----------|-----------|
-| [LOCAL_SETUP.md](./LOCAL_SETUP.md) | 🔥 Setup desenvolvimento local | **PRIMEIRA** |
-| [FRONTEND_API_INTEGRATION.md](./FRONTEND_API_INTEGRATION.md) | Conectar UI com Backend | Alta |
-| [BACKEND_SUPABASE_IMPLEMENTATION.md](./BACKEND_SUPABASE_IMPLEMENTATION.md) | Implementar endpoints | Alta |
-| [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md) | Deploy produção | Alta |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Visão geral | Média |
-| [REMOVE_LOVABLE.md](./REMOVE_LOVABLE.md) | Refência (já feito) | Baixa |
+| Arquivo                                                                    | Propósito                      | Prioridade   |
+| -------------------------------------------------------------------------- | ------------------------------ | ------------ |
+| [LOCAL_SETUP.md](./LOCAL_SETUP.md)                                         | 🔥 Setup desenvolvimento local | **PRIMEIRA** |
+| [FRONTEND_API_INTEGRATION.md](./FRONTEND_API_INTEGRATION.md)               | Conectar UI com Backend        | Alta         |
+| [BACKEND_SUPABASE_IMPLEMENTATION.md](./BACKEND_SUPABASE_IMPLEMENTATION.md) | Implementar endpoints          | Alta         |
+| [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)                             | Deploy produção                | Alta         |
+| [ARCHITECTURE.md](./ARCHITECTURE.md)                                       | Visão geral                    | Média        |
+| [REMOVE_LOVABLE.md](./REMOVE_LOVABLE.md)                                   | Refência (já feito)            | Baixa        |
 
 ## 🚀 Próximas Etapas
 
@@ -73,6 +73,7 @@
 **Objetivo:** Frontend chamando dados reais do backend
 
 Tarefas:
+
 - [ ] Implementar useBooking hook com api.getBookings()
 - [ ] Refatorar AdminBookings component
 - [ ] Refatorar AdminProfessionals
@@ -87,6 +88,7 @@ Estimativa: 6-8 horas
 **Objetivo:** Endpoints retornando dados reais do Supabase
 
 Tarefas:
+
 - [ ] BookingsService com queries Supabase
 - [ ] ProfessionalsService
 - [ ] ServicesService
@@ -101,6 +103,7 @@ Estimativa: 8-10 horas
 **Objetivo:** Aplicação rodando em Vercel staging
 
 Tarefas:
+
 - [ ] Criar projects no Vercel
 - [ ] Configurar environment variables
 - [ ] Deploy preview
@@ -113,6 +116,7 @@ Estimativa: 4-6 horas
 **Objetivo:** Deploy produção finalizado
 
 Tarefas:
+
 - [ ] Domain setup
 - [ ] SSL certificate
 - [ ] Database backups
@@ -123,6 +127,7 @@ Estimativa: 4-6 horas
 ## 🔧 Tecnologias
 
 ### Frontend Stack
+
 ```
 React 18.3
 ├─ TypeScript 5
@@ -136,6 +141,7 @@ React 18.3
 ```
 
 ### Backend Stack
+
 ```
 NestJS 10
 ├─ TypeScript 5
@@ -147,6 +153,7 @@ NestJS 10
 ```
 
 ### DevOps Stack
+
 ```
 Turborepo (monorepo)
 ├─ Docker (containerization)
@@ -203,14 +210,14 @@ cat VERCEL_DEPLOYMENT.md
 
 ## 📊 Métricas de Progresso
 
-| Área | Completo | Restante |
-|------|----------|----------|
-| Infraestrutura | 100% ✅ | - |
-| Frontend Base | 100% ✅ | Integração API |
-| Backend Base | 100% ✅ | Supabase queries |
-| DevOps | 100% ✅ | Testing |
-| Documentação | 100% ✅ | - |
-| **TOTAL** | **~80%** | **~20%** |
+| Área           | Completo | Restante         |
+| -------------- | -------- | ---------------- |
+| Infraestrutura | 100% ✅  | -                |
+| Frontend Base  | 100% ✅  | Integração API   |
+| Backend Base   | 100% ✅  | Supabase queries |
+| DevOps         | 100% ✅  | Testing          |
+| Documentação   | 100% ✅  | -                |
+| **TOTAL**      | **~80%** | **~20%**         |
 
 ## 🎓 Aprendizados Compartilhados
 
@@ -290,16 +297,16 @@ Após Phase 4 (Produção pronta):
 
 ## 📝 Histórico
 
-| Data | Etapa | Status |
-|------|-------|--------|
-| Jan 17 | Turborepo + NestJS | ✅ |
-| Jan 18 | Docker + CI/CD | ✅ |
-| Jan 19 | Lovable removal + API Client | ✅ |
-| Jan 20 | Setup Local + Deployment Guides | ✅ |
-| TBD | Frontend Integration | 🟡 |
-| TBD | Backend Supabase Implementation | 🟡 |
-| TBD | Vercel Staging | 🟡 |
-| TBD | Production Launch | ❌ |
+| Data   | Etapa                           | Status |
+| ------ | ------------------------------- | ------ |
+| Jan 17 | Turborepo + NestJS              | ✅     |
+| Jan 18 | Docker + CI/CD                  | ✅     |
+| Jan 19 | Lovable removal + API Client    | ✅     |
+| Jan 20 | Setup Local + Deployment Guides | ✅     |
+| TBD    | Frontend Integration            | 🟡     |
+| TBD    | Backend Supabase Implementation | 🟡     |
+| TBD    | Vercel Staging                  | 🟡     |
+| TBD    | Production Launch               | ❌     |
 
 ---
 

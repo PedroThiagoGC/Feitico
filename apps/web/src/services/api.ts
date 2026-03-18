@@ -13,6 +13,14 @@ export interface ApiResponse<T = any> {
   timestamp: string;
 }
 
+type BookingQuery = {
+  salonId?: string;
+  professionalId?: string;
+  date?: string;
+  status?: string;
+  statuses?: string[];
+};
+
 class ApiClient {
   private baseURL: string;
 
@@ -61,9 +69,45 @@ class ApiClient {
     }
   }
 
+  private buildQuery(params: Record<string, string | number | boolean | string[] | undefined>) {
+    const searchParams = new URLSearchParams();
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') {
+        return;
+      }
+
+      if (Array.isArray(value)) {
+        if (value.length > 0) {
+          searchParams.set(key, value.join(','));
+        }
+        return;
+      }
+
+      searchParams.set(key, String(value));
+    });
+
+    const query = searchParams.toString();
+    return query ? `?${query}` : '';
+  }
+
+  async getSalon(id?: string) {
+    return this.request<any>('GET', id ? `/salons/${id}` : '/salons/current');
+  }
+
+  async createSalon(data: any) {
+    return this.request<any>('POST', '/salons', data);
+  }
+
+  async updateSalon(id: string, data: any) {
+    return this.request<any>('PUT', `/salons/${id}`, data);
+  }
+
   // Bookings
-  async getBookings(status?: string) {
-    const query = status ? `?status=${status}` : '';
+  async getBookings(filters?: string | BookingQuery) {
+    const normalizedFilters =
+      typeof filters === 'string' ? { status: filters } : (filters ?? {});
+    const query = this.buildQuery(normalizedFilters);
     return this.request<any[]>('GET', `/bookings${query}`);
   }
 
@@ -92,8 +136,9 @@ class ApiClient {
   }
 
   // Professionals
-  async getProfessionals() {
-    return this.request<any[]>('GET', '/professionals');
+  async getProfessionals(salonId?: string) {
+    const query = this.buildQuery({ salonId });
+    return this.request<any[]>('GET', `/professionals${query}`);
   }
 
   async getProfessional(id: string) {
@@ -112,9 +157,67 @@ class ApiClient {
     return this.request<any>('DELETE', `/professionals/${id}`);
   }
 
+  async getProfessionalServices(professionalId: string) {
+    return this.request<any[]>('GET', `/professionals/${professionalId}/services`);
+  }
+
+  async getProfessionalAvailability(professionalId: string) {
+    return this.request<any[]>('GET', `/professionals/${professionalId}/availability`);
+  }
+
+  async createProfessionalAvailability(professionalId: string, data: any) {
+    return this.request<any>('POST', `/professionals/${professionalId}/availability`, data);
+  }
+
+  async updateProfessionalAvailability(availabilityId: string, data: any) {
+    return this.request<any>('PUT', `/professionals/availability/${availabilityId}`, data);
+  }
+
+  async deleteProfessionalAvailability(availabilityId: string) {
+    return this.request<any>('DELETE', `/professionals/availability/${availabilityId}`);
+  }
+
+  async getProfessionalExceptions(professionalId: string, month?: string) {
+    const query = this.buildQuery({ month });
+    return this.request<any[]>(
+      'GET',
+      `/professionals/${professionalId}/exceptions${query}`,
+    );
+  }
+
+  async createProfessionalException(professionalId: string, data: any) {
+    return this.request<any>('POST', `/professionals/${professionalId}/exceptions`, data);
+  }
+
+  async updateProfessionalException(exceptionId: string, data: any) {
+    return this.request<any>('PUT', `/professionals/exceptions/${exceptionId}`, data);
+  }
+
+  async deleteProfessionalException(exceptionId: string) {
+    return this.request<any>('DELETE', `/professionals/exceptions/${exceptionId}`);
+  }
+
+  async getProfessionalServiceLinks(serviceIds: string[]) {
+    const query = this.buildQuery({ serviceIds });
+    return this.request<any[]>(`GET`, `/professionals/service-links${query}`);
+  }
+
+  async createProfessionalServiceLink(professionalId: string, data: any) {
+    return this.request<any>('POST', `/professionals/${professionalId}/services`, data);
+  }
+
+  async updateProfessionalServiceLink(linkId: string, data: any) {
+    return this.request<any>('PUT', `/professionals/service-links/${linkId}`, data);
+  }
+
+  async deleteProfessionalServiceLink(linkId: string) {
+    return this.request<any>('DELETE', `/professionals/service-links/${linkId}`);
+  }
+
   // Services
-  async getServices() {
-    return this.request<any[]>('GET', '/services');
+  async getServices(salonId?: string) {
+    const query = this.buildQuery({ salonId });
+    return this.request<any[]>('GET', `/services${query}`);
   }
 
   async getService(id: string) {
@@ -134,8 +237,8 @@ class ApiClient {
   }
 
   // Gallery
-  async getGallery(category?: string) {
-    const query = category ? `?category=${category}` : '';
+  async getGallery(salonId?: string) {
+    const query = this.buildQuery({ salonId });
     return this.request<any[]>('GET', `/gallery${query}`);
   }
 
@@ -156,8 +259,8 @@ class ApiClient {
   }
 
   // Testimonials
-  async getTestimonials(minRating?: number) {
-    const query = minRating ? `?minRating=${minRating}` : '';
+  async getTestimonials(filters?: { salonId?: string; minRating?: number }) {
+    const query = this.buildQuery(filters ?? {});
     return this.request<any[]>('GET', `/testimonials${query}`);
   }
 
@@ -187,6 +290,15 @@ class ApiClient {
 
   async verifyToken(token: string) {
     return this.request<any>('POST', '/auth/verify', { token });
+  }
+
+  async uploadImage(data: {
+    folder?: string;
+    fileName?: string;
+    mimeType?: string;
+    dataBase64: string;
+  }) {
+    return this.request<{ url: string; path: string }>('POST', '/uploads/image', data);
   }
 
   // Health check

@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { type Json } from "@/integrations/supabase/types";
+import { api } from "@/services/api";
 
 type ServiceSnapshot = { name: string };
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +21,7 @@ interface Booking {
   total_occupied_minutes: number;
   total_price: number;
   status: string;
-  services: Json;
+  services: unknown;
   booking_type: string;
 }
 
@@ -62,25 +61,31 @@ export default function AdminCalendar() {
   }, [salonId, currentDate, viewMode]);
 
   async function loadProfessionals() {
-    const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
-    if (salon) {
-      setSalonId(salon.id);
-      const { data } = await supabase.from("professionals").select("id, name").eq("salon_id", salon.id).order("name");
-      setProfessionals(data || []);
-    }
+    const salon = await api.getSalon();
+    if (!salon?.id) return;
+
+    setSalonId(salon.id);
+    const data = await api.getProfessionals(salon.id);
+    setProfessionals((data || []) as Professional[]);
   }
 
   async function loadBookings() {
     const { start, end } = getDateRange();
-    const { data } = await supabase
-      .from("bookings")
-      .select("*")
-      .eq("salon_id", salonId)
-      .gte("booking_date", format(start, "yyyy-MM-dd"))
-      .lte("booking_date", format(end, "yyyy-MM-dd"))
-      .neq("status", "cancelled")
-      .order("booking_time", { ascending: true });
-    setBookings(data || []);
+    const data = await api.getBookings({
+      salonId,
+      date: format(start, "yyyy-MM-dd"),
+      statuses: ["pending", "confirmed", "completed"],
+    });
+
+    const endDate = format(end, "yyyy-MM-dd");
+    const filteredByEnd = (data || []).filter((booking) => booking.booking_date <= endDate);
+    filteredByEnd.sort((a, b) => {
+      const timeA = a.booking_time || "99:99";
+      const timeB = b.booking_time || "99:99";
+      return timeA.localeCompare(timeB);
+    });
+
+    setBookings(filteredByEnd as Booking[]);
   }
 
   function getDateRange() {

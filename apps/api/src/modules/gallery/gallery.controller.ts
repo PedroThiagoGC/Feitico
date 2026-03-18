@@ -8,7 +8,6 @@ import {
   Param,
   Query,
   HttpCode,
-  Version,
 } from '@nestjs/common';
 import { GalleryService } from './gallery.service';
 
@@ -18,8 +17,8 @@ export class GalleryController {
 
   @Get()
   @HttpCode(200)
-  async findAll(@Query('category') category?: string) {
-    return this.galleryService.findAll(category);
+  async findAll(@Query('salonId') salonId?: string) {
+    return this.galleryService.findAll(salonId);
   }
 
   @Get(':id')

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { type Json, type Database } from "@/integrations/supabase/types";
+import { api } from "@/services/api";
+import { type Database } from "@/integrations/supabase/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,50 +83,45 @@ export default function AdminBookings() {
   }, []);
 
   async function loadBaseData() {
-    const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
-    if (!salon) return;
+    const salon = await api.getSalon();
+    if (!salon?.id) return;
 
     setSalonId(salon.id);
 
-    const [{ data: pros }, { data: avail }, { data: svc }] = await Promise.all([
-      supabase
-        .from("professionals")
-        .select("id, name, photo_url, commission_type, commission_value")
-        .eq("salon_id", salon.id)
-        .eq("active", true)
-        .order("name"),
-      supabase.from("professional_availability").select("*").eq("active", true),
-      supabase
-        .from("services")
-        .select("id, name, price, duration, buffer_minutes, active")
-        .eq("salon_id", salon.id)
-        .eq("active", true)
-        .order("sort_order"),
+    const [pros, svc] = await Promise.all([
+      api.getProfessionals(salon.id),
+      api.getServices(salon.id),
     ]);
 
-    setProfessionals((pros || []) as ProfessionalRow[]);
-    setAvailability((avail || []) as AvailabilityRow[]);
+    const professionalList = (pros || []) as ProfessionalRow[];
+    setProfessionals(professionalList);
     setServices((svc || []) as ServiceRow[]);
+
+    const availabilityLists = await Promise.all(
+      professionalList.map((pro) => api.getProfessionalAvailability(pro.id)),
+    );
+    setAvailability(
+      availabilityLists
+        .flat()
+        .filter((row) => row.active) as AvailabilityRow[],
+    );
   }
 
   const loadBookings = useCallback(async () => {
     const dateStr = format(selectedDate, "yyyy-MM-dd");
-    let query = supabase
-      .from("bookings")
-      .select("*")
-      .eq("salon_id", salonId)
-      .eq("booking_date", dateStr)
-      .order("booking_time", { ascending: true });
+    const data = await api.getBookings({
+      salonId,
+      date: dateStr,
+      status: statusFilter !== "all" ? statusFilter : undefined,
+    });
 
-    if (statusFilter !== "all") query = query.eq("status", statusFilter);
+    const sorted = [...(data || [])].sort((a, b) => {
+      const timeA = a.booking_time || "99:99";
+      const timeB = b.booking_time || "99:99";
+      return timeA.localeCompare(timeB);
+    });
 
-    const { data, error } = await query;
-    if (error) {
-      appToast.error(error.message);
-      return;
-    }
-
-    setBookings((data as BookingRow[]) || []);
+    setBookings((sorted as BookingRow[]) || []);
   }, [salonId, selectedDate, statusFilter]);
 
   useEffect(() => {
@@ -135,11 +130,7 @@ export default function AdminBookings() {
   }, [salonId, loadBookings]);
 
   async function updateStatus(id: string, status: BookingFormState["status"]) {
-    const { error } = await supabase.from("bookings").update({ status }).eq("id", id);
-    if (error) {
-      appToast.error(error.message);
-      return;
-    }
+    await api.updateBookingStatus(id, status);
 
     const statusLabel =
       status === "completed"
@@ -157,11 +148,7 @@ export default function AdminBookings() {
   async function deleteBooking(id: string) {
     if (!confirm("Excluir agendamento permanentemente?")) return;
 
-    const { error } = await supabase.from("bookings").delete().eq("id", id);
-    if (error) {
-      appToast.error(error.message);
-      return;
-    }
+    await api.deleteBooking(id);
 
     appToast.success("Agendamento excluído.");
     void loadBookings();
@@ -185,7 +172,7 @@ export default function AdminBookings() {
 
   function openEditForm(booking: BookingRow) {
     const bookedServices = Array.isArray(booking.services)
-      ? ((booking.services as Json[]) as BookingServiceSnapshot[])
+      ? (booking.services as BookingServiceSnapshot[])
       : [];
 
     setForm({
@@ -257,22 +244,15 @@ export default function AdminBookings() {
       return false;
     }
 
-    let query = supabase
-      .from("bookings")
-      .select("id, booking_time, total_occupied_minutes, total_duration")
-      .eq("professional_id", form.professional_id)
-      .eq("booking_date", form.booking_date)
-      .in("status", ["pending", "confirmed"]);
+    const data = await api.getBookings({
+      salonId,
+      professionalId: form.professional_id,
+      date: form.booking_date,
+      statuses: ["pending", "confirmed"],
+    });
 
-    if (currentId) query = query.neq("id", currentId);
-
-    const { data, error } = await query;
-    if (error) {
-      appToast.error(error.message);
-      return true;
-    }
-
-    return hasTimeConflict(form.booking_time, totals.totalOccupiedMinutes, data || []);
+    const filtered = (data || []).filter((booking) => booking.id !== currentId);
+    return hasTimeConflict(form.booking_time, totals.totalOccupiedMinutes, filtered || []);
   }
 
   async function handleSubmitForm(e: React.FormEvent) {
@@ -346,20 +326,10 @@ export default function AdminBookings() {
     };
 
     if (form.id) {
-      const { error } = await supabase.from("bookings").update(payload).eq("id", form.id);
-      if (error) {
-        appToast.error(error.message);
-        setSaving(false);
-        return;
-      }
+      await api.updateBooking(form.id, payload);
       appToast.success("Agendamento atualizado.");
     } else {
-      const { error } = await supabase.from("bookings").insert(payload);
-      if (error) {
-        appToast.error(error.message);
-        setSaving(false);
-        return;
-      }
+      await api.createBooking(payload);
       appToast.success("Agendamento criado.");
     }
 
@@ -621,7 +591,7 @@ export default function AdminBookings() {
                   <div className="divide-y divide-border">
                     {proBookings.map((b) => {
                       const bServices = Array.isArray(b.services)
-                        ? ((b.services as Json[]) as BookingServiceSnapshot[])
+                        ? (b.services as BookingServiceSnapshot[])
                         : [];
 
                       return (
@@ -767,7 +737,7 @@ export default function AdminBookings() {
             <div className="divide-y divide-border">
               {(bookingsByPro.get("unassigned") || []).map((b) => {
                 const bServices = Array.isArray(b.services)
-                  ? ((b.services as Json[]) as BookingServiceSnapshot[])
+                  ? (b.services as BookingServiceSnapshot[])
                   : [];
 
                 return (

@@ -7,18 +7,31 @@ export class TestimonialsService {
 
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  async findAll(minRating?: number) {
+  async findAll(filters?: { salonId?: string; minRating?: number }) {
     try {
       let query = this.supabaseService
         .getClient()
         .from('testimonials')
-        .select('*');
-      if (minRating) {
-        query = query.gte('rating', minRating);
+        .select('*')
+        .eq('active', true);
+
+      if (filters?.salonId) {
+        query = query.eq('salon_id', filters.salonId);
       }
+
+      if (filters?.minRating) {
+        query = query.gte('rating', filters.minRating);
+      }
+
       const { data, error } = await query.order('created_at', {
         ascending: false,
       });
+
+      if (error) {
+        this.logger.error('Error in findAll', error);
+        return [];
+      }
+
       return data || [];
     } catch (error) {
       this.logger.error('Error in findAll', error);
@@ -31,17 +44,11 @@ export class TestimonialsService {
   }
 
   async create(createData: any) {
-    return this.supabaseService.create('testimonials', {
-      ...createData,
-      created_at: new Date().toISOString(),
-    });
+    return this.supabaseService.create('testimonials', createData);
   }
 
   async update(id: string, updateData: any) {
-    return this.supabaseService.update('testimonials', id, {
-      ...updateData,
-      updated_at: new Date().toISOString(),
-    });
+    return this.supabaseService.update('testimonials', id, updateData);
   }
 
   async delete(id: string) {

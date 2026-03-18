@@ -1,7 +1,5 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { type Json } from "@/integrations/supabase/types";
 import {
   fetchBookings,
   fetchAvailableSlots,
@@ -47,25 +45,13 @@ export function useRealtimeBookings(salonId: string | undefined) {
   useEffect(() => {
     if (!salonId) return;
 
-    const channel = supabase
-      .channel(`bookings-realtime-${salonId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "bookings",
-          filter: `salon_id=eq.${salonId}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["bookings"] });
-          queryClient.invalidateQueries({ queryKey: ["available-slots"] });
-        }
-      )
-      .subscribe();
+    const intervalId = window.setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["available-slots"] });
+    }, 30000);
 
     return () => {
-      supabase.removeChannel(channel);
+      window.clearInterval(intervalId);
     };
   }, [salonId, queryClient]);
 }

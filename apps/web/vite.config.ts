@@ -1,7 +1,6 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(({ mode }: { mode: string }) => {
@@ -14,14 +13,13 @@ export default defineConfig(({ mode }: { mode: string }) => {
   return {
     server: {
       host: "::",
-      port: 8080,
+      port: 5173,
       hmr: {
         overlay: false,
       },
     },
     plugins: [
       react(),
-      mode === "development" && componentTagger(),
       VitePWA({
         injectRegister: "auto",
         registerType: "autoUpdate",

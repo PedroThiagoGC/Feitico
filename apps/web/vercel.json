@@ -2,7 +2,7 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "envPrefix": "VITE_"
+  "envPrefix": "VITE_",
   "routes": [
     {
       "src": "/assets/(.*)",

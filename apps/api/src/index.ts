@@ -1,12 +1,8 @@
-import "dotenv/config";
-import app from "./app.js";
+import 'dotenv/config';
+import { createApp } from './app';
 
-const port = Number(process.env.PORT || 3333);
-
-if (process.env.VERCEL !== "1") {
-  app.listen(port, () => {
-    console.log(`[api] running on http://localhost:${port}`);
-  });
+export default async function handler(req: any, res: any) {
+  const app = await createApp();
+  const instance = app.getHttpAdapter().getInstance();
+  return instance(req, res);
 }
-
-export default app;

@@ -164,6 +164,7 @@ open http://localhost:5173
 ### Estrutura de Desenvolvimento
 
 **Frontend** (`apps/web/src/`)
+
 ```
 - components/     # React components
   - admin/        # Painel administrativo
@@ -176,6 +177,7 @@ open http://localhost:5173
 ```
 
 **Backend** (`apps/api/src/`)
+
 ```
 - modules/        # Feature modules
   - bookings/
@@ -196,6 +198,7 @@ open http://localhost:5173
    - Criar controller com rota
 
 2. **Testar com curl**
+
    ```bash
    curl http://localhost:3333/api/v1/[resource]
    ```
@@ -205,6 +208,7 @@ open http://localhost:5173
    - Usar API client para chamar backend
 
 4. **Usar em componente**
+
    ```tsx
    const { data, loading } = use[Feature]();
    ```
@@ -292,14 +296,17 @@ npx tsc --noEmit
 ## 💬 Suporte
 
 **Erro no backend?**
+
 - Verificar logs em terminal onde rodando `npm run dev`
 - Consultar [BACKEND_SUPABASE_IMPLEMENTATION.md](./BACKEND_SUPABASE_IMPLEMENTATION.md#debugging)
 
 **Erro no frontend?**
+
 - Abrir DevTools (F12) → Console
 - Verificar Network tab para erros HTTP
 - Consultar [FRONTEND_API_INTEGRATION.md](./FRONTEND_API_INTEGRATION.md#error-handling-centralizado)
 
 **Perguntas sobre deploy?**
+
 - Ler [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)
 - Ou criar issue no GitHub

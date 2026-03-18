@@ -8,7 +8,6 @@ import {
   Param,
   Query,
   HttpCode,
-  Version,
 } from '@nestjs/common';
 import { BookingsService } from './bookings.service';
 import { BookingStatus, CreateBookingSchema } from '../../common/types';
@@ -20,8 +19,22 @@ export class BookingsController {
 
   @Get()
   @HttpCode(200)
-  async findAll(@Query('status') status?: BookingStatus) {
-    return this.bookingsService.findAll(status);
+  async findAll(
+    @Query('status') status?: BookingStatus,
+    @Query('statuses') statuses?: string,
+    @Query('salonId') salonId?: string,
+    @Query('professionalId') professionalId?: string,
+    @Query('date') date?: string,
+  ) {
+    return this.bookingsService.findAll({
+      status,
+      salonId,
+      professionalId,
+      date,
+      statuses: statuses
+        ? (statuses.split(',').filter(Boolean) as BookingStatus[])
+        : undefined,
+    });
   }
 
   @Get('stats')

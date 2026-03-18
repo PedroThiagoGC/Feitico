@@ -21,14 +21,28 @@ export enum UserRole {
   CLIENT = 'client',
 }
 
+export const BookingServiceItemSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1),
+  price: z.coerce.number().nonnegative(),
+  duration: z.coerce.number().int().nonnegative(),
+  buffer: z.coerce.number().int().nonnegative().default(0),
+});
+
 // Zod Schemas for validation
 export const CreateBookingSchema = z.object({
-  serviceId: z.string().uuid(),
-  professionalId: z.string().uuid(),
-  clientName: z.string().min(3),
-  clientEmail: z.string().email(),
-  clientPhone: z.string(),
-  scheduledAt: z.coerce.date(),
+  salon_id: z.string().uuid(),
+  professional_id: z.string().uuid(),
+  customer_name: z.string().min(3),
+  customer_phone: z.string().min(8),
+  services: z.array(BookingServiceItemSchema).min(1),
+  total_price: z.coerce.number().nonnegative(),
+  total_duration: z.coerce.number().int().positive(),
+  total_buffer_minutes: z.coerce.number().int().nonnegative().default(0),
+  total_occupied_minutes: z.coerce.number().int().positive(),
+  booking_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  booking_time: z.string().nullable().optional(),
+  booking_type: z.enum(['scheduled', 'walk_in']).default('scheduled'),
   notes: z.string().optional(),
 });
 

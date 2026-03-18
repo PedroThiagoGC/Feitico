@@ -7,6 +7,8 @@ import { ServicesModule } from './modules/services/services.module';
 import { GalleryModule } from './modules/gallery/gallery.module';
 import { TestimonialsModule } from './modules/testimonials/testimonials.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { SalonsModule } from './modules/salons/salons.module';
+import { UploadsModule } from './modules/uploads/uploads.module';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { AuthModule } from './modules/auth/auth.module';
     GalleryModule,
     TestimonialsModule,
     AuthModule,
+    SalonsModule,
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

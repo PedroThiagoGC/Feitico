@@ -7,13 +7,19 @@ export class ServicesService {
 
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  async findAll() {
+  async findAll(salonId?: string) {
     try {
-      const { data, error } = await this.supabaseService
+      let query = this.supabaseService
         .getClient()
         .from('services')
         .select('*')
-        .order('name');
+        .eq('active', true);
+
+      if (salonId) {
+        query = query.eq('salon_id', salonId);
+      }
+
+      const { data, error } = await query.order('sort_order');
       return data || [];
     } catch (error) {
       this.logger.error('Error in findAll', error);
@@ -30,13 +36,10 @@ export class ServicesService {
   }
 
   async update(id: string, updateData: any) {
-    return this.supabaseService.update('services', id, {
-      ...updateData,
-      updated_at: new Date().toISOString(),
-    });
+    return this.supabaseService.update('services', id, updateData);
   }
 
   async delete(id: string) {
-    return this.supabaseService.delete('services', id);
+    return this.supabaseService.update('services', id, { active: false });
   }
 }
