@@ -98,6 +98,7 @@ export default function Admin() {
           <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
             <TabsList className="bg-secondary border border-border inline-flex w-auto min-w-full md:min-w-0 h-auto gap-1 p-1">
               <TabsTrigger value="dashboard" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Dashboard</TabsTrigger>
+              <TabsTrigger value="calendar" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Agenda</TabsTrigger>
               <TabsTrigger value="salon" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Salão</TabsTrigger>
               <TabsTrigger value="professionals" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Profissionais</TabsTrigger>
               <TabsTrigger value="services" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Serviços</TabsTrigger>
@@ -110,6 +111,7 @@ export default function Admin() {
           </div>
 
           <TabsContent value="dashboard"><DashboardOverview /></TabsContent>
+          <TabsContent value="calendar"><AdminCalendar /></TabsContent>
           <TabsContent value="salon"><AdminSalon /></TabsContent>
           <TabsContent value="professionals"><AdminProfessionals /></TabsContent>
           <TabsContent value="services"><AdminServices /></TabsContent>
