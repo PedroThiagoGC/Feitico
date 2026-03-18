@@ -30,3 +30,11 @@ dist-ssr
 
 # Turborepo
 .turbo
+
+# Vercel
+.vercel
+
+# Docker build cache
+.buildx-cache
+.buildx-cache-new
+.buildx-cache-old
