@@ -85,14 +85,15 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   }, [services, selectedProfessionalId, proServices]);
 
   // When professional is selected, filter selectedServices to only valid ones
+  const lastFilteredProId = useState<string>("");
   useEffect(() => {
-    if (selectedProfessionalId && proServices) {
+    if (selectedProfessionalId && proServices && selectedProfessionalId !== lastFilteredProId[0]) {
+      lastFilteredProId[1](selectedProfessionalId);
       const linkedIds = new Set(proServices.map((ps) => ps.service_id));
-      setSelectedServices((prev) => {
-        const filtered = prev.filter((s) => linkedIds.has(s.id));
-        // If preselected services are valid, keep them
-        return filtered;
-      });
+      const filtered = selectedServices.filter((s) => linkedIds.has(s.id));
+      if (filtered.length !== selectedServices.length) {
+        setSelectedServices(filtered);
+      }
     }
   }, [selectedProfessionalId, proServices]);
 
