@@ -128,9 +128,18 @@ export default function AdminServices() {
               <DialogTitle className="font-display">{form.id ? "Editar" : "Novo"} Serviço</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSave} className="space-y-4">
-              <Input placeholder="Nome" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="bg-secondary border-border font-body" required />
-              <Input placeholder="Descrição" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="bg-secondary border-border font-body" />
-              <Input placeholder="Preço (R$)" type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="bg-secondary border-border font-body" />
+              <div>
+                <label className="font-body text-sm font-medium mb-1 block">Nome do serviço</label>
+                <Input placeholder="Ex: Corte masculino" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="bg-secondary border-border font-body" required />
+              </div>
+              <div>
+                <label className="font-body text-sm font-medium mb-1 block">Descrição</label>
+                <Input placeholder="Descrição opcional do serviço" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="bg-secondary border-border font-body" />
+              </div>
+              <div>
+                <label className="font-body text-sm font-medium mb-1 block">Preço (R$)</label>
+                <Input placeholder="0.00" type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="bg-secondary border-border font-body" />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-body text-sm">Duração (min)</label>
