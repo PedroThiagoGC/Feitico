@@ -46,27 +46,18 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   const { data: proServices } = useProfessionalServices(selectedProfessionalId || undefined);
   const { data: proAvailability } = useProfessionalAvailability(selectedProfessionalId || undefined);
 
-  // When preselectedServices changes (user clicked "Agendar" on a service card), set it
+  // When preselectedServices changes (user clicked "Agendar" on a service card),
+  // find which professional offers it and pre-select that professional
   useEffect(() => {
     if (preselectedServices && preselectedServices.length > 0) {
-      setSelectedServices(preselectedServices);
-      // Reset downstream selections
+      // We'll clear services and let user pick after choosing professional
+      setSelectedServices([]);
       setSelectedProfessionalId("");
       setSelectedDate(undefined);
       setSelectedTime("");
       setShowConfirmation(false);
     }
   }, [preselectedServices]);
-
-  // Filter professionals to only those who offer ALL selected services
-  const availableProfessionals = useMemo(() => {
-    if (!professionals || selectedServices.length === 0) return professionals || [];
-    // We need to check each professional's linked services
-    // Since we can't query all at once client-side without individual hooks,
-    // we show all professionals and filter services after selection.
-    // But we can still show all and let the service validation happen after.
-    return professionals;
-  }, [professionals, selectedServices]);
 
   // Disabled days based on professional availability
   const disabledDays = useMemo(() => {
@@ -81,16 +72,17 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   // Services available for selected professional
   const availableServices = useMemo(() => {
     if (!services) return [];
-    if (!selectedProfessionalId || !proServices) return services;
+    if (!selectedProfessionalId || !proServices) return [];
     const linkedIds = new Set(proServices.map((ps) => ps.service_id));
     return services.filter((s) => linkedIds.has(s.id));
   }, [services, selectedProfessionalId, proServices]);
 
-  const incompatibleSelectedServices = useMemo(() => {
-    if (!selectedProfessionalId || !proServices || selectedServices.length === 0) return [];
+  // When professional changes, remove services that are not available for the new professional
+  useEffect(() => {
+    if (!selectedProfessionalId || !proServices) return;
     const linkedIds = new Set(proServices.map((ps) => ps.service_id));
-    return selectedServices.filter((s) => !linkedIds.has(s.id));
-  }, [selectedProfessionalId, proServices, selectedServices]);
+    setSelectedServices((prev) => prev.filter((s) => linkedIds.has(s.id)));
+  }, [selectedProfessionalId, proServices]);
 
   function getEffectiveService(service: Service) {
     const override = proServices?.find((ps) => ps.service_id === service.id);
@@ -148,17 +140,15 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     if (!customerPhone || customerPhone.trim().length < 10) return false;
     if (selectedServices.length === 0) return false;
     if (!selectedProfessionalId) return false;
-    if (incompatibleSelectedServices.length > 0) return false;
     if (!selectedDate) return false;
     if (!selectedTime) return false;
     return true;
-  }, [customerName, customerPhone, selectedServices, selectedProfessionalId, incompatibleSelectedServices, selectedDate, selectedTime]);
+  }, [customerName, customerPhone, selectedServices, selectedProfessionalId, selectedDate, selectedTime]);
 
   const handleShowConfirmation = () => {
     if (!isReadyToConfirm) {
-      if (selectedServices.length === 0) toast.error("Selecione pelo menos um serviço");
-      else if (!selectedProfessionalId) toast.error("Selecione um profissional");
-      else if (incompatibleSelectedServices.length > 0) toast.error("Este profissional não realiza todos os serviços selecionados");
+      if (!selectedProfessionalId) toast.error("Selecione um profissional");
+      else if (selectedServices.length === 0) toast.error("Selecione pelo menos um serviço");
       else if (!selectedDate) toast.error("Selecione uma data");
       else if (!selectedTime) toast.error("Selecione um horário");
       else form.handleSubmit(() => {})();
@@ -229,8 +219,8 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   };
 
   // Step indicators
-  const currentStep = !selectedServices.length ? 1
-    : !selectedProfessionalId ? 2
+  const currentStep = !selectedProfessionalId ? 1
+    : !selectedServices.length ? 2
     : !selectedDate ? 3
     : !selectedTime ? 3
     : 5;
@@ -245,12 +235,12 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
           <h2 className="font-display text-2xl sm:text-3xl md:text-5xl font-bold mb-4">
             Faça seu <span className="text-gradient-gold">Agendamento</span>
           </h2>
-          <p className="font-body text-muted-foreground text-sm md:text-base">Escolha serviço, profissional, data e horário</p>
+          <p className="font-body text-muted-foreground text-sm md:text-base">Escolha o profissional, serviços, data e horário</p>
         </div>
 
         {/* Step Progress */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          {["Serviço", "Profissional", "Data", "Horário", "Confirmar"].map((label, i) => (
+          {["Profissional", "Serviço", "Data", "Horário", "Confirmar"].map((label, i) => (
             <div key={label} className="flex items-center gap-2">
               <div className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold transition-all ${
                 currentStep > i + 1 ? "bg-primary text-primary-foreground" :
@@ -267,108 +257,106 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
         <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 md:p-8 shadow-gold">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 md:space-y-8">
-              {/* Step 1: Services */}
+              {/* Step 1: Professional */}
               <div>
                 <h4 className="font-display text-base md:text-lg font-semibold mb-3 md:mb-4 text-foreground flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">1</span>
-                  Selecione os serviços
+                  Selecione o profissional
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {(services || []).map((service) => {
-                    const isSelected = selectedServices.some((s) => s.id === service.id);
-                    return (
-                      <div
-                        key={service.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => toggleService(service)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            toggleService(service);
-                          }
-                        }}
-                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left font-body text-sm cursor-pointer ${
-                          isSelected
-                            ? "border-primary bg-primary/10 text-foreground"
-                            : "border-border bg-secondary hover:border-primary/30 text-muted-foreground"
-                        }`}
-                      >
-                        <div className={`shrink-0 w-4 h-4 rounded-sm border flex items-center justify-center ${
-                          isSelected
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-background text-transparent"
-                        }`}>
-                          <Check className="w-3 h-3" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="block font-medium truncate">{service.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            R$ {Number(service.price).toFixed(2)} · {service.duration}min
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {(professionals || []).map((pro) => (
+                    <button
+                      type="button"
+                      key={pro.id}
+                      onClick={() => {
+                        setSelectedProfessionalId(pro.id);
+                        setSelectedDate(undefined);
+                        setSelectedTime("");
+                        setShowConfirmation(false);
+                      }}
+                      className={`flex flex-col items-center gap-2 p-3 md:p-4 rounded-lg border transition-all font-body text-sm ${
+                        selectedProfessionalId === pro.id
+                          ? "border-primary bg-primary/10 text-foreground"
+                          : "border-border bg-secondary hover:border-primary/30 text-muted-foreground"
+                      }`}
+                    >
+                      {pro.photo_url ? (
+                        <img src={pro.photo_url} alt={pro.name} className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-muted flex items-center justify-center"><User className="w-5 h-5 md:w-6 md:h-6" /></div>
+                      )}
+                      <span className="font-medium text-xs md:text-sm text-center">{pro.name}</span>
+                    </button>
+                  ))}
                 </div>
-                {selectedServices.length > 0 && (
-                  <div className="mt-3 p-3 rounded-lg bg-primary/5 border border-primary/20 font-body text-sm">
-                    <span className="text-muted-foreground">Selecionados: </span>
-                    <span className="text-foreground font-medium">{selectedServices.map(s => s.name).join(", ")}</span>
-                    <span className="text-muted-foreground"> · Total: </span>
-                    <span className="text-primary font-bold">R$ {totalPrice.toFixed(2)}</span>
-                    <span className="text-muted-foreground"> · {totalDuration}min</span>
-                  </div>
-                )}
               </div>
 
-              {/* Step 2: Professional (only show after service selection) */}
-              {selectedServices.length > 0 && (
+              {/* Step 2: Services (only show after professional selection — filtered to enabled services) */}
+              {selectedProfessionalId && proServices && (
                 <div>
                   <h4 className="font-display text-base md:text-lg font-semibold mb-3 md:mb-4 text-foreground flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">2</span>
-                    Selecione o profissional
+                    Selecione os serviços
                   </h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {availableProfessionals.map((pro) => (
-                      <button
-                        type="button"
-                        key={pro.id}
-                        onClick={() => {
-                          setSelectedProfessionalId(pro.id);
-                          setSelectedDate(undefined);
-                          setSelectedTime("");
-                          setShowConfirmation(false);
-                        }}
-                        className={`flex flex-col items-center gap-2 p-3 md:p-4 rounded-lg border transition-all font-body text-sm ${
-                          selectedProfessionalId === pro.id
-                            ? "border-primary bg-primary/10 text-foreground"
-                            : "border-border bg-secondary hover:border-primary/30 text-muted-foreground"
-                        }`}
-                      >
-                        {pro.photo_url ? (
-                          <img src={pro.photo_url} alt={pro.name} className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover" />
-                        ) : (
-                          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-muted flex items-center justify-center"><User className="w-5 h-5 md:w-6 md:h-6" /></div>
-                        )}
-                        <span className="font-medium text-xs md:text-sm text-center">{pro.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                  {selectedProfessionalId && proServices && (
-                    <div className="mt-3 font-body text-xs text-muted-foreground">
-                      {incompatibleSelectedServices.length > 0 && (
-                        <p className="text-destructive">
-                          ⚠ Este profissional não realiza: {incompatibleSelectedServices.map((s) => s.name).join(", ")}
-                        </p>
-                      )}
+                  {availableServices.length === 0 ? (
+                    <p className="text-muted-foreground font-body text-sm p-4 bg-secondary rounded-lg">
+                      Este profissional ainda não tem serviços habilitados.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {availableServices.map((service) => {
+                        const eff = getEffectiveService(service);
+                        const isSelected = selectedServices.some((s) => s.id === service.id);
+                        return (
+                          <div
+                            key={service.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => toggleService(service)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                toggleService(service);
+                              }
+                            }}
+                            className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left font-body text-sm cursor-pointer ${
+                              isSelected
+                                ? "border-primary bg-primary/10 text-foreground"
+                                : "border-border bg-secondary hover:border-primary/30 text-muted-foreground"
+                            }`}
+                          >
+                            <div className={`shrink-0 w-4 h-4 rounded-sm border flex items-center justify-center ${
+                              isSelected
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border bg-background text-transparent"
+                            }`}>
+                              <Check className="w-3 h-3" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="block font-medium truncate">{service.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                R$ {eff.price.toFixed(2)} · {eff.duration}min
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {selectedServices.length > 0 && (
+                    <div className="mt-3 p-3 rounded-lg bg-primary/5 border border-primary/20 font-body text-sm">
+                      <span className="text-muted-foreground">Selecionados: </span>
+                      <span className="text-foreground font-medium">{effectiveSelected.map(s => s.name).join(", ")}</span>
+                      <span className="text-muted-foreground"> · Total: </span>
+                      <span className="text-primary font-bold">R$ {totalPrice.toFixed(2)}</span>
+                      <span className="text-muted-foreground"> · {totalDuration}min</span>
                     </div>
                   )}
                 </div>
               )}
 
               {/* Step 3: Date & Time combined */}
-              {selectedProfessionalId && selectedServices.length > 0 && incompatibleSelectedServices.length === 0 && (
+              {selectedProfessionalId && selectedServices.length > 0 && (
                 <div>
                   <h4 className="font-display text-base md:text-lg font-semibold mb-3 md:mb-4 text-foreground flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">3</span>

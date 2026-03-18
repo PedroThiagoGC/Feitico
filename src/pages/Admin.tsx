@@ -13,7 +13,6 @@ import AdminGallery from "@/components/admin/AdminGallery";
 import AdminTestimonials from "@/components/admin/AdminTestimonials";
 import AdminAvailability from "@/components/admin/AdminAvailability";
 import AdminProfessionals from "@/components/admin/AdminProfessionals";
-import AdminFinancials from "@/components/admin/AdminFinancials";
 import AdminCalendar from "@/components/admin/AdminCalendar";
 import { LogOut, LayoutDashboard, Menu, X } from "lucide-react";
 
@@ -104,7 +103,6 @@ export default function Admin() {
               <TabsTrigger value="professionals" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Profissionais</TabsTrigger>
               <TabsTrigger value="services" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Serviços</TabsTrigger>
               <TabsTrigger value="bookings" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Agendamentos</TabsTrigger>
-              <TabsTrigger value="financials" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Financeiro</TabsTrigger>
               <TabsTrigger value="availability" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Disponibilidade</TabsTrigger>
               <TabsTrigger value="gallery" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Galeria</TabsTrigger>
               <TabsTrigger value="testimonials" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Depoimentos</TabsTrigger>
@@ -117,7 +115,6 @@ export default function Admin() {
           <TabsContent value="professionals"><AdminProfessionals /></TabsContent>
           <TabsContent value="services"><AdminServices /></TabsContent>
           <TabsContent value="bookings"><AdminBookings /></TabsContent>
-          <TabsContent value="financials"><AdminFinancials /></TabsContent>
           <TabsContent value="availability"><AdminAvailability /></TabsContent>
           <TabsContent value="gallery"><AdminGallery /></TabsContent>
           <TabsContent value="testimonials"><AdminTestimonials /></TabsContent>
@@ -127,8 +124,26 @@ export default function Admin() {
   );
 }
 
+interface FinancialPro {
+  id: string;
+  name: string;
+  revenue: number;
+  commission: number;
+  profit: number;
+  count: number;
+  ticket: number;
+  occupied: number;
+}
+
 function DashboardOverview() {
   const [stats, setStats] = useState({ bookings: 0, services: 0, pending: 0, professionals: 0 });
+  const [dateFrom, setDateFrom] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+  });
+  const [dateTo, setDateTo] = useState(() => new Date().toISOString().split("T")[0]);
+  const [financial, setFinancial] = useState({ revenue: 0, commission: 0, profit: 0, count: 0, pendingRevenue: 0, confirmedCount: 0 });
+  const [proStats, setProStats] = useState<FinancialPro[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -148,23 +163,161 @@ function DashboardOverview() {
     load();
   }, []);
 
-  const cards = [
-    { label: "Total Agendamentos", value: stats.bookings, color: "text-primary" },
-    { label: "Profissionais", value: stats.professionals, color: "text-foreground" },
-    { label: "Serviços Ativos", value: stats.services, color: "text-foreground" },
-    { label: "Pendentes", value: stats.pending, color: "text-destructive" },
+  useEffect(() => {
+    async function loadFinancial() {
+      const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
+      if (!salon) return;
+      const { data: pros } = await supabase.from("professionals").select("id, name").eq("salon_id", salon.id);
+      const { data: bks } = await supabase
+        .from("bookings")
+        .select("professional_id, total_price, commission_amount, profit_amount, total_occupied_minutes, total_duration, status")
+        .eq("salon_id", salon.id)
+        .in("status", ["confirmed", "completed"])
+        .gte("booking_date", dateFrom)
+        .lte("booking_date", dateTo);
+
+      const allBookings = bks || [];
+      const completedBookings = allBookings.filter((b) => b.status === "completed");
+      const confirmedBookings = allBookings.filter((b) => b.status === "confirmed");
+
+      const totalRevenue = completedBookings.reduce((a, b) => a + Number(b.total_price), 0);
+      const totalCommission = completedBookings.reduce((a, b) => a + Number(b.commission_amount || 0), 0);
+      const totalProfit = completedBookings.reduce((a, b) => a + Number(b.profit_amount || 0), 0);
+      const pendingRevenue = confirmedBookings.reduce((a, b) => a + Number(b.total_price), 0);
+      setFinancial({
+        revenue: totalRevenue,
+        commission: totalCommission,
+        profit: totalProfit,
+        count: completedBookings.length,
+        pendingRevenue,
+        confirmedCount: confirmedBookings.length,
+      });
+
+      const professionalStats = (pros || []).map((p) => {
+        const pBookings = allBookings.filter((b) => b.professional_id === p.id);
+        const revenue = pBookings.reduce((a, b) => a + Number(b.total_price), 0);
+        const commission = pBookings.reduce((a, b) => a + Number(b.commission_amount || 0), 0);
+        const profit = pBookings.reduce((a, b) => a + Number(b.profit_amount || 0), 0);
+        const count = pBookings.length;
+        const occupied = pBookings.reduce((a, b) => a + (b.total_occupied_minutes || b.total_duration || 0), 0);
+        return { id: p.id, name: p.name, revenue, commission, profit, count, occupied, ticket: count > 0 ? revenue / count : 0 };
+      }).sort((a, b) => b.revenue - a.revenue);
+      setProStats(professionalStats);
+    }
+    loadFinancial();
+  }, [dateFrom, dateTo]);
+
+  const summaryCards = [
+    { label: "Agendamentos", value: String(stats.bookings), color: "text-primary" },
+    { label: "Profissionais", value: String(stats.professionals), color: "text-foreground" },
+    { label: "Serviços", value: String(stats.services), color: "text-foreground" },
+    { label: "Pendentes", value: String(stats.pending), color: "text-destructive" },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
-      {cards.map((c) => (
-        <Card key={c.label} className="bg-card border-border">
-          <CardContent className="p-4 md:p-6 text-center">
-            <p className="font-body text-xs md:text-sm text-muted-foreground mb-1 md:mb-2">{c.label}</p>
-            <p className={`font-display text-2xl md:text-4xl font-bold ${c.color}`}>{c.value}</p>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="space-y-6">
+      {/* General stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {summaryCards.map((c) => (
+          <Card key={c.label} className="bg-card border-border">
+            <CardContent className="p-3 md:p-4 text-center">
+              <p className="font-body text-xs text-muted-foreground mb-1">{c.label}</p>
+              <p className={`font-display text-xl md:text-2xl font-bold ${c.color}`}>{c.value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Financial section */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <CardTitle className="font-display text-lg">Financeiro</CardTitle>
+            <div className="flex gap-2">
+              <div>
+                <label className="font-body text-xs text-muted-foreground">De</label>
+                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="bg-secondary border-border font-body h-8 text-xs" />
+              </div>
+              <div>
+                <label className="font-body text-xs text-muted-foreground">Até</label>
+                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="bg-secondary border-border font-body h-8 text-xs" />
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {[
+              { label: "Faturamento", value: `R$ ${financial.revenue.toFixed(2)}`, color: "text-primary" },
+              { label: "Comissões", value: `R$ ${financial.commission.toFixed(2)}`, color: "text-yellow-400" },
+              { label: "Lucro Líquido", value: `R$ ${financial.profit.toFixed(2)}`, color: "text-green-400" },
+              { label: "Concluídos", value: String(financial.count), color: "text-foreground" },
+              { label: "A Receber (confirmados)", value: `R$ ${financial.pendingRevenue.toFixed(2)}`, color: "text-blue-400" },
+            ].map((c) => (
+              <div key={c.label} className="p-3 rounded-lg bg-secondary border border-border text-center">
+                <p className="font-body text-xs text-muted-foreground mb-1">{c.label}</p>
+                <p className={`font-display text-base md:text-lg font-bold ${c.color}`}>{c.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Per-professional */}
+          {proStats.length > 0 && (
+            <>
+              <h4 className="font-display text-sm font-semibold text-foreground mt-2">Por Profissional</h4>
+              {/* Mobile cards */}
+              <div className="md:hidden space-y-2">
+                {proStats.map((p) => (
+                  <div key={p.id} className="p-3 rounded-lg bg-secondary border border-border space-y-1">
+                    <p className="font-body font-semibold text-foreground text-sm">{p.name}</p>
+                    <div className="grid grid-cols-2 gap-1 font-body text-xs">
+                      <span className="text-muted-foreground">Atend.:</span>
+                      <span className="text-foreground text-right">{p.count}</span>
+                      <span className="text-muted-foreground">Faturamento:</span>
+                      <span className="text-primary text-right">R$ {p.revenue.toFixed(2)}</span>
+                      <span className="text-muted-foreground">Comissão:</span>
+                      <span className="text-yellow-400 text-right">R$ {p.commission.toFixed(2)}</span>
+                      <span className="text-muted-foreground">Lucro:</span>
+                      <span className="text-green-400 text-right">R$ {p.profit.toFixed(2)}</span>
+                      <span className="text-muted-foreground">Ticket:</span>
+                      <span className="text-foreground text-right">R$ {p.ticket.toFixed(2)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Desktop table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full font-body text-sm">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b border-border">
+                      <th className="pb-2">Profissional</th>
+                      <th className="pb-2 text-right">Atend.</th>
+                      <th className="pb-2 text-right">Faturamento</th>
+                      <th className="pb-2 text-right">Comissão</th>
+                      <th className="pb-2 text-right">Lucro</th>
+                      <th className="pb-2 text-right">Ticket</th>
+                      <th className="pb-2 text-right">Ocupação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {proStats.map((p) => (
+                      <tr key={p.id} className="border-b border-border/50">
+                        <td className="py-2 text-foreground font-medium">{p.name}</td>
+                        <td className="py-2 text-right">{p.count}</td>
+                        <td className="py-2 text-right text-primary">R$ {p.revenue.toFixed(2)}</td>
+                        <td className="py-2 text-right text-yellow-400">R$ {p.commission.toFixed(2)}</td>
+                        <td className="py-2 text-right text-green-400">R$ {p.profit.toFixed(2)}</td>
+                        <td className="py-2 text-right">R$ {p.ticket.toFixed(2)}</td>
+                        <td className="py-2 text-right">{p.occupied}min</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

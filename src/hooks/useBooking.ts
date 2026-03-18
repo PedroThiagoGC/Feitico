@@ -131,10 +131,14 @@ export function useAvailableSlots(
         .eq("booking_date", date)
         .in("status", ["pending", "confirmed"]);
 
+      const OVERTIME_MARGIN = 60; // allow booking to extend up to 1h past availability end
+
       const slots: string[] = [];
 
       for (const window of timeWindows) {
-        for (let m = window.start; m + totalOccupiedMinutes <= window.end; m += 5) {
+        for (let m = window.start; m + totalOccupiedMinutes <= window.end + OVERTIME_MARGIN; m += 5) {
+          // Slot must START within the availability window
+          if (m >= window.end) break;
           const slotStart = m;
           const slotEnd = m + totalOccupiedMinutes;
 
