@@ -219,7 +219,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   const currentStep = !selectedServices.length ? 1
     : !selectedProfessionalId ? 2
     : !selectedDate ? 3
-    : !selectedTime ? 4
+    : !selectedTime ? 3
     : 5;
 
   return (
