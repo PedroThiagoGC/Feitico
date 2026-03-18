@@ -4,84 +4,345 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Clock, User, Calendar, Save } from "lucide-react";
+
+const WEEKDAYS = [
+  { value: 0, label: "Domingo" },
+  { value: 1, label: "Segunda-feira" },
+  { value: 2, label: "Terça-feira" },
+  { value: 3, label: "Quarta-feira" },
+  { value: 4, label: "Quinta-feira" },
+  { value: 5, label: "Sexta-feira" },
+  { value: 6, label: "Sábado" },
+];
+
+interface AvailabilityRow {
+  id: string;
+  professional_id: string;
+  weekday: number;
+  start_time: string;
+  end_time: string;
+  active: boolean;
+}
+
+interface ExceptionRow {
+  id: string;
+  professional_id: string;
+  date: string;
+  start_time: string | null;
+  end_time: string | null;
+  type: string;
+  reason: string | null;
+}
+
+interface Professional {
+  id: string;
+  name: string;
+  photo_url: string | null;
+}
 
 export default function AdminAvailability() {
-  const [items, setItems] = useState<any[]>([]);
-  const [salonId, setSalonId] = useState("");
-  const [form, setForm] = useState({ date: "", start_time: "09:00", end_time: "19:00", is_closed: false });
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [selectedProId, setSelectedProId] = useState("");
+  const [availability, setAvailability] = useState<AvailabilityRow[]>([]);
+  const [exceptions, setExceptions] = useState<ExceptionRow[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  // Exception form
+  const [excForm, setExcForm] = useState({
+    date: "",
+    type: "day_off",
+    start_time: "",
+    end_time: "",
+    reason: "",
+  });
 
   useEffect(() => {
-    loadData();
+    loadProfessionals();
   }, []);
 
-  async function loadData() {
+  useEffect(() => {
+    if (selectedProId) {
+      loadAvailability();
+      loadExceptions();
+    }
+  }, [selectedProId]);
+
+  async function loadProfessionals() {
     const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
-    if (salon) {
-      setSalonId(salon.id);
-      const { data } = await supabase.from("availability").select("*").eq("salon_id", salon.id).order("date");
-      setItems(data || []);
+    if (!salon) return;
+    const { data } = await supabase.from("professionals").select("id, name, photo_url").eq("salon_id", salon.id).eq("active", true).order("name");
+    if (data && data.length > 0) {
+      setProfessionals(data);
+      setSelectedProId(data[0].id);
     }
   }
 
-  async function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.date) return;
-    const { error } = await supabase.from("availability").upsert({
-      salon_id: salonId, date: form.date, start_time: form.start_time,
-      end_time: form.end_time, is_closed: form.is_closed,
-    }, { onConflict: "salon_id,date" });
-    if (error) toast.error(error.message);
-    else { toast.success("Disponibilidade salva!"); loadData(); setForm({ date: "", start_time: "09:00", end_time: "19:00", is_closed: false }); }
+  async function loadAvailability() {
+    const { data } = await supabase
+      .from("professional_availability")
+      .select("*")
+      .eq("professional_id", selectedProId)
+      .order("weekday");
+    setAvailability(data as AvailabilityRow[] || []);
   }
 
-  async function handleDelete(id: string) {
-    const { error } = await supabase.from("availability").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else { toast.success("Removido!"); loadData(); }
+  async function loadExceptions() {
+    const { data } = await supabase
+      .from("professional_exceptions")
+      .select("*")
+      .eq("professional_id", selectedProId)
+      .order("date");
+    setExceptions(data as ExceptionRow[] || []);
   }
+
+  // Build a map: weekday -> row (or null if not set)
+  const weekdayMap = new Map<number, AvailabilityRow>();
+  availability.forEach((a) => weekdayMap.set(a.weekday, a));
+
+  async function toggleWeekday(weekday: number) {
+    const existing = weekdayMap.get(weekday);
+    if (existing) {
+      // Toggle active
+      const { error } = await supabase
+        .from("professional_availability")
+        .update({ active: !existing.active })
+        .eq("id", existing.id);
+      if (error) toast.error(error.message);
+      else loadAvailability();
+    } else {
+      // Create with defaults 09:00-19:00
+      const { error } = await supabase
+        .from("professional_availability")
+        .insert({ professional_id: selectedProId, weekday, start_time: "09:00", end_time: "19:00", active: true });
+      if (error) toast.error(error.message);
+      else { toast.success("Dia adicionado!"); loadAvailability(); }
+    }
+  }
+
+  async function updateTime(id: string, field: "start_time" | "end_time", value: string) {
+    setAvailability((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, [field]: value } : a))
+    );
+  }
+
+  async function saveAvailability() {
+    setSaving(true);
+    try {
+      for (const row of availability) {
+        const { error } = await supabase
+          .from("professional_availability")
+          .update({ start_time: row.start_time, end_time: row.end_time })
+          .eq("id", row.id);
+        if (error) throw error;
+      }
+      toast.success("Horários salvos!");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar");
+    }
+    setSaving(false);
+  }
+
+  async function deleteAvailability(id: string) {
+    const { error } = await supabase.from("professional_availability").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success("Removido!"); loadAvailability(); }
+  }
+
+  async function addException(e: React.FormEvent) {
+    e.preventDefault();
+    if (!excForm.date) return;
+    const payload: any = {
+      professional_id: selectedProId,
+      date: excForm.date,
+      type: excForm.type,
+      reason: excForm.reason || null,
+    };
+    if (excForm.type !== "day_off") {
+      payload.start_time = excForm.start_time || null;
+      payload.end_time = excForm.end_time || null;
+    }
+    const { error } = await supabase.from("professional_exceptions").insert(payload);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Exceção adicionada!");
+      loadExceptions();
+      setExcForm({ date: "", type: "day_off", start_time: "", end_time: "", reason: "" });
+    }
+  }
+
+  async function deleteException(id: string) {
+    const { error } = await supabase.from("professional_exceptions").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success("Removido!"); loadExceptions(); }
+  }
+
+  const selectedPro = professionals.find((p) => p.id === selectedProId);
 
   return (
-    <Card className="bg-card border-border">
-      <CardHeader>
-        <CardTitle className="font-display text-xl">Disponibilidade / Exceções</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <form onSubmit={handleAdd} className="flex flex-wrap gap-3 items-end">
-          <div>
-            <label className="font-body text-sm">Data</label>
-            <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="bg-secondary border-border font-body" required />
+    <div className="space-y-6">
+      {/* Professional Selector */}
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="font-display text-xl flex items-center gap-2">
+            <Clock className="w-5 h-5 text-primary" />
+            Disponibilidade dos Profissionais
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            {professionals.map((pro) => (
+              <button
+                key={pro.id}
+                type="button"
+                onClick={() => setSelectedProId(pro.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all font-body text-sm ${
+                  selectedProId === pro.id
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-border bg-secondary hover:border-primary/30 text-muted-foreground"
+                }`}
+              >
+                {pro.photo_url ? (
+                  <img src={pro.photo_url} alt={pro.name} className="w-8 h-8 rounded-full object-cover" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center"><User className="w-4 h-4" /></div>
+                )}
+                {pro.name}
+              </button>
+            ))}
           </div>
-          <div>
-            <label className="font-body text-sm">Início</label>
-            <Input type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} className="bg-secondary border-border font-body" />
-          </div>
-          <div>
-            <label className="font-body text-sm">Fim</label>
-            <Input type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} className="bg-secondary border-border font-body" />
-          </div>
-          <label className="flex items-center gap-2 font-body text-sm pb-2">
-            <Switch checked={form.is_closed} onCheckedChange={(v) => setForm({ ...form, is_closed: v })} /> Fechado
-          </label>
-          <Button type="submit" className="bg-primary text-primary-foreground font-body">
-            <Plus className="w-4 h-4 mr-1" /> Salvar
-          </Button>
-        </form>
+          {professionals.length === 0 && (
+            <p className="text-muted-foreground font-body text-sm">Cadastre profissionais primeiro.</p>
+          )}
+        </CardContent>
+      </Card>
 
-        <div className="space-y-2">
-          {items.map((i) => (
-            <div key={i.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary border border-border">
-              <span className="font-body text-sm">
-                {i.date} — {i.is_closed ? <span className="text-destructive">Fechado</span> : `${i.start_time} - ${i.end_time}`}
-              </span>
-              <Button variant="ghost" size="icon" onClick={() => handleDelete(i.id)} className="text-destructive">
-                <Trash2 className="w-4 h-4" />
+      {selectedProId && (
+        <>
+          {/* Weekly Schedule */}
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="font-display text-lg flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-primary" />
+                Horários Semanais — {selectedPro?.name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {WEEKDAYS.map((day) => {
+                const row = weekdayMap.get(day.value);
+                const isActive = row?.active ?? false;
+                return (
+                  <div key={day.value} className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                    isActive ? "border-primary/30 bg-primary/5" : "border-border bg-secondary"
+                  }`}>
+                    <Switch
+                      checked={isActive}
+                      onCheckedChange={() => toggleWeekday(day.value)}
+                    />
+                    <span className={`font-body text-sm w-32 ${isActive ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                      {day.label}
+                    </span>
+                    {isActive && row ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <Input
+                          type="time"
+                          value={row.start_time.slice(0, 5)}
+                          onChange={(e) => updateTime(row.id, "start_time", e.target.value)}
+                          className="bg-secondary border-border font-body w-28 h-9 text-sm"
+                        />
+                        <span className="text-muted-foreground text-sm">até</span>
+                        <Input
+                          type="time"
+                          value={row.end_time.slice(0, 5)}
+                          onChange={(e) => updateTime(row.id, "end_time", e.target.value)}
+                          className="bg-secondary border-border font-body w-28 h-9 text-sm"
+                        />
+                        <Button variant="ghost" size="icon" onClick={() => deleteAvailability(row.id)} className="text-destructive shrink-0 h-9 w-9">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground font-body text-xs">Folga</span>
+                    )}
+                  </div>
+                );
+              })}
+              <Button onClick={saveAvailability} disabled={saving} className="bg-primary text-primary-foreground font-body mt-2">
+                <Save className="w-4 h-4 mr-2" />
+                {saving ? "Salvando..." : "Salvar horários"}
               </Button>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+            </CardContent>
+          </Card>
+
+          {/* Exceptions */}
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="font-display text-lg">Exceções / Folgas — {selectedPro?.name}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <form onSubmit={addException} className="flex flex-wrap gap-3 items-end">
+                <div>
+                  <label className="font-body text-sm block mb-1">Data</label>
+                  <Input type="date" value={excForm.date} onChange={(e) => setExcForm({ ...excForm, date: e.target.value })} className="bg-secondary border-border font-body" required />
+                </div>
+                <div>
+                  <label className="font-body text-sm block mb-1">Tipo</label>
+                  <Select value={excForm.type} onValueChange={(v) => setExcForm({ ...excForm, type: v })}>
+                    <SelectTrigger className="w-40 bg-secondary border-border font-body">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="day_off">Folga (dia todo)</SelectItem>
+                      <SelectItem value="blocked">Bloqueio parcial</SelectItem>
+                      <SelectItem value="custom_hours">Horário especial</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {excForm.type !== "day_off" && (
+                  <>
+                    <div>
+                      <label className="font-body text-sm block mb-1">Início</label>
+                      <Input type="time" value={excForm.start_time} onChange={(e) => setExcForm({ ...excForm, start_time: e.target.value })} className="bg-secondary border-border font-body w-28" />
+                    </div>
+                    <div>
+                      <label className="font-body text-sm block mb-1">Fim</label>
+                      <Input type="time" value={excForm.end_time} onChange={(e) => setExcForm({ ...excForm, end_time: e.target.value })} className="bg-secondary border-border font-body w-28" />
+                    </div>
+                  </>
+                )}
+                <div>
+                  <label className="font-body text-sm block mb-1">Motivo</label>
+                  <Input value={excForm.reason} onChange={(e) => setExcForm({ ...excForm, reason: e.target.value })} placeholder="Opcional" className="bg-secondary border-border font-body" />
+                </div>
+                <Button type="submit" className="bg-primary text-primary-foreground font-body">
+                  <Plus className="w-4 h-4 mr-1" />Adicionar
+                </Button>
+              </form>
+
+              <div className="space-y-2">
+                {exceptions.length === 0 && <p className="text-muted-foreground font-body text-sm">Nenhuma exceção cadastrada.</p>}
+                {exceptions.map((exc) => (
+                  <div key={exc.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary border border-border">
+                    <span className="font-body text-sm">
+                      <span className="font-medium">{exc.date}</span>
+                      {" — "}
+                      {exc.type === "day_off" && <span className="text-destructive">Folga</span>}
+                      {exc.type === "blocked" && <span className="text-destructive">Bloqueio: {exc.start_time?.slice(0,5)} - {exc.end_time?.slice(0,5)}</span>}
+                      {exc.type === "custom_hours" && <span className="text-primary">Especial: {exc.start_time?.slice(0,5)} - {exc.end_time?.slice(0,5)}</span>}
+                      {exc.reason && <span className="text-muted-foreground ml-2">({exc.reason})</span>}
+                    </span>
+                    <Button variant="ghost" size="icon" onClick={() => deleteException(exc.id)} className="text-destructive">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
   );
 }
