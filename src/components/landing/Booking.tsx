@@ -39,6 +39,9 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   const [showConfirmation, setShowConfirmation] = useState(false);
   const createBooking = useCreateBooking();
 
+  // Realtime: auto-refresh slots when another person books
+  useRealtimeBookings(salon?.id);
+
   const { data: professionals } = useProfessionals(salon?.id);
   const { data: proServices } = useProfessionalServices(selectedProfessionalId || undefined);
   const { data: proAvailability } = useProfessionalAvailability(selectedProfessionalId || undefined);
