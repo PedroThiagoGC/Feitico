@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarIcon, Clock, Loader2, User } from "lucide-react";
+import { CalendarIcon, Clock, Loader2, User, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -38,13 +38,13 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTime, setSelectedTime] = useState<string>("");
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const createBooking = useCreateBooking();
 
   const { data: professionals } = useProfessionals(salon?.id);
   const { data: proServices } = useProfessionalServices(selectedProfessionalId || undefined);
   const { data: proAvailability } = useProfessionalAvailability(selectedProfessionalId || undefined);
 
-  // Disable days where the professional has no availability
   const disabledDays = useMemo(() => {
     if (!proAvailability || proAvailability.length === 0) return undefined;
     const activeWeekdays = new Set(proAvailability.map((a) => a.weekday));
@@ -92,6 +92,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   });
 
   const bookingType = form.watch("booking_type");
+  const selectedProfessional = professionals?.find((p) => p.id === selectedProfessionalId);
 
   const toggleService = useCallback((service: Service) => {
     setSelectedServices((prev) => {
@@ -108,14 +109,32 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     return { type: pro?.commission_type || "percentage", value: Number(pro?.commission_value || 0) };
   }
 
-  const selectedProfessional = professionals?.find((p) => p.id === selectedProfessionalId);
+  // Check if form is ready for confirmation
+  const isReadyToConfirm = useMemo(() => {
+    const values = form.getValues();
+    if (!values.customer_name || values.customer_name.trim().length < 2) return false;
+    if (!values.customer_phone || values.customer_phone.trim().length < 10) return false;
+    if (selectedServices.length === 0) return false;
+    if (!selectedProfessionalId) return false;
+    if (!selectedDate) return false;
+    if (bookingType === "scheduled" && !selectedTime) return false;
+    return true;
+  }, [form.watch("customer_name"), form.watch("customer_phone"), selectedServices, selectedProfessionalId, selectedDate, selectedTime, bookingType]);
+
+  const handleShowConfirmation = () => {
+    if (!isReadyToConfirm) {
+      if (selectedServices.length === 0) toast.error("Selecione pelo menos um serviço");
+      else if (!selectedProfessionalId) toast.error("Selecione um profissional");
+      else if (!selectedDate) toast.error("Selecione uma data");
+      else if (bookingType === "scheduled" && !selectedTime) toast.error("Selecione um horário");
+      else form.handleSubmit(() => {})(); // trigger validation
+      return;
+    }
+    setShowConfirmation(true);
+  };
 
   const onSubmit = async (data: BookingFormData) => {
-    if (selectedServices.length === 0) { toast.error("Selecione pelo menos um serviço"); return; }
-    if (!selectedProfessionalId) { toast.error("Selecione um profissional"); return; }
-    if (!selectedDate) { toast.error("Selecione uma data"); return; }
     if (!salon?.id) { toast.error("Salão não encontrado"); return; }
-    if (data.booking_type === "scheduled" && !selectedTime) { toast.error("Selecione um horário"); return; }
 
     const { type: commType, value: commValue } = getCommissionInfo();
     const commissionAmount = calculateCommission(totalPrice, commType, commValue);
@@ -133,7 +152,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
       total_occupied_minutes: totalOccupied,
       commission_amount: commissionAmount,
       profit_amount: profitAmount,
-      booking_date: format(selectedDate, "yyyy-MM-dd"),
+      booking_date: format(selectedDate!, "yyyy-MM-dd"),
       booking_time: data.booking_type === "scheduled" ? selectedTime : null,
       booking_type: data.booking_type as "scheduled" | "walk_in",
     };
@@ -154,6 +173,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
       setSelectedServices([]);
       setSelectedDate(undefined);
       setSelectedTime("");
+      setShowConfirmation(false);
     } catch {
       toast.error("Erro ao realizar agendamento. Tente novamente.");
     }
@@ -205,6 +225,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                         setSelectedProfessionalId(pro.id);
                         setSelectedServices([]);
                         setSelectedTime("");
+                        setShowConfirmation(false);
                       }}
                       className={`flex flex-col items-center gap-2 p-3 md:p-4 rounded-lg border transition-all font-body text-sm ${
                         selectedProfessionalId === pro.id
@@ -235,7 +256,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                         <button
                           type="button"
                           key={service.id}
-                          onClick={() => toggleService(service)}
+                          onClick={() => { toggleService(service); setShowConfirmation(false); }}
                           className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left font-body text-sm ${
                             isSelected
                               ? "border-primary bg-primary/10 text-foreground"
@@ -253,33 +274,6 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                       );
                     })}
                   </div>
-
-                  {selectedServices.length > 0 && (
-                    <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20 font-body text-sm space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Total:</span>
-                        <span className="font-bold text-primary">R$ {totalPrice.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Duração dos serviços:</span>
-                        <span className="text-foreground">{totalDuration} min</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Margem operacional:</span>
-                        <span className="text-foreground">{totalBuffer} min</span>
-                      </div>
-                      <div className="flex justify-between border-t border-border pt-1">
-                        <span className="text-muted-foreground font-semibold">Tempo total na agenda:</span>
-                        <span className="text-primary font-bold">{totalOccupied} min</span>
-                      </div>
-                      {selectedProfessional && (
-                        <div className="flex justify-between border-t border-border pt-1">
-                          <span className="text-muted-foreground">Profissional:</span>
-                          <span className="text-foreground font-medium">{selectedProfessional.name}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -288,11 +282,11 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                 <FormItem>
                   <FormLabel className="font-body">Tipo de agendamento</FormLabel>
                   <div className="grid grid-cols-2 gap-3">
-                    <button type="button" onClick={() => field.onChange("scheduled")}
+                    <button type="button" onClick={() => { field.onChange("scheduled"); setShowConfirmation(false); }}
                       className={`p-3 rounded-lg border text-center font-body text-sm transition-all ${field.value === "scheduled" ? "border-primary bg-primary/10 text-foreground" : "border-border bg-secondary text-muted-foreground"}`}>
                       <Clock className="w-4 h-4 mx-auto mb-1" />Horário marcado
                     </button>
-                    <button type="button" onClick={() => field.onChange("walk_in")}
+                    <button type="button" onClick={() => { field.onChange("walk_in"); setShowConfirmation(false); }}
                       className={`p-3 rounded-lg border text-center font-body text-sm transition-all ${field.value === "walk_in" ? "border-primary bg-primary/10 text-foreground" : "border-border bg-secondary text-muted-foreground"}`}>
                       <CalendarIcon className="w-4 h-4 mx-auto mb-1" />Ordem de chegada
                     </button>
@@ -311,7 +305,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 bg-card border-border" align="start">
-                    <Calendar mode="single" selected={selectedDate} onSelect={(d) => { setSelectedDate(d); setSelectedTime(""); }} disabled={disabledDays || ((d) => d < new Date(new Date().setHours(0, 0, 0, 0)))} locale={ptBR} className="pointer-events-auto" />
+                    <Calendar mode="single" selected={selectedDate} onSelect={(d) => { setSelectedDate(d); setSelectedTime(""); setShowConfirmation(false); }} disabled={disabledDays || ((d) => d < new Date(new Date().setHours(0, 0, 0, 0)))} locale={ptBR} className="pointer-events-auto" />
                   </PopoverContent>
                 </Popover>
               </div>
@@ -327,7 +321,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                   ) : slots && slots.length > 0 ? (
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                       {slots.map((slot) => (
-                        <button type="button" key={slot} onClick={() => setSelectedTime(slot)}
+                        <button type="button" key={slot} onClick={() => { setSelectedTime(slot); setShowConfirmation(false); }}
                           className={`p-2.5 rounded-lg border text-center font-body text-sm transition-all ${selectedTime === slot ? "border-primary bg-primary text-primary-foreground" : "border-border bg-secondary text-foreground hover:border-primary/30"}`}>
                           {slot}
                         </button>
@@ -339,12 +333,79 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                 </div>
               )}
 
+              {/* Confirmation Summary */}
+              {showConfirmation && (
+                <div className="rounded-xl border-2 border-primary bg-primary/5 p-4 md:p-6 space-y-3 font-body text-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    <h4 className="font-display text-lg font-bold text-foreground">Confirme seu agendamento</h4>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Cliente:</span>
+                      <span className="text-foreground font-medium">{form.getValues("customer_name")}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Telefone:</span>
+                      <span className="text-foreground">{form.getValues("customer_phone")}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Profissional:</span>
+                      <span className="text-foreground font-medium">{selectedProfessional?.name}</span>
+                    </div>
+                    <div className="border-t border-border pt-2">
+                      <span className="text-muted-foreground block mb-1">Serviços:</span>
+                      {effectiveSelected.map((s) => (
+                        <div key={s.id} className="flex justify-between pl-3">
+                          <span className="text-foreground">• {s.name} ({s.duration}min)</span>
+                          <span className="text-foreground">R$ {s.price.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t border-border pt-2 flex justify-between">
+                      <span className="text-muted-foreground">Data:</span>
+                      <span className="text-foreground font-medium">
+                        {selectedDate && format(selectedDate, "dd/MM/yyyy (EEEE)", { locale: ptBR })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Horário:</span>
+                      <span className="text-foreground font-medium">
+                        {bookingType === "scheduled" ? selectedTime : "Ordem de chegada"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Duração total:</span>
+                      <span className="text-foreground">{totalDuration} min</span>
+                    </div>
+                    <div className="border-t border-border pt-2 flex justify-between">
+                      <span className="font-bold text-foreground">Total:</span>
+                      <span className="font-bold text-primary text-lg">R$ {totalPrice.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Submit */}
-              <Button type="submit" size="lg" disabled={createBooking.isPending}
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/80 font-body text-base py-6 shadow-gold">
-                {createBooking.isPending && <Loader2 className="w-5 h-5 animate-spin mr-2" />}
-                Confirmar Agendamento
-              </Button>
+              {!showConfirmation ? (
+                <Button type="button" size="lg" onClick={handleShowConfirmation}
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/80 font-body text-base py-6 shadow-gold">
+                  Revisar Agendamento
+                </Button>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <Button type="button" size="lg" variant="outline" onClick={() => setShowConfirmation(false)}
+                    className="font-body text-base py-6 border-border">
+                    Voltar
+                  </Button>
+                  <Button type="submit" size="lg" disabled={createBooking.isPending}
+                    className="bg-primary text-primary-foreground hover:bg-primary/80 font-body text-base py-6 shadow-gold">
+                    {createBooking.isPending && <Loader2 className="w-5 h-5 animate-spin mr-2" />}
+                    Confirmar
+                  </Button>
+                </div>
+              )}
             </form>
           </Form>
         </div>
