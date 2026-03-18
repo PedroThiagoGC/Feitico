@@ -8,6 +8,9 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { MinutesSelect } from "@/components/ui/minutes-select";
+import { type Database } from "@/integrations/supabase/types";
+
+type ServiceRow = Database["public"]["Tables"]["services"]["Row"];
 
 interface ServiceForm {
   id?: string;
@@ -29,7 +32,7 @@ const emptyService: ServiceForm = {
 };
 
 export default function AdminServices() {
-  const [services, setServices] = useState<any[]>([]);
+  const [services, setServices] = useState<ServiceRow[]>([]);
   const [salonId, setSalonId] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<ServiceForm>(emptyService);
@@ -87,7 +90,7 @@ export default function AdminServices() {
     if (error) toast.error(error.message); else { toast.success("Excluído!"); loadData(); }
   }
 
-  function openEdit(service: any) {
+  function openEdit(service: ServiceRow) {
     setForm({
       id: service.id,
       name: service.name,

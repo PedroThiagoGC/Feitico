@@ -52,7 +52,7 @@ Status: iniciado e aplicado.
 
 ### Fase 3 - Escalabilidade e qualidade
 
-- Split por features (src/features/*) sem quebra de URL.
+- Split por features (src/features/\*) sem quebra de URL.
 - Error boundary e padrao unico de tratamento de falhas.
 - Suite minima de testes unitarios/integracao/e2e.
 

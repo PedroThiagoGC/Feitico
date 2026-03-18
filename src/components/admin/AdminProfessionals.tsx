@@ -11,15 +11,22 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Clock, Calendar, Settings2 } from "lucide-react";
 import { MinutesSelect } from "@/components/ui/minutes-select";
 import ImageUpload from "./ImageUpload";
+import { type Database } from "@/integrations/supabase/types";
+
+type Professional = Database["public"]["Tables"]["professionals"]["Row"];
+type Service = Database["public"]["Tables"]["services"]["Row"];
+type ProfessionalAvailability = Database["public"]["Tables"]["professional_availability"]["Row"];
+type ProfessionalException = Database["public"]["Tables"]["professional_exceptions"]["Row"];
+type ProfessionalService = Database["public"]["Tables"]["professional_services"]["Row"];
 
 const WEEKDAY_LABELS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
 export default function AdminProfessionals() {
-  const [professionals, setProfessionals] = useState<any[]>([]);
-  const [services, setServices] = useState<any[]>([]);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [salonId, setSalonId] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedPro, setSelectedPro] = useState<any>(null);
+  const [selectedPro, setSelectedPro] = useState<Professional | null>(null);
   const [form, setForm] = useState({
     id: "",
     name: "",
@@ -75,7 +82,7 @@ export default function AdminProfessionals() {
     setForm({ id: "", name: "", photo_url: "", commission_type: "percentage", commission_value: "0", active: true });
   }
 
-  function openEdit(pro: any) {
+  function openEdit(pro: Professional) {
     setForm({
       id: pro.id,
       name: pro.name,
@@ -199,7 +206,7 @@ export default function AdminProfessionals() {
 
 // --- Availability Editor ---
 function ProfessionalAvailabilityEditor({ professionalId }: { professionalId: string }) {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<ProfessionalAvailability[]>([]);
   const [form, setForm] = useState({ weekday: "1", start_time: "09:00", end_time: "19:00" });
 
   useEffect(() => { load(); }, [professionalId]);
@@ -263,7 +270,7 @@ function ProfessionalAvailabilityEditor({ professionalId }: { professionalId: st
 
 // --- Exceptions Editor ---
 function ProfessionalExceptionsEditor({ professionalId }: { professionalId: string }) {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<ProfessionalException[]>([]);
   const [form, setForm] = useState({ date: "", type: "day_off", start_time: "", end_time: "", reason: "" });
 
   useEffect(() => { load(); }, [professionalId]);
@@ -349,8 +356,8 @@ function ProfessionalExceptionsEditor({ professionalId }: { professionalId: stri
 }
 
 // --- Professional Services Editor ---
-function ProfessionalServicesEditor({ professionalId, services }: { professionalId: string; services: any[] }) {
-  const [links, setLinks] = useState<any[]>([]);
+function ProfessionalServicesEditor({ professionalId, services }: { professionalId: string; services: Service[] }) {
+  const [links, setLinks] = useState<ProfessionalService[]>([]);
 
   useEffect(() => { load(); }, [professionalId]);
 
@@ -373,7 +380,7 @@ function ProfessionalServicesEditor({ professionalId, services }: { professional
     return links.find((l) => l.service_id === serviceId);
   }
 
-  async function updateOverride(linkId: string, field: string, value: any) {
+  async function updateOverride(linkId: string, field: string, value: string | number | null) {
     const { error } = await supabase.from("professional_services").update({ [field]: value || null }).eq("id", linkId);
     if (error) toast.error(error.message); else load();
   }

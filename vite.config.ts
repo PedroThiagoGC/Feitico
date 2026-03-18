@@ -4,7 +4,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode }: { mode: string }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const supabaseUrl = env.VITE_SUPABASE_URL;
   const supabaseApiPattern = supabaseUrl
@@ -23,8 +23,10 @@ export default defineConfig(({ mode }) => {
       react(),
       mode === "development" && componentTagger(),
       VitePWA({
+        injectRegister: "auto",
         registerType: "autoUpdate",
-        includeAssets: ["favicon.ico", "robots.txt"],
+        includeAssets: ["favicon.ico", "robots.txt", "manifest.webmanifest"],
+        manifest: false,
         workbox: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
           navigateFallbackDenylist: [/^\/~oauth/],
@@ -37,22 +39,6 @@ export default defineConfig(({ mode }) => {
                 expiration: { maxEntries: 50, maxAgeSeconds: 300 },
               },
             },
-          ],
-        },
-        manifest: {
-          name: "Salão Admin - Painel de Gestão",
-          short_name: "Salão Admin",
-          description: "Painel administrativo para gestão de salão de beleza",
-          theme_color: "#0B0B0B",
-          background_color: "#0B0B0B",
-          display: "standalone",
-          orientation: "any",
-          start_url: "/admin",
-          scope: "/",
-          icons: [
-            { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },
-            { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png" },
-            { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
           ],
         },
       }),

@@ -2,10 +2,14 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { type Database } from "@/integrations/supabase/types";
+
+type FinancialBooking = Database["public"]["Tables"]["bookings"]["Row"];
+type FinancialProfessional = Database["public"]["Tables"]["professionals"]["Row"];
 
 export default function AdminFinancials() {
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [professionals, setProfessionals] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<FinancialBooking[]>([]);
+  const [professionals, setProfessionals] = useState<FinancialProfessional[]>([]);
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;

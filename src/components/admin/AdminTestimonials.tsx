@@ -7,9 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { Star } from "lucide-react";
+import { type Database } from "@/integrations/supabase/types";
+
+type Testimonial = Database["public"]["Tables"]["testimonials"]["Row"];
 
 export default function AdminTestimonials() {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<Testimonial[]>([]);
   const [salonId, setSalonId] = useState("");
   const [form, setForm] = useState({ author_name: "", content: "", rating: "5", author_image: "" });
 

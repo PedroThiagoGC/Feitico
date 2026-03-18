@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { type Json } from "@/integrations/supabase/types";
 import { buildWhatsAppApiUrl, buildWhatsAppUrl, normalizeWhatsAppPhone } from "@/lib/phone";
 
 export interface Booking {
@@ -9,7 +10,7 @@ export interface Booking {
   professional_id: string | null;
   customer_name: string;
   customer_phone: string;
-  services: any;
+  services: Json;
   total_price: number;
   total_duration: number;
   total_buffer_minutes: number;

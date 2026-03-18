@@ -6,9 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import ImageUpload from "./ImageUpload";
+import { type Database } from "@/integrations/supabase/types";
+
+type GalleryImage = Database["public"]["Tables"]["gallery_images"]["Row"];
 
 export default function AdminGallery() {
-  const [images, setImages] = useState<any[]>([]);
+  const [images, setImages] = useState<GalleryImage[]>([]);
   const [salonId, setSalonId] = useState("");
   const [form, setForm] = useState({ image_url: "", caption: "", sort_order: "0" });
 

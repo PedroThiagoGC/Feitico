@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { type Json } from "@/integrations/supabase/types";
+
+type ServiceSnapshot = { name: string };
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,7 +22,7 @@ interface Booking {
   total_occupied_minutes: number;
   total_price: number;
   status: string;
-  services: any;
+  services: Json;
   booking_type: string;
 }
 
@@ -321,7 +324,7 @@ function DayView({ currentDate, bookings, getProName, professionals, filterPro }
                 ) : (
                   <div className="space-y-1 pl-4">
                     {proBookings.map((b) => {
-                      const services = Array.isArray(b.services) ? b.services : [];
+                        const services = Array.isArray(b.services) ? (b.services as ServiceSnapshot[]) : [];
                       return (
                         <div key={b.id} className={`p-2 md:p-3 rounded-lg border ${STATUS_COLORS[b.status] || "border-border bg-secondary"}`}>
                           <div className="flex items-center justify-between gap-2">
@@ -336,7 +339,7 @@ function DayView({ currentDate, bookings, getProName, professionals, filterPro }
                             </span>
                           </div>
                           <div className="font-body text-xs text-muted-foreground mt-1">
-                            {services.map((s: any) => s.name).join(", ")} · {b.total_duration}min · R$ {Number(b.total_price).toFixed(2)}
+                              {services.map((s) => s.name).join(", ")} · {b.total_duration}min · R$ {Number(b.total_price).toFixed(2)}
                           </div>
                         </div>
                       );
@@ -353,7 +356,7 @@ function DayView({ currentDate, bookings, getProName, professionals, filterPro }
             <p className="text-sm font-body text-muted-foreground">Nenhum agendamento para este dia.</p>
           ) : (
             sortedBookings.map((b) => {
-              const services = Array.isArray(b.services) ? b.services : [];
+              const services = Array.isArray(b.services) ? (b.services as ServiceSnapshot[]) : [];
               return (
                 <div key={b.id} className={`p-3 rounded-lg border ${STATUS_COLORS[b.status] || "border-border bg-secondary"}`}>
                   <div className="flex items-center justify-between">
@@ -364,7 +367,7 @@ function DayView({ currentDate, bookings, getProName, professionals, filterPro }
                     <span className="text-[10px] font-body font-semibold">{STATUS_LABELS[b.status]}</span>
                   </div>
                   <div className="font-body text-xs text-muted-foreground mt-1">
-                    {getProName(b.professional_id)} · {services.map((s: any) => s.name).join(", ")} · {b.total_duration}min
+                    {getProName(b.professional_id)} · {services.map((s) => s.name).join(", ")} · {b.total_duration}min
                   </div>
                 </div>
               );

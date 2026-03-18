@@ -1,0 +1,59 @@
+{
+  "name": "Feitico - Agendamento e Gestao",
+  "short_name": "Feitico",
+  "description": "App de agendamento e painel administrativo para salao de beleza.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#0B0B0B",
+  "background_color": "#0B0B0B",
+  "categories": ["beauty", "business", "productivity"],
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Novo Agendamento",
+      "short_name": "Agendar",
+      "description": "Abrir tela de agendamento",
+      "url": "/#booking",
+      "icons": [
+        {
+          "src": "/pwa-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Painel Admin",
+      "short_name": "Admin",
+      "description": "Abrir painel de administracao",
+      "url": "/admin",
+      "icons": [
+        {
+          "src": "/pwa-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

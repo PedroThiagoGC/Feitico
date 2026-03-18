@@ -12,12 +12,12 @@ Aplicacao de agendamento e gestao de salao com landing page publica e painel adm
 ## Setup
 
 1. Instale dependencias:
-	- npm install
+   - npm install
 2. Configure ambiente a partir de `.env.example`:
-	- VITE_SUPABASE_URL
-	- VITE_SUPABASE_PUBLISHABLE_KEY
+   - VITE_SUPABASE_URL
+   - VITE_SUPABASE_PUBLISHABLE_KEY
 3. Rode o projeto:
-	- npm run dev
+   - npm run dev
 
 ## Scripts
 

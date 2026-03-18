@@ -9,9 +9,12 @@ import { Save } from "lucide-react";
 import ImageUpload from "./ImageUpload";
 import OpeningHoursEditor from "./OpeningHoursEditor";
 import { normalizeWhatsAppPhone, splitWhatsAppPhone } from "@/lib/phone";
+import { type Database } from "@/integrations/supabase/types";
+
+type SalonRow = Database["public"]["Tables"]["salons"]["Row"];
 
 export default function AdminSalon() {
-  const [salon, setSalon] = useState<any>(null);
+  const [salon, setSalon] = useState<Partial<SalonRow> | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [whatsappCountryCode, setWhatsappCountryCode] = useState("55");
@@ -69,7 +72,7 @@ export default function AdminSalon() {
         toast.success("Salão atualizado!");
       }
     } else {
-      const { data, error } = await supabase.from("salons").insert({ ...payload, active: true }).select().single();
+      const { data, error } = await supabase.from("salons").insert({ ...payload, active: true } as Database["public"]["Tables"]["salons"]["Insert"]).select().single();
       if (error) toast.error(error.message);
       else { setSalon(data); toast.success("Salão criado!"); }
     }

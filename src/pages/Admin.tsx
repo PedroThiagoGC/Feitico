@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { type Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,7 @@ import AdminCalendar from "@/components/admin/AdminCalendar";
 import { LogOut, LayoutDashboard, Menu, X } from "lucide-react";
 
 export default function Admin() {
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

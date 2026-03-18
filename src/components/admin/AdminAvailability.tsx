@@ -139,8 +139,8 @@ export default function AdminAvailability() {
         if (error) throw error;
       }
       toast.success("Horários salvos!");
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao salvar");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Erro ao salvar");
     }
     setSaving(false);
   }
@@ -154,7 +154,14 @@ export default function AdminAvailability() {
   async function addException(e: React.FormEvent) {
     e.preventDefault();
     if (!excForm.date) return;
-    const payload: any = {
+    const payload: {
+      professional_id: string;
+      date: string;
+      type: string;
+      reason: string | null;
+      start_time?: string | null;
+      end_time?: string | null;
+    } = {
       professional_id: selectedProId,
       date: excForm.date,
       type: excForm.type,

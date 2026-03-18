@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { type Json } from "@/integrations/supabase/types";
+
+type ServiceSnapshot = { name: string; duration: number };
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,7 +23,7 @@ interface BookingRow {
   booking_time: string | null;
   booking_type: string;
   status: string;
-  services: any;
+  services: Json;
   total_price: number;
   total_duration: number;
   total_buffer_minutes: number;
@@ -266,7 +269,7 @@ export default function AdminBookings() {
                 {proBookings.length > 0 ? (
                   <div className="divide-y divide-border">
                     {proBookings.map((b) => {
-                      const bServices = Array.isArray(b.services) ? b.services : [];
+                      const bServices = Array.isArray(b.services) ? (b.services as ServiceSnapshot[]) : [];
                       return (
                         <div key={b.id} className="p-3 md:p-4 space-y-2">
                           <div className="flex items-start justify-between gap-2">
@@ -287,7 +290,7 @@ export default function AdminBookings() {
                           </div>
 
                           <div className="font-body text-xs md:text-sm text-muted-foreground">
-                            <p className="truncate">✂️ {bServices.map((s: any) => `${s.name} (${s.duration}min)`).join(" + ")}</p>
+                            <p className="truncate">✂️ {bServices.map((s) => `${s.name} (${s.duration}min)`).join(" + ")}</p>
                             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
                               <span>💰 R$ {Number(b.total_price).toFixed(2)}</span>
                               <span>⏱️ {b.total_duration}min</span>
@@ -328,7 +331,7 @@ export default function AdminBookings() {
             </div>
             <div className="divide-y divide-border">
               {(bookingsByPro.get("unassigned") || []).map((b) => {
-                const bServices = Array.isArray(b.services) ? b.services : [];
+                const bServices = Array.isArray(b.services) ? (b.services as ServiceSnapshot[]) : [];
                 return (
                   <div key={b.id} className="p-3 md:p-4 space-y-2">
                     <div className="flex items-start justify-between gap-2">
@@ -341,7 +344,7 @@ export default function AdminBookings() {
                       </span>
                     </div>
                     <p className="font-body text-xs text-muted-foreground truncate">
-                      {b.booking_time || "Ordem de chegada"} · ✂️ {bServices.map((s: any) => s.name).join(", ")} · R$ {Number(b.total_price).toFixed(2)}
+                      {b.booking_time || "Ordem de chegada"} · ✂️ {bServices.map((s) => s.name).join(", ")} · R$ {Number(b.total_price).toFixed(2)}
                     </p>
                   </div>
                 );
