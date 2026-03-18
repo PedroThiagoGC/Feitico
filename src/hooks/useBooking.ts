@@ -66,7 +66,7 @@ export function useRealtimeBookings(salonId: string | undefined) {
     };
   }, [salonId, queryClient]);
 }
-
+export function useAvailableSlots(
   professionalId: string | undefined,
   date: string | undefined,
   totalOccupiedMinutes: number
