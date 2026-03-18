@@ -51,8 +51,6 @@ export default function AdminServices() {
     if (!salonId) { toast.error("Nenhum salão cadastrado. Crie um salão primeiro."); return; }
     const duration = parseInt(form.duration);
     const buffer = parseInt(form.buffer_minutes);
-    if (!validateMultipleOf5(duration, "Duração")) return;
-    if (!validateMultipleOf5(buffer, "Margem")) return;
     if (duration < 5) { toast.error("Duração mínima: 5 minutos"); return; }
 
     setSaving(true);
