@@ -37,7 +37,36 @@ export function useBookings(salonId: string | undefined, date?: string) {
   });
 }
 
-export function useAvailableSlots(
+/** Subscribe to realtime booking changes to keep slots/bookings fresh */
+export function useRealtimeBookings(salonId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!salonId) return;
+
+    const channel = supabase
+      .channel(`bookings-realtime-${salonId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "bookings",
+          filter: `salon_id=eq.${salonId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["bookings"] });
+          queryClient.invalidateQueries({ queryKey: ["available-slots"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [salonId, queryClient]);
+}
+
   professionalId: string | undefined,
   date: string | undefined,
   totalOccupiedMinutes: number
