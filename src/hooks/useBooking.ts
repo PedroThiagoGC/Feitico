@@ -202,6 +202,8 @@ export interface WhatsAppBookingInfo {
   booking: CreateBookingData;
   salonName: string;
   salonAddress: string;
+  salonWhatsapp?: string;
+  salonPhone?: string;
   professionalName: string;
 }
 
