@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { MinutesSelect } from "@/components/ui/minutes-select";
 
 interface ServiceForm {
   id?: string;
@@ -23,17 +24,9 @@ interface ServiceForm {
 }
 
 const emptyService: ServiceForm = {
-  name: "", description: "", price: "0", duration: "30", buffer_minutes: "0",
+  name: "", description: "", price: "0", duration: "5", buffer_minutes: "0",
   image_url: "", category: "", is_combo: false, active: true, sort_order: "0",
 };
-
-function validateMultipleOf5(value: number, label: string): boolean {
-  if (value % 5 !== 0) {
-    toast.error(`${label} deve ser múltiplo de 5 minutos`);
-    return false;
-  }
-  return true;
-}
 
 export default function AdminServices() {
   const [services, setServices] = useState<any[]>([]);
@@ -58,8 +51,6 @@ export default function AdminServices() {
     if (!salonId) { toast.error("Nenhum salão cadastrado. Crie um salão primeiro."); return; }
     const duration = parseInt(form.duration);
     const buffer = parseInt(form.buffer_minutes);
-    if (!validateMultipleOf5(duration, "Duração")) return;
-    if (!validateMultipleOf5(buffer, "Margem")) return;
     if (duration < 5) { toast.error("Duração mínima: 5 minutos"); return; }
 
     setSaving(true);
@@ -143,11 +134,11 @@ export default function AdminServices() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-body text-sm">Duração (min)</label>
-                  <Input type="number" step="5" min="5" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="bg-secondary border-border font-body" />
+                  <MinutesSelect value={form.duration} onChange={(v) => setForm({ ...form, duration: v })} min={5} max={480} placeholder="Duração" />
                 </div>
                 <div>
                   <label className="font-body text-sm">Margem operacional (min)</label>
-                  <Input type="number" step="5" min="0" value={form.buffer_minutes} onChange={(e) => setForm({ ...form, buffer_minutes: e.target.value })} className="bg-secondary border-border font-body" />
+                  <MinutesSelect value={form.buffer_minutes} onChange={(v) => setForm({ ...form, buffer_minutes: v })} min={0} max={120} placeholder="Margem" />
                 </div>
               </div>
               {/* Occupation summary */}
