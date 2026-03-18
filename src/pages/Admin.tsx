@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import AdminServices from "@/components/admin/AdminServices";
 import AdminBookings from "@/components/admin/AdminBookings";
 import AdminSalon from "@/components/admin/AdminSalon";
@@ -14,6 +14,7 @@ import AdminTestimonials from "@/components/admin/AdminTestimonials";
 import AdminAvailability from "@/components/admin/AdminAvailability";
 import AdminProfessionals from "@/components/admin/AdminProfessionals";
 import AdminCalendar from "@/components/admin/AdminCalendar";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LogOut, LayoutDashboard, Menu, X } from "lucide-react";
 
 export default function Admin() {
@@ -40,13 +41,13 @@ export default function Admin() {
     e.preventDefault();
     setAuthLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) toast.error(error.message); else toast.success("Login realizado!");
+    if (error) appToast.error(error.message); else appToast.success("Login realizado!");
     setAuthLoading(false);
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    toast.success("Logout realizado!");
+    appToast.success("Logout realizado!");
   };
 
   if (loading) {
@@ -109,15 +110,15 @@ export default function Admin() {
             </TabsList>
           </div>
 
-          <TabsContent value="dashboard"><DashboardOverview /></TabsContent>
-          <TabsContent value="calendar"><AdminCalendar /></TabsContent>
-          <TabsContent value="salon"><AdminSalon /></TabsContent>
-          <TabsContent value="professionals"><AdminProfessionals /></TabsContent>
-          <TabsContent value="services"><AdminServices /></TabsContent>
-          <TabsContent value="bookings"><AdminBookings /></TabsContent>
-          <TabsContent value="availability"><AdminAvailability /></TabsContent>
-          <TabsContent value="gallery"><AdminGallery /></TabsContent>
-          <TabsContent value="testimonials"><AdminTestimonials /></TabsContent>
+          <TabsContent value="dashboard"><ErrorBoundary fallbackTitle="Erro no Dashboard"><DashboardOverview /></ErrorBoundary></TabsContent>
+          <TabsContent value="calendar"><ErrorBoundary fallbackTitle="Erro na Agenda"><AdminCalendar /></ErrorBoundary></TabsContent>
+          <TabsContent value="salon"><ErrorBoundary fallbackTitle="Erro no Salão"><AdminSalon /></ErrorBoundary></TabsContent>
+          <TabsContent value="professionals"><ErrorBoundary fallbackTitle="Erro em Profissionais"><AdminProfessionals /></ErrorBoundary></TabsContent>
+          <TabsContent value="services"><ErrorBoundary fallbackTitle="Erro em Serviços"><AdminServices /></ErrorBoundary></TabsContent>
+          <TabsContent value="bookings"><ErrorBoundary fallbackTitle="Erro em Agendamentos"><AdminBookings /></ErrorBoundary></TabsContent>
+          <TabsContent value="availability"><ErrorBoundary fallbackTitle="Erro na Disponibilidade"><AdminAvailability /></ErrorBoundary></TabsContent>
+          <TabsContent value="gallery"><ErrorBoundary fallbackTitle="Erro na Galeria"><AdminGallery /></ErrorBoundary></TabsContent>
+          <TabsContent value="testimonials"><ErrorBoundary fallbackTitle="Erro nos Depoimentos"><AdminTestimonials /></ErrorBoundary></TabsContent>
         </Tabs>
       </div>
     </div>

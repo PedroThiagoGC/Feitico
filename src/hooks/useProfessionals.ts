@@ -1,5 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  fetchProfessionals,
+  fetchProfessionalServices,
+  fetchProfessionalAvailability,
+  fetchProfessionalExceptions,
+} from "@/services/professionalService";
 
 export interface Professional {
   id: string;
@@ -47,16 +52,7 @@ export interface ProfessionalException {
 export function useProfessionals(salonId?: string) {
   return useQuery({
     queryKey: ["professionals", salonId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("professionals")
-        .select("*")
-        .eq("salon_id", salonId!)
-        .eq("active", true)
-        .order("name");
-      if (error) throw error;
-      return data as Professional[];
-    },
+    queryFn: () => fetchProfessionals(salonId!),
     enabled: !!salonId,
   });
 }
@@ -64,15 +60,7 @@ export function useProfessionals(salonId?: string) {
 export function useProfessionalServices(professionalId?: string) {
   return useQuery({
     queryKey: ["professional-services", professionalId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("professional_services")
-        .select("*")
-        .eq("professional_id", professionalId!)
-        .eq("active", true);
-      if (error) throw error;
-      return data as ProfessionalService[];
-    },
+    queryFn: () => fetchProfessionalServices(professionalId!),
     enabled: !!professionalId,
   });
 }
@@ -80,16 +68,7 @@ export function useProfessionalServices(professionalId?: string) {
 export function useProfessionalAvailability(professionalId?: string) {
   return useQuery({
     queryKey: ["professional-availability", professionalId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("professional_availability")
-        .select("*")
-        .eq("professional_id", professionalId!)
-        .eq("active", true)
-        .order("weekday");
-      if (error) throw error;
-      return data as ProfessionalAvailability[];
-    },
+    queryFn: () => fetchProfessionalAvailability(professionalId!),
     enabled: !!professionalId,
   });
 }
@@ -97,19 +76,7 @@ export function useProfessionalAvailability(professionalId?: string) {
 export function useProfessionalExceptions(professionalId?: string, month?: string) {
   return useQuery({
     queryKey: ["professional-exceptions", professionalId, month],
-    queryFn: async () => {
-      let query = supabase
-        .from("professional_exceptions")
-        .select("*")
-        .eq("professional_id", professionalId!)
-        .order("date");
-      if (month) {
-        query = query.gte("date", `${month}-01`).lte("date", `${month}-31`);
-      }
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as ProfessionalException[];
-    },
+    queryFn: () => fetchProfessionalExceptions(professionalId!, month),
     enabled: !!professionalId,
   });
 }

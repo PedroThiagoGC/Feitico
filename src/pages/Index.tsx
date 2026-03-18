@@ -12,6 +12,7 @@ import Testimonials from "@/components/landing/Testimonials";
 import VideoSection from "@/components/landing/VideoSection";
 import Booking from "@/components/landing/Booking";
 import Footer from "@/components/landing/Footer";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const Index = () => {
   const { data: salon, isLoading: salonLoading } = useSalon();
@@ -39,12 +40,22 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header salon={salon} />
       <Hero salon={salon} />
-      <Services services={services} isLoading={servicesLoading} onBook={handleBookService} />
-      <Gallery images={gallery} />
+      <ErrorBoundary fallbackTitle="Erro ao carregar serviços">
+        <Services services={services} isLoading={servicesLoading} onBook={handleBookService} />
+      </ErrorBoundary>
+      <ErrorBoundary fallbackTitle="Erro ao carregar galeria">
+        <Gallery images={gallery} />
+      </ErrorBoundary>
       <About salon={salon} />
-      <VideoSection salon={salon} />
-      <Testimonials testimonials={testimonials} />
-      <Booking salon={salon} services={services} preselectedServices={preselected} />
+      <ErrorBoundary fallbackTitle="Erro ao carregar vídeo">
+        <VideoSection salon={salon} />
+      </ErrorBoundary>
+      <ErrorBoundary fallbackTitle="Erro ao carregar depoimentos">
+        <Testimonials testimonials={testimonials} />
+      </ErrorBoundary>
+      <ErrorBoundary fallbackTitle="Erro ao carregar agendamento">
+        <Booking salon={salon} services={services} preselectedServices={preselected} />
+      </ErrorBoundary>
       <Footer salon={salon} />
     </div>
   );

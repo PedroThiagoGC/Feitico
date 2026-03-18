@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchGallery } from "@/services/galleryService";
 
 export interface GalleryImage {
   id: string;
@@ -12,15 +12,7 @@ export interface GalleryImage {
 export function useGallery(salonId?: string) {
   return useQuery({
     queryKey: ["gallery", salonId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("gallery_images")
-        .select("*")
-        .eq("salon_id", salonId!)
-        .order("sort_order", { ascending: true });
-      if (error) throw error;
-      return data as GalleryImage[];
-    },
+    queryFn: () => fetchGallery(salonId!),
     enabled: !!salonId,
   });
 }

@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { bookingFormSchema, type BookingFormData } from "@/schemas/booking.schema";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { useAvailableSlots, useCreateBooking, useRealtimeBookings, generateWhatsAppApiFallback, generateWhatsAppMessage, calculateCommission } from "@/hooks/useBooking";
 import { useProfessionals, useProfessionalServices, useProfessionalAvailability } from "@/hooks/useProfessionals";
@@ -13,16 +13,9 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { CalendarIcon, Clock, Loader2, User, Check, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import type { Service } from "@/hooks/useServices";
 import type { Salon } from "@/hooks/useSalon";
-
-const bookingSchema = z.object({
-  customer_name: z.string().trim().min(2, "Nome é obrigatório").max(100),
-  customer_phone: z.string().trim().min(10, "Telefone inválido").max(20),
-});
-
-type BookingFormData = z.infer<typeof bookingSchema>;
 
 interface BookingProps {
   salon: Salon | undefined;
@@ -110,7 +103,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   );
 
   const form = useForm<BookingFormData>({
-    resolver: zodResolver(bookingSchema),
+    resolver: zodResolver(bookingFormSchema),
     defaultValues: { customer_name: "", customer_phone: "" },
   });
 
@@ -147,10 +140,10 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
 
   const handleShowConfirmation = () => {
     if (!isReadyToConfirm) {
-      if (!selectedProfessionalId) toast.error("Selecione um profissional");
-      else if (selectedServices.length === 0) toast.error("Selecione pelo menos um serviço");
-      else if (!selectedDate) toast.error("Selecione uma data");
-      else if (!selectedTime) toast.error("Selecione um horário");
+      if (!selectedProfessionalId) appToast.error("Selecione um profissional");
+      else if (selectedServices.length === 0) appToast.error("Selecione pelo menos um serviço");
+      else if (!selectedDate) appToast.error("Selecione uma data");
+      else if (!selectedTime) appToast.error("Selecione um horário");
       else form.handleSubmit(() => {})();
       return;
     }
@@ -158,7 +151,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   };
 
   const onSubmit = async (data: BookingFormData) => {
-    if (!salon?.id) { toast.error("Salão não encontrado"); return; }
+    if (!salon?.id) { appToast.error("Salão não encontrado"); return; }
 
     const { type: commType, value: commValue } = getCommissionInfo();
     const commissionAmount = calculateCommission(totalPrice, commType, commValue);
@@ -183,7 +176,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
 
     try {
       await createBooking.mutateAsync(bookingData);
-      toast.success("Agendamento realizado com sucesso!");
+      appToast.success("Agendamento realizado com sucesso!");
 
       const whatsappUrl = generateWhatsAppMessage({
         booking: bookingData,
@@ -214,7 +207,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
       setSelectedTime("");
       setShowConfirmation(false);
     } catch {
-      toast.error("Erro ao realizar agendamento. Tente novamente.");
+      appToast.error("Erro ao realizar agendamento. Tente novamente.");
     }
   };
 

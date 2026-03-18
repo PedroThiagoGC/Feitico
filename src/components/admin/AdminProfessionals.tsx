@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
+import { professionalSchema } from "@/schemas/professional.schema";
 import { Plus, Pencil, Trash2, Clock, Calendar, Settings2 } from "lucide-react";
 import { MinutesSelect } from "@/components/ui/minutes-select";
 import ImageUpload from "./ImageUpload";
@@ -51,21 +52,35 @@ export default function AdminProfessionals() {
 
   async function handleSavePro(e: React.FormEvent) {
     e.preventDefault();
-    if (!salonId) { toast.error("Nenhum salão cadastrado. Crie um salão primeiro."); return; }
-    const payload = {
-      salon_id: salonId,
+    if (!salonId) { appToast.error("Nenhum salão cadastrado. Crie um salão primeiro."); return; }
+
+    const validation = professionalSchema.safeParse({
       name: form.name,
       photo_url: form.photo_url || null,
       commission_type: form.commission_type,
-      commission_value: parseFloat(form.commission_value),
+      commission_value: form.commission_value,
       active: form.active,
+    });
+    if (!validation.success) {
+      appToast.error(validation.error.errors[0]?.message || "Dados inválidos");
+      return;
+    }
+
+    const parsed = validation.data;
+    const payload = {
+      salon_id: salonId,
+      name: parsed.name,
+      photo_url: parsed.photo_url,
+      commission_type: parsed.commission_type,
+      commission_value: parsed.commission_value,
+      active: parsed.active,
     };
     if (form.id) {
       const { error } = await supabase.from("professionals").update(payload).eq("id", form.id);
-      if (error) toast.error(error.message); else toast.success("Profissional atualizado!");
+      if (error) appToast.error(error.message); else appToast.success("Profissional atualizado!");
     } else {
       const { error } = await supabase.from("professionals").insert(payload);
-      if (error) toast.error(error.message); else toast.success("Profissional criado!");
+      if (error) appToast.error(error.message); else appToast.success("Profissional criado!");
     }
     setDialogOpen(false);
     resetForm();
@@ -75,7 +90,7 @@ export default function AdminProfessionals() {
   async function handleDeletePro(id: string) {
     if (!confirm("Excluir profissional?")) return;
     const { error } = await supabase.from("professionals").delete().eq("id", id);
-    if (error) toast.error(error.message); else { toast.success("Excluído!"); loadData(); }
+    if (error) appToast.error(error.message); else { appToast.success("Excluído!"); loadData(); }
   }
 
   function resetForm() {
@@ -224,12 +239,12 @@ function ProfessionalAvailabilityEditor({ professionalId }: { professionalId: st
       start_time: form.start_time,
       end_time: form.end_time,
     });
-    if (error) toast.error(error.message); else { toast.success("Salvo!"); load(); }
+    if (error) appToast.error(error.message); else { appToast.success("Salvo!"); load(); }
   }
 
   async function handleDelete(id: string) {
     await supabase.from("professional_availability").delete().eq("id", id);
-    toast.success("Removido!"); load();
+    appToast.success("Removido!"); load();
   }
 
   return (
@@ -291,12 +306,12 @@ function ProfessionalExceptionsEditor({ professionalId }: { professionalId: stri
       end_time: form.end_time || null,
       reason: form.reason || null,
     });
-    if (error) toast.error(error.message); else { toast.success("Exceção salva!"); load(); setForm({ date: "", type: "day_off", start_time: "", end_time: "", reason: "" }); }
+    if (error) appToast.error(error.message); else { appToast.success("Exceção salva!"); load(); setForm({ date: "", type: "day_off", start_time: "", end_time: "", reason: "" }); }
   }
 
   async function handleDelete(id: string) {
     await supabase.from("professional_exceptions").delete().eq("id", id);
-    toast.success("Removido!"); load();
+    appToast.success("Removido!"); load();
   }
 
   const typeLabels: Record<string, string> = { day_off: "Folga", blocked: "Bloqueio", custom_hours: "Horário especial" };
@@ -382,7 +397,7 @@ function ProfessionalServicesEditor({ professionalId, services }: { professional
 
   async function updateOverride(linkId: string, field: string, value: string | number | null) {
     const { error } = await supabase.from("professional_services").update({ [field]: value || null }).eq("id", linkId);
-    if (error) toast.error(error.message); else load();
+    if (error) appToast.error(error.message); else load();
   }
 
   return (

@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, User, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface BookingRow {
   id: string;
@@ -82,8 +83,8 @@ export default function AdminBookings() {
 
   async function updateStatus(id: string, status: string) {
     const { error } = await supabase.from("bookings").update({ status }).eq("id", id);
-    if (error) toast.error(error.message);
-    else { toast.success("Status atualizado!"); loadBookings(); }
+    if (error) appToast.error(error.message);
+    else { appToast.success("Status atualizado!"); loadBookings(); }
   }
 
   const statusColors: Record<string, string> = {
@@ -200,7 +201,7 @@ export default function AdminBookings() {
       </CardHeader>
       <CardContent className="space-y-6">
         {professionals.length === 0 ? (
-          <p className="text-muted-foreground font-body text-sm">Nenhum profissional cadastrado.</p>
+          <EmptyState title="Nenhum profissional cadastrado" description="Cadastre profissionais na aba Profissionais para visualizar agendamentos." />
         ) : (
           professionals.map((pro) => {
             const stats = getProStats(pro.id);

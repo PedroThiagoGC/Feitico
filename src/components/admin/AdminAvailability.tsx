@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { Plus, Trash2, Clock, User, Calendar, Save } from "lucide-react";
 
 const WEEKDAYS = [
@@ -110,15 +110,15 @@ export default function AdminAvailability() {
         .from("professional_availability")
         .update({ active: !existing.active })
         .eq("id", existing.id);
-      if (error) toast.error(error.message);
+      if (error) appToast.error(error.message);
       else loadAvailability();
     } else {
       // Create with defaults 09:00-19:00
       const { error } = await supabase
         .from("professional_availability")
         .insert({ professional_id: selectedProId, weekday, start_time: "09:00", end_time: "19:00", active: true });
-      if (error) toast.error(error.message);
-      else { toast.success("Dia adicionado!"); loadAvailability(); }
+      if (error) appToast.error(error.message);
+      else { appToast.success("Dia adicionado!"); loadAvailability(); }
     }
   }
 
@@ -138,17 +138,17 @@ export default function AdminAvailability() {
           .eq("id", row.id);
         if (error) throw error;
       }
-      toast.success("Horários salvos!");
+      appToast.success("Horários salvos!");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Erro ao salvar");
+      appToast.error(err instanceof Error ? err.message : "Erro ao salvar");
     }
     setSaving(false);
   }
 
   async function deleteAvailability(id: string) {
     const { error } = await supabase.from("professional_availability").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else { toast.success("Removido!"); loadAvailability(); }
+    if (error) appToast.error(error.message);
+    else { appToast.success("Removido!"); loadAvailability(); }
   }
 
   async function addException(e: React.FormEvent) {
@@ -172,9 +172,9 @@ export default function AdminAvailability() {
       payload.end_time = excForm.end_time || null;
     }
     const { error } = await supabase.from("professional_exceptions").insert(payload);
-    if (error) toast.error(error.message);
+    if (error) appToast.error(error.message);
     else {
-      toast.success("Exceção adicionada!");
+      appToast.success("Exceção adicionada!");
       loadExceptions();
       setExcForm({ date: "", type: "day_off", start_time: "", end_time: "", reason: "" });
     }
@@ -182,8 +182,8 @@ export default function AdminAvailability() {
 
   async function deleteException(id: string) {
     const { error } = await supabase.from("professional_exceptions").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else { toast.success("Removido!"); loadExceptions(); }
+    if (error) appToast.error(error.message);
+    else { appToast.success("Removido!"); loadExceptions(); }
   }
 
   const selectedPro = professionals.find((p) => p.id === selectedProId);

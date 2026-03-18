@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchSalon } from "@/services/salonService";
 
 export interface Salon {
   id: string;
@@ -22,14 +22,6 @@ export interface Salon {
 export function useSalon(salonId?: string) {
   return useQuery({
     queryKey: ["salon", salonId],
-    queryFn: async () => {
-      let query = supabase.from("salons").select("*").eq("active", true);
-      if (salonId) {
-        query = query.eq("id", salonId);
-      }
-      const { data, error } = await query.limit(1).single();
-      if (error) throw error;
-      return data as Salon;
-    },
+    queryFn: () => fetchSalon(salonId),
   });
 }

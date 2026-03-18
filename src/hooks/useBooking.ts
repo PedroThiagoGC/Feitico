@@ -2,7 +2,14 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { type Json } from "@/integrations/supabase/types";
-import { buildWhatsAppApiUrl, buildWhatsAppUrl, normalizeWhatsAppPhone } from "@/lib/phone";
+import {
+  fetchBookings,
+  fetchAvailableSlots,
+  createBooking,
+  calculateCommission as calcCommission,
+  generateWhatsAppMessage as genWhatsApp,
+  generateWhatsAppApiFallback as genWhatsAppFallback,
+} from "@/services/bookingService";
 
 export interface Booking {
   id: string;
@@ -28,13 +35,7 @@ export interface Booking {
 export function useBookings(salonId: string | undefined, date?: string) {
   return useQuery({
     queryKey: ["bookings", salonId, date],
-    queryFn: async () => {
-      let query = supabase.from("bookings").select("*").eq("salon_id", salonId!);
-      if (date) query = query.eq("booking_date", date);
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as unknown as Booking[];
-    },
+    queryFn: () => fetchBookings(salonId!, date),
     enabled: !!salonId,
   });
 }
@@ -68,6 +69,7 @@ export function useRealtimeBookings(salonId: string | undefined) {
     };
   }, [salonId, queryClient]);
 }
+
 export function useAvailableSlots(
   professionalId: string | undefined,
   date: string | undefined,
@@ -75,95 +77,7 @@ export function useAvailableSlots(
 ) {
   return useQuery({
     queryKey: ["available-slots", professionalId, date, totalOccupiedMinutes],
-    queryFn: async () => {
-      if (!professionalId || !date || totalOccupiedMinutes <= 0) return [];
-
-      const dayOfWeek = new Date(date + "T12:00:00").getDay();
-
-      const { data: avail } = await supabase
-        .from("professional_availability")
-        .select("*")
-        .eq("professional_id", professionalId)
-        .eq("weekday", dayOfWeek)
-        .eq("active", true);
-
-      if (!avail || avail.length === 0) return [];
-
-      const { data: exceptions } = await supabase
-        .from("professional_exceptions")
-        .select("*")
-        .eq("professional_id", professionalId)
-        .eq("date", date);
-
-      const dayOff = exceptions?.find(
-        (e) => e.type === "day_off" || (e.type === "blocked" && !e.start_time && !e.end_time)
-      );
-      if (dayOff) return [];
-
-      const customHours = exceptions?.find((e) => e.type === "custom_hours" && e.start_time && e.end_time);
-      const timeWindows: { start: number; end: number }[] = [];
-
-      if (customHours) {
-        const [sh, sm] = customHours.start_time!.split(":").map(Number);
-        const [eh, em] = customHours.end_time!.split(":").map(Number);
-        timeWindows.push({ start: sh * 60 + sm, end: eh * 60 + em });
-      } else {
-        for (const a of avail) {
-          const [sh, sm] = a.start_time.split(":").map(Number);
-          const [eh, em] = a.end_time.split(":").map(Number);
-          timeWindows.push({ start: sh * 60 + sm, end: eh * 60 + em });
-        }
-      }
-
-      const blockedRanges: { start: number; end: number }[] = [];
-      for (const ex of exceptions || []) {
-        if (ex.type === "blocked" && ex.start_time && ex.end_time) {
-          const [sh, sm] = ex.start_time.split(":").map(Number);
-          const [eh, em] = ex.end_time.split(":").map(Number);
-          blockedRanges.push({ start: sh * 60 + sm, end: eh * 60 + em });
-        }
-      }
-
-      const { data: bookings } = await supabase
-        .from("bookings")
-        .select("booking_time, total_occupied_minutes, total_duration")
-        .eq("professional_id", professionalId)
-        .eq("booking_date", date)
-        .in("status", ["pending", "confirmed"]);
-
-      const OVERTIME_MARGIN = 60; // allow booking to extend up to 1h past availability end
-
-      const slots: string[] = [];
-
-      for (const window of timeWindows) {
-        for (let m = window.start; m + totalOccupiedMinutes <= window.end + OVERTIME_MARGIN; m += 5) {
-          // Slot must START within the availability window
-          if (m >= window.end) break;
-          const slotStart = m;
-          const slotEnd = m + totalOccupiedMinutes;
-
-          const isBlocked = blockedRanges.some(
-            (b) => slotStart < b.end && slotEnd > b.start
-          );
-          if (isBlocked) continue;
-
-          const hasConflict = bookings?.some((b) => {
-            if (!b.booking_time) return false;
-            const [bh, bm] = b.booking_time.split(":").map(Number);
-            const bStart = bh * 60 + bm;
-            const bEnd = bStart + (b.total_occupied_minutes || b.total_duration || 30);
-            return slotStart < bEnd && slotEnd > bStart;
-          });
-          if (hasConflict) continue;
-
-          const h = Math.floor(m / 60);
-          const min = m % 60;
-          slots.push(`${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}`);
-        }
-      }
-
-      return slots;
-    },
+    queryFn: () => fetchAvailableSlots(professionalId!, date!, totalOccupiedMinutes),
     enabled: !!professionalId && !!date && totalOccupiedMinutes > 0,
   });
 }
@@ -189,30 +103,7 @@ export function useCreateBooking() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: CreateBookingData) => {
-      const { data: booking, error } = await supabase
-        .from("bookings")
-        .insert([{
-          salon_id: data.salon_id,
-          professional_id: data.professional_id,
-          customer_name: data.customer_name,
-          customer_phone: data.customer_phone,
-          services: JSON.parse(JSON.stringify(data.services)),
-          total_price: data.total_price,
-          total_duration: data.total_duration,
-          total_buffer_minutes: data.total_buffer_minutes,
-          total_occupied_minutes: data.total_occupied_minutes,
-          commission_amount: data.commission_amount,
-          profit_amount: data.profit_amount,
-          booking_date: data.booking_date,
-          booking_time: data.booking_time,
-          booking_type: data.booking_type,
-        }])
-        .select()
-        .single();
-      if (error) throw error;
-      return booking;
-    },
+    mutationFn: (data: CreateBookingData) => createBooking(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
       queryClient.invalidateQueries({ queryKey: ["available-slots"] });
@@ -220,19 +111,7 @@ export function useCreateBooking() {
   });
 }
 
-export function calculateCommission(
-  totalPrice: number,
-  commissionType: string,
-  commissionValue: number
-): number {
-  if (commissionType === "percentage") {
-    return totalPrice * (commissionValue / 100);
-  }
-  if (commissionType === "fixed") {
-    return commissionValue;
-  }
-  return 0;
-}
+export const calculateCommission = calcCommission;
 
 export interface WhatsAppBookingInfo {
   booking: CreateBookingData;
@@ -243,61 +122,5 @@ export interface WhatsAppBookingInfo {
   professionalName: string;
 }
 
-function buildBookingWhatsAppText(info: WhatsAppBookingInfo): string {
-  const { booking, salonName, salonAddress, professionalName } = info;
-
-  const servicesList = booking.services
-    .map((s) => `• ${s.name} — R$ ${s.price.toFixed(2)}`)
-    .join("\n");
-
-  const bookingTypeLabel = booking.booking_type === "scheduled" ? "Horário marcado" : "Ordem de chegada";
-  const dateFormatted = new Date(booking.booking_date + "T12:00:00").toLocaleDateString("pt-BR");
-
-  return (
-    `Olá, segue novo agendamento confirmado:\n\n` +
-    `👤 *Cliente:* ${booking.customer_name}\n` +
-    `📱 *Telefone:* ${booking.customer_phone}\n\n` +
-    `🏢 *Unidade:* ${salonName}\n` +
-    `📍 *Endereço:* ${salonAddress || "Não informado"}\n\n` +
-    `💈 *Profissional:* ${professionalName}\n\n` +
-    `✂️ *Serviços:*\n${servicesList}\n\n` +
-    `💰 *Valor total:* R$ ${booking.total_price.toFixed(2)}\n` +
-    `⏱️ *Duração total:* ${booking.total_duration} min\n` +
-    `🔄 *Margem operacional:* ${booking.total_buffer_minutes} min\n` +
-    `📊 *Tempo total reservado na agenda:* ${booking.total_occupied_minutes} min\n\n` +
-    `📋 *Tipo de atendimento:* ${bookingTypeLabel}\n` +
-    `📅 *Data:* ${dateFormatted}\n` +
-    (booking.booking_time ? `🕐 *Horário:* ${booking.booking_time}\n` : "") +
-    `\nFavor seguir com a confirmação e atendimento. ✨`
-  );
-}
-
-export function generateWhatsAppMessage(info: WhatsAppBookingInfo) {
-  const message = buildBookingWhatsAppText(info);
-
-  // Usa WhatsApp do salão, com fallback para telefone.
-  const normalizedPhone =
-    normalizeWhatsAppPhone(info.salonWhatsapp) ||
-    normalizeWhatsAppPhone(info.salonPhone);
-
-  if (!normalizedPhone) {
-    return `https://api.whatsapp.com/send/?text=${encodeURIComponent(message)}&type=phone_number&app_absent=0`;
-  }
-
-  // Prioriza wa.me (mais estável em alguns ambientes) e mantém fallback em API via Booking.tsx.
-  return buildWhatsAppUrl(normalizedPhone, message);
-}
-
-export function generateWhatsAppApiFallback(info: WhatsAppBookingInfo) {
-  const message = buildBookingWhatsAppText(info);
-
-  const normalizedPhone =
-    normalizeWhatsAppPhone(info.salonWhatsapp) ||
-    normalizeWhatsAppPhone(info.salonPhone);
-
-  if (!normalizedPhone) {
-    return `https://api.whatsapp.com/send/?text=${encodeURIComponent(message)}&type=phone_number&app_absent=0`;
-  }
-
-  return buildWhatsAppApiUrl(normalizedPhone, message);
-}
+export const generateWhatsAppMessage = genWhatsApp;
+export const generateWhatsAppApiFallback = genWhatsAppFallback;

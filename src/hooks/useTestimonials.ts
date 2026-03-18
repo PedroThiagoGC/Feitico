@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchTestimonials } from "@/services/testimonialService";
 
 export interface Testimonial {
   id: string;
@@ -14,15 +14,7 @@ export interface Testimonial {
 export function useTestimonials(salonId?: string) {
   return useQuery({
     queryKey: ["testimonials", salonId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("testimonials")
-        .select("*")
-        .eq("salon_id", salonId!)
-        .eq("active", true);
-      if (error) throw error;
-      return data as Testimonial[];
-    },
+    queryFn: () => fetchTestimonials(salonId!),
     enabled: !!salonId,
   });
 }

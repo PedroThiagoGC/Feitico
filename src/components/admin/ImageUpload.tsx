@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { Upload, Loader2, X } from "lucide-react";
 
 interface ImageUploadProps {
@@ -21,12 +21,12 @@ export default function ImageUpload({ value, onChange, folder = "general", class
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      toast.error("Apenas imagens são permitidas");
+      appToast.error("Apenas imagens são permitidas");
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast.error("Arquivo muito grande (máx. 5MB)");
+      appToast.error("Arquivo muito grande (máx. 5MB)");
       return;
     }
 
@@ -37,7 +37,7 @@ export default function ImageUpload({ value, onChange, folder = "general", class
     const { error } = await supabase.storage.from("salon-images").upload(fileName, file);
 
     if (error) {
-      toast.error("Erro ao fazer upload: " + error.message);
+      appToast.error("Erro ao fazer upload: " + error.message);
       setUploading(false);
       return;
     }
@@ -45,7 +45,7 @@ export default function ImageUpload({ value, onChange, folder = "general", class
     const { data: urlData } = supabase.storage.from("salon-images").getPublicUrl(fileName);
     onChange(urlData.publicUrl);
     setUploading(false);
-    toast.success("Imagem enviada!");
+    appToast.success("Imagem enviada!");
   }
 
   return (

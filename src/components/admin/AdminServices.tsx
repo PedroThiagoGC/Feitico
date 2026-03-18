@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
+import { serviceSchema } from "@/schemas/service.schema";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { MinutesSelect } from "@/components/ui/minutes-select";
 import { type Database } from "@/integrations/supabase/types";
@@ -51,32 +52,47 @@ export default function AdminServices() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!salonId) { toast.error("Nenhum salão cadastrado. Crie um salão primeiro."); return; }
-    const duration = parseInt(form.duration);
-    const buffer = parseInt(form.buffer_minutes);
-    if (duration < 5) { toast.error("Duração mínima: 5 minutos"); return; }
+    if (!salonId) { appToast.error("Nenhum salão cadastrado. Crie um salão primeiro."); return; }
 
-    setSaving(true);
-    const payload = {
-      salon_id: salonId,
+    const validation = serviceSchema.safeParse({
       name: form.name,
-      description: form.description || null,
-      price: parseFloat(form.price),
-      duration: duration,
-      buffer_minutes: buffer,
-      image_url: form.image_url || null,
-      category: form.category || null,
+      description: form.description,
+      price: form.price,
+      duration: form.duration,
+      buffer_minutes: form.buffer_minutes,
+      image_url: form.image_url,
+      category: form.category,
       is_combo: form.is_combo,
       active: form.active,
-      sort_order: parseInt(form.sort_order),
+      sort_order: form.sort_order,
+    });
+    if (!validation.success) {
+      appToast.error(validation.error.errors[0]?.message || "Dados inválidos");
+      return;
+    }
+
+    setSaving(true);
+    const parsed = validation.data;
+    const payload = {
+      salon_id: salonId,
+      name: parsed.name,
+      description: parsed.description || null,
+      price: parsed.price,
+      duration: parsed.duration,
+      buffer_minutes: parsed.buffer_minutes,
+      image_url: parsed.image_url || null,
+      category: parsed.category || null,
+      is_combo: parsed.is_combo,
+      active: parsed.active,
+      sort_order: parsed.sort_order,
     };
 
     if (form.id) {
       const { error } = await supabase.from("services").update(payload).eq("id", form.id);
-      if (error) toast.error(error.message); else toast.success("Serviço atualizado!");
+      appToast.fromResult({ error }, "Serviço atualizado!");
     } else {
       const { error } = await supabase.from("services").insert(payload);
-      if (error) toast.error(error.message); else toast.success("Serviço criado!");
+      appToast.fromResult({ error }, "Serviço criado!");
     }
     setSaving(false);
     setDialogOpen(false);
@@ -87,7 +103,7 @@ export default function AdminServices() {
   async function handleDelete(id: string) {
     if (!confirm("Excluir serviço?")) return;
     const { error } = await supabase.from("services").delete().eq("id", id);
-    if (error) toast.error(error.message); else { toast.success("Excluído!"); loadData(); }
+    if (error) appToast.error(error.message); else { appToast.success("Excluído!"); loadData(); }
   }
 
   function openEdit(service: ServiceRow) {

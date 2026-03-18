@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
+import { salonSchema } from "@/schemas/salon.schema";
 import { Save } from "lucide-react";
 import ImageUpload from "./ImageUpload";
 import OpeningHoursEditor from "./OpeningHoursEditor";
@@ -48,13 +49,22 @@ export default function AdminSalon() {
     e.preventDefault();
     setSaving(true);
 
+    // Validação Zod
+    const validation = salonSchema.safeParse(salon);
+    if (!validation.success) {
+      const firstError = validation.error.errors[0]?.message || "Dados inválidos";
+      appToast.error(firstError);
+      setSaving(false);
+      return;
+    }
+
     const normalizedWhatsapp = normalizeWhatsAppPhone(
       `${whatsappCountryCode}${whatsappNationalNumber}`,
       whatsappCountryCode || "55"
     );
 
     if (whatsappNationalNumber.trim() && !normalizedWhatsapp) {
-      toast.error("WhatsApp inválido. Informe DDI e número com DDD.");
+      appToast.error("WhatsApp inválido. Informe DDI e número com DDD.");
       setSaving(false);
       return;
     }
@@ -66,15 +76,15 @@ export default function AdminSalon() {
 
     if (salon.id) {
       const { error } = await supabase.from("salons").update(payload).eq("id", salon.id);
-      if (error) toast.error(error.message);
+      if (error) appToast.error(error.message);
       else {
         setSalon(payload);
-        toast.success("Salão atualizado!");
+        appToast.success("Salão atualizado!");
       }
     } else {
       const { data, error } = await supabase.from("salons").insert({ ...payload, active: true } as Database["public"]["Tables"]["salons"]["Insert"]).select().single();
-      if (error) toast.error(error.message);
-      else { setSalon(data); toast.success("Salão criado!"); }
+      if (error) appToast.error(error.message);
+      else { setSalon(data); appToast.success("Salão criado!"); }
     }
     setSaving(false);
   }

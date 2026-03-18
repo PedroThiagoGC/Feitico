@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { Plus, Trash2 } from "lucide-react";
 import ImageUpload from "./ImageUpload";
 import { type Database } from "@/integrations/supabase/types";
@@ -28,19 +28,19 @@ export default function AdminGallery() {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.image_url) { toast.error("Adicione uma imagem"); return; }
+    if (!form.image_url) { appToast.error("Adicione uma imagem"); return; }
     const { error } = await supabase.from("gallery_images").insert({
       salon_id: salonId, image_url: form.image_url, caption: form.caption || null,
       sort_order: parseInt(form.sort_order),
     });
-    if (error) toast.error(error.message);
-    else { toast.success("Imagem adicionada!"); loadData(); setForm({ image_url: "", caption: "", sort_order: "0" }); }
+    if (error) appToast.error(error.message);
+    else { appToast.success("Imagem adicionada!"); loadData(); setForm({ image_url: "", caption: "", sort_order: "0" }); }
   }
 
   async function handleDelete(id: string) {
     const { error } = await supabase.from("gallery_images").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else { toast.success("Removido!"); loadData(); }
+    if (error) appToast.error(error.message);
+    else { appToast.success("Removido!"); loadData(); }
   }
 
   return (

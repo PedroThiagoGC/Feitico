@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { usePwaInstall } from "@/hooks/usePwaInstall";
 import { usePwaNotifications } from "@/hooks/usePwaNotifications";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 
 export default function PwaAssistant() {
   const [dismissed, setDismissed] = useState(false);
@@ -15,7 +15,7 @@ export default function PwaAssistant() {
 
   const handleInstall = async () => {
     if (!canPromptInstall) {
-      toast.info(installInstructions);
+      appToast.info(installInstructions);
       return;
     }
 
@@ -23,31 +23,31 @@ export default function PwaAssistant() {
     if (!result) return;
 
     if (result.outcome === "accepted") {
-      toast.success("App instalado com sucesso.");
+      appToast.success("App instalado com sucesso.");
     } else {
-      toast.info("Instalacao cancelada. Voce pode tentar novamente.");
+      appToast.info("Instalacao cancelada. Voce pode tentar novamente.");
     }
   };
 
   const handleEnableNotifications = async () => {
     const next = await requestPermission();
     if (next === "granted") {
-      toast.success("Permissao de notificacoes concedida.");
+      appToast.success("Permissao de notificacoes concedida.");
       return;
     }
 
     if (next === "denied") {
-      toast.error("Permissao negada. Ative manualmente nas configuracoes do navegador.");
+      appToast.error("Permissao negada. Ative manualmente nas configuracoes do navegador.");
       return;
     }
 
-    toast.info("Permissao ainda nao concedida.");
+    appToast.info("Permissao ainda nao concedida.");
   };
 
   const handleTestNotification = async () => {
     const success = await notifyTest();
-    if (success) toast.success("Notificacao de teste enviada.");
-    else toast.error("Nao foi possivel enviar notificacao de teste.");
+    if (success) appToast.success("Notificacao de teste enviada.");
+    else appToast.error("Nao foi possivel enviar notificacao de teste.");
   };
 
   return (

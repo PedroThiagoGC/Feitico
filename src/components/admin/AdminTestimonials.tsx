@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { Plus, Trash2 } from "lucide-react";
 import { Star } from "lucide-react";
 import { type Database } from "@/integrations/supabase/types";
@@ -33,14 +33,14 @@ export default function AdminTestimonials() {
       salon_id: salonId, author_name: form.author_name, content: form.content,
       rating: parseInt(form.rating), author_image: form.author_image || null, active: true,
     });
-    if (error) toast.error(error.message);
-    else { toast.success("Depoimento adicionado!"); loadData(); setForm({ author_name: "", content: "", rating: "5", author_image: "" }); }
+    if (error) appToast.error(error.message);
+    else { appToast.success("Depoimento adicionado!"); loadData(); setForm({ author_name: "", content: "", rating: "5", author_image: "" }); }
   }
 
   async function handleDelete(id: string) {
     const { error } = await supabase.from("testimonials").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else { toast.success("Removido!"); loadData(); }
+    if (error) appToast.error(error.message);
+    else { appToast.success("Removido!"); loadData(); }
   }
 
   return (
