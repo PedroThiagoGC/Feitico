@@ -83,18 +83,11 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     return services.filter((s) => linkedIds.has(s.id));
   }, [services, selectedProfessionalId, proServices]);
 
-  // When professional changes, filter selectedServices to only valid ones
-  const lastFilteredProId = useRef("");
-  useEffect(() => {
-    if (selectedProfessionalId && proServices && selectedProfessionalId !== lastFilteredProId.current) {
-      lastFilteredProId.current = selectedProfessionalId;
-      const linkedIds = new Set(proServices.map((ps) => ps.service_id));
-      setSelectedServices((prev) => {
-        const filtered = prev.filter((s) => linkedIds.has(s.id));
-        return filtered.length === prev.length ? prev : filtered;
-      });
-    }
-  }, [selectedProfessionalId, proServices]);
+  const incompatibleSelectedServices = useMemo(() => {
+    if (!selectedProfessionalId || !proServices || selectedServices.length === 0) return [];
+    const linkedIds = new Set(proServices.map((ps) => ps.service_id));
+    return selectedServices.filter((s) => !linkedIds.has(s.id));
+  }, [selectedProfessionalId, proServices, selectedServices]);
 
   function getEffectiveService(service: Service) {
     const override = proServices?.find((ps) => ps.service_id === service.id);
