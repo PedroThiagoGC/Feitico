@@ -311,7 +311,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 bg-card border-border" align="start">
-                    <Calendar mode="single" selected={selectedDate} onSelect={(d) => { setSelectedDate(d); setSelectedTime(""); }} disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))} locale={ptBR} />
+                    <Calendar mode="single" selected={selectedDate} onSelect={(d) => { setSelectedDate(d); setSelectedTime(""); }} disabled={disabledDays || ((d) => d < new Date(new Date().setHours(0, 0, 0, 0)))} locale={ptBR} className="pointer-events-auto" />
                   </PopoverContent>
                 </Popover>
               </div>
