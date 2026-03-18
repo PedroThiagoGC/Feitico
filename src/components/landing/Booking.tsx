@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { useAvailableSlots, useCreateBooking, generateWhatsAppMessage, calculateCommission } from "@/hooks/useBooking";
-import { useProfessionals, useProfessionalServices } from "@/hooks/useProfessionals";
+import { useProfessionals, useProfessionalServices, useProfessionalAvailability } from "@/hooks/useProfessionals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -42,6 +42,17 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
 
   const { data: professionals } = useProfessionals(salon?.id);
   const { data: proServices } = useProfessionalServices(selectedProfessionalId || undefined);
+  const { data: proAvailability } = useProfessionalAvailability(selectedProfessionalId || undefined);
+
+  // Disable days where the professional has no availability
+  const disabledDays = useMemo(() => {
+    if (!proAvailability || proAvailability.length === 0) return undefined;
+    const activeWeekdays = new Set(proAvailability.map((a) => a.weekday));
+    return (date: Date) => {
+      if (date < new Date(new Date().setHours(0, 0, 0, 0))) return true;
+      return !activeWeekdays.has(date.getDay());
+    };
+  }, [proAvailability]);
 
   const availableServices = useMemo(() => {
     if (!services) return [];
@@ -300,7 +311,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 bg-card border-border" align="start">
-                    <Calendar mode="single" selected={selectedDate} onSelect={(d) => { setSelectedDate(d); setSelectedTime(""); }} disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))} locale={ptBR} />
+                    <Calendar mode="single" selected={selectedDate} onSelect={(d) => { setSelectedDate(d); setSelectedTime(""); }} disabled={disabledDays || ((d) => d < new Date(new Date().setHours(0, 0, 0, 0)))} locale={ptBR} className="pointer-events-auto" />
                   </PopoverContent>
                 </Popover>
               </div>
