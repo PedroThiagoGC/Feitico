@@ -405,11 +405,21 @@ function ProfessionalServicesEditor({ professionalId, services }: { professional
                   </div>
                   <div>
                     <label className="font-body text-xs text-muted-foreground">Duração (min)</label>
-                    <Input type="number" step="5" min="5" placeholder={String(s.duration)} value={link.custom_duration_minutes ?? ""} onChange={(e) => { const v = parseInt(e.target.value); if (v && v % 5 !== 0) { toast.error("Deve ser múltiplo de 5"); return; } updateOverride(link.id, "custom_duration_minutes", e.target.value ? v : null); }} className="bg-background border-border font-body text-xs h-8" />
+                    <MinutesSelect
+                      value={link.custom_duration_minutes ? String(link.custom_duration_minutes) : ""}
+                      onChange={(v) => updateOverride(link.id, "custom_duration_minutes", v === "none" ? null : parseInt(v))}
+                      min={5} max={480} placeholder={`${s.duration} min`}
+                      className="bg-background text-xs h-8" allowEmpty
+                    />
                   </div>
                   <div>
                     <label className="font-body text-xs text-muted-foreground">Margem (min)</label>
-                    <Input type="number" step="5" min="0" placeholder={String(s.buffer_minutes)} value={link.custom_buffer_minutes ?? ""} onChange={(e) => { const v = parseInt(e.target.value); if (e.target.value && v % 5 !== 0) { toast.error("Deve ser múltiplo de 5"); return; } updateOverride(link.id, "custom_buffer_minutes", e.target.value ? v : null); }} className="bg-background border-border font-body text-xs h-8" />
+                    <MinutesSelect
+                      value={link.custom_buffer_minutes ? String(link.custom_buffer_minutes) : ""}
+                      onChange={(v) => updateOverride(link.id, "custom_buffer_minutes", v === "none" ? null : parseInt(v))}
+                      min={0} max={120} placeholder={`${s.buffer_minutes} min`}
+                      className="bg-background text-xs h-8" allowEmpty
+                    />
                   </div>
                   <div>
                     <label className="font-body text-xs text-muted-foreground">Comissão override</label>
