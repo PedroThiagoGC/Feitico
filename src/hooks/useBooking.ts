@@ -268,8 +268,7 @@ export function generateWhatsAppMessage(info: WhatsAppBookingInfo) {
   const rawPhone = info.salonWhatsapp || info.salonPhone || "";
   const phone = rawPhone.replace(/\D/g, "");
   if (!phone) {
-    // No phone configured — open WhatsApp without a specific number (user picks contact)
-    return `https://wa.me/?text=${encodeURIComponent(message)}`;
+    return `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
   }
-  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
 }
