@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Clock, Loader2, User, Check, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -220,7 +219,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   const currentStep = !selectedServices.length ? 1
     : !selectedProfessionalId ? 2
     : !selectedDate ? 3
-    : !selectedTime ? 4
+    : !selectedTime ? 3
     : 5;
 
   return (
@@ -355,7 +354,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                 </div>
               )}
 
-              {/* Step 3: Date (only show after professional selection) */}
+              {/* Step 3: Date & Time combined */}
               {selectedProfessionalId && selectedServices.length > 0 && incompatibleSelectedServices.length === 0 && (
                 <div>
                   <h4 className="font-display text-base md:text-lg font-semibold mb-3 md:mb-4 text-foreground flex items-center gap-2">
@@ -367,68 +366,102 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                       Este profissional ainda não tem disponibilidade cadastrada. Entre em contato com o salão.
                     </p>
                   ) : (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-start text-left font-body bg-secondary border-border h-12">
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {selectedDate ? format(selectedDate, "dd 'de' MMMM, yyyy (EEEE)", { locale: ptBR }) : "Selecione uma data"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-card border-border" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={selectedDate}
-                          onSelect={(d) => { setSelectedDate(d); setSelectedTime(""); setShowConfirmation(false); }}
-                          disabled={disabledDays || ((d) => d < new Date(new Date().setHours(0, 0, 0, 0)))}
-                          locale={ptBR}
-                          className="pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <>
+                      {/* Selected date display */}
+                      {selectedDate && (
+                        <div className="mb-3 p-3 rounded-lg bg-primary/5 border border-primary/20 font-body text-sm flex items-center gap-2">
+                          <CalendarIcon className="w-4 h-4 text-primary" />
+                          <span className="text-foreground font-medium">
+                            {format(selectedDate, "dd 'de' MMMM, yyyy (EEEE)", { locale: ptBR })}
+                          </span>
+                          <button type="button" onClick={() => { setSelectedDate(undefined); setSelectedTime(""); setShowConfirmation(false); }} className="ml-auto text-muted-foreground hover:text-foreground text-xs">
+                            Alterar
+                          </button>
+                        </div>
+                      )}
+                      {/* Inline calendar */}
+                      {!selectedDate && (
+                        <div className="rounded-xl border border-border bg-secondary/50 p-2 flex justify-center">
+                          <Calendar
+                            mode="single"
+                            selected={selectedDate}
+                            onSelect={(d) => { setSelectedDate(d); setSelectedTime(""); setShowConfirmation(false); }}
+                            disabled={disabledDays || ((d) => d < new Date(new Date().setHours(0, 0, 0, 0)))}
+                            locale={ptBR}
+                            className="pointer-events-auto"
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
-                </div>
-              )}
 
-              {/* Step 4: Time Slots */}
-              {selectedDate && selectedServices.length > 0 && selectedProfessionalId && incompatibleSelectedServices.length === 0 && (
-                <div>
-                  <h4 className="font-display text-base md:text-lg font-semibold mb-3 md:mb-4 text-foreground flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">4</span>
-                    Selecione o horário
-                  </h4>
-                  {slotsLoading ? (
-                    <div className="flex items-center gap-2 text-muted-foreground font-body text-sm p-4 bg-secondary rounded-lg">
-                      <Loader2 className="w-4 h-4 animate-spin" />Carregando horários disponíveis...
+                  {/* Step 4: Time Slots - shown inline right after date */}
+                  {selectedDate && (
+                    <div className="mt-6">
+                      <h4 className="font-display text-base md:text-lg font-semibold mb-3 md:mb-4 text-foreground flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">4</span>
+                        Selecione o horário
+                        <span className="text-xs font-normal text-muted-foreground ml-auto">{totalDuration}min necessários</span>
+                      </h4>
+                      {slotsLoading ? (
+                        <div className="flex items-center gap-2 text-muted-foreground font-body text-sm p-4 bg-secondary rounded-lg">
+                          <Loader2 className="w-4 h-4 animate-spin" />Carregando horários...
+                        </div>
+                      ) : slots && slots.length > 0 ? (
+                        (() => {
+                          const morning = slots.filter(s => parseInt(s) < 12);
+                          const afternoon = slots.filter(s => parseInt(s) >= 12 && parseInt(s) < 18);
+                          const evening = slots.filter(s => parseInt(s) >= 18);
+                          const groups = [
+                            { label: "Manhã", icon: "☀️", items: morning },
+                            { label: "Tarde", icon: "🌤️", items: afternoon },
+                            { label: "Noite", icon: "🌙", items: evening },
+                          ].filter(g => g.items.length > 0);
+
+                          return (
+                            <div className="space-y-4">
+                              {groups.map(group => (
+                                <div key={group.label}>
+                                  <p className="text-xs font-body text-muted-foreground mb-2 flex items-center gap-1">
+                                    <span>{group.icon}</span> {group.label}
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {group.items.map((slot) => (
+                                      <button
+                                        type="button"
+                                        key={slot}
+                                        onClick={() => { setSelectedTime(slot); setShowConfirmation(false); }}
+                                        className={`px-3 py-2 rounded-full font-body text-sm transition-all ${
+                                          selectedTime === slot
+                                            ? "bg-primary text-primary-foreground shadow-gold font-semibold"
+                                            : "bg-secondary border border-border text-foreground hover:border-primary/40 hover:bg-primary/10"
+                                        }`}
+                                      >
+                                        {slot}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        <p className="text-muted-foreground font-body text-sm p-4 bg-secondary rounded-lg">
+                          Nenhum horário disponível para esta data. Tente outro dia.
+                        </p>
+                      )}
+                      {selectedTime && (
+                        <div className="mt-3 p-3 rounded-lg bg-primary/5 border border-primary/20 font-body text-sm flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-primary" />
+                          <span className="text-foreground">
+                            <span className="font-bold text-primary">{selectedTime}</span>
+                            {" · "}{totalDuration}min
+                            {totalBuffer > 0 && <span className="text-muted-foreground"> + {totalBuffer}min margem</span>}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  ) : slots && slots.length > 0 ? (
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
-                      {slots.map((slot) => (
-                        <button
-                          type="button"
-                          key={slot}
-                          onClick={() => { setSelectedTime(slot); setShowConfirmation(false); }}
-                          className={`p-2.5 rounded-lg border text-center font-body text-sm transition-all ${
-                            selectedTime === slot
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border bg-secondary text-foreground hover:border-primary/30"
-                          }`}
-                        >
-                          <Clock className="w-3 h-3 mx-auto mb-0.5" />
-                          {slot}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground font-body text-sm p-4 bg-secondary rounded-lg">
-                      Nenhum horário disponível para esta data. Tente outro dia.
-                    </p>
-                  )}
-                  {selectedTime && (
-                    <p className="mt-2 text-sm font-body text-foreground">
-                      Horário selecionado: <span className="font-bold text-primary">{selectedTime}</span>
-                      {" · "}{totalDuration}min de serviço
-                      {totalBuffer > 0 && <span className="text-muted-foreground"> + {totalBuffer}min margem</span>}
-                    </p>
                   )}
                 </div>
               )}

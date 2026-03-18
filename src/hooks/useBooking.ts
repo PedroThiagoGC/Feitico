@@ -264,7 +264,12 @@ export function generateWhatsAppMessage(info: WhatsAppBookingInfo) {
     (booking.booking_time ? `🕐 *Horário:* ${booking.booking_time}\n` : "") +
     `\nFavor seguir com a confirmação e atendimento. ✨`;
 
-  // Use the salon's whatsapp number, fallback to phone, then a default
-  const phone = (info.salonWhatsapp || info.salonPhone || "5511961765421").replace(/\D/g, "");
-  return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+  // Use the salon's whatsapp number, fallback to phone
+  const rawPhone = info.salonWhatsapp || info.salonPhone || "";
+  const phone = rawPhone.replace(/\D/g, "");
+  if (!phone) {
+    // No phone configured — open WhatsApp without a specific number (user picks contact)
+    return `https://wa.me/?text=${encodeURIComponent(message)}`;
+  }
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
