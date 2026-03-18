@@ -41,7 +41,11 @@ export class ProfessionalService {
   @Column({ name: "commission_override_type", type: "text", nullable: true })
   commissionOverrideType: string | null;
 
-  @Column({ name: "commission_override_value", type: "numeric", nullable: true })
+  @Column({
+    name: "commission_override_value",
+    type: "numeric",
+    nullable: true,
+  })
   commissionOverrideValue: number | null;
 
   @Column({ type: "boolean", default: true })

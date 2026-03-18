@@ -32,11 +32,16 @@ export class BookingsService {
         .orderBy("b.bookingDate", "DESC")
         .addOrderBy("b.bookingTime", "DESC");
 
-      if (filters?.salonId) qb.andWhere("b.salonId = :salonId", { salonId: filters.salonId });
-      if (filters?.professionalId) qb.andWhere("b.professionalId = :pid", { pid: filters.professionalId });
-      if (filters?.date) qb.andWhere("b.bookingDate = :date", { date: filters.date });
+      if (filters?.salonId)
+        qb.andWhere("b.salonId = :salonId", { salonId: filters.salonId });
+      if (filters?.professionalId)
+        qb.andWhere("b.professionalId = :pid", { pid: filters.professionalId });
+      if (filters?.date)
+        qb.andWhere("b.bookingDate = :date", { date: filters.date });
       if (filters?.statuses?.length) {
-        qb.andWhere("b.status IN (:...statuses)", { statuses: filters.statuses });
+        qb.andWhere("b.status IN (:...statuses)", {
+          statuses: filters.statuses,
+        });
       } else if (filters?.status) {
         qb.andWhere("b.status = :status", { status: filters.status });
       }
@@ -73,7 +78,8 @@ export class BookingsService {
             status: In([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
           },
         });
-        if (conflict) throw new BadRequestException("Time slot is not available");
+        if (conflict)
+          throw new BadRequestException("Time slot is not available");
       }
 
       const booking = this.bookingRepo.create({
@@ -106,17 +112,26 @@ export class BookingsService {
     try {
       const patch: Partial<Booking> = {};
       if (updateData.salon_id) patch.salonId = updateData.salon_id;
-      if (updateData.professional_id) patch.professionalId = updateData.professional_id;
-      if (updateData.customer_name) patch.customerName = updateData.customer_name;
-      if (updateData.customer_phone) patch.customerPhone = updateData.customer_phone;
+      if (updateData.professional_id)
+        patch.professionalId = updateData.professional_id;
+      if (updateData.customer_name)
+        patch.customerName = updateData.customer_name;
+      if (updateData.customer_phone)
+        patch.customerPhone = updateData.customer_phone;
       if (updateData.services) patch.services = updateData.services as object[];
-      if (updateData.total_price !== undefined) patch.totalPrice = updateData.total_price;
-      if (updateData.total_duration !== undefined) patch.totalDuration = updateData.total_duration;
-      if (updateData.total_buffer_minutes !== undefined) patch.totalBufferMinutes = updateData.total_buffer_minutes;
-      if (updateData.total_occupied_minutes !== undefined) patch.totalOccupiedMinutes = updateData.total_occupied_minutes;
+      if (updateData.total_price !== undefined)
+        patch.totalPrice = updateData.total_price;
+      if (updateData.total_duration !== undefined)
+        patch.totalDuration = updateData.total_duration;
+      if (updateData.total_buffer_minutes !== undefined)
+        patch.totalBufferMinutes = updateData.total_buffer_minutes;
+      if (updateData.total_occupied_minutes !== undefined)
+        patch.totalOccupiedMinutes = updateData.total_occupied_minutes;
       if (updateData.booking_date) patch.bookingDate = updateData.booking_date;
-      if (updateData.booking_time !== undefined) patch.bookingTime = updateData.booking_time ?? null;
-      if (updateData.booking_type) patch.bookingType = updateData.booking_type as "scheduled" | "walk_in";
+      if (updateData.booking_time !== undefined)
+        patch.bookingTime = updateData.booking_time ?? null;
+      if (updateData.booking_type)
+        patch.bookingType = updateData.booking_type as "scheduled" | "walk_in";
       if (updateData.notes) patch.notes = updateData.notes;
 
       await this.bookingRepo.update(id, patch);
@@ -129,7 +144,9 @@ export class BookingsService {
 
   async updateStatus(id: string, status: BookingStatus) {
     try {
-      const result = await this.bookingRepo.update(id, { status: status as Booking["status"] });
+      const result = await this.bookingRepo.update(id, {
+        status: status as Booking["status"],
+      });
       if (!result.affected) throw new NotFoundException("Booking not found");
       return this.findById(id);
     } catch (error) {

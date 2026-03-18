@@ -38,7 +38,13 @@ export class Booking {
   @Column({ type: "jsonb", default: [] })
   services: object[];
 
-  @Column({ name: "total_price", type: "numeric", precision: 10, scale: 2, default: 0 })
+  @Column({
+    name: "total_price",
+    type: "numeric",
+    precision: 10,
+    scale: 2,
+    default: 0,
+  })
   totalPrice: number;
 
   @Column({ name: "total_duration", type: "integer", default: 0 })

@@ -16,7 +16,10 @@ export class ServicesService {
     try {
       const where: any = { active: true };
       if (salonId) where.salonId = salonId;
-      return await this.serviceRepo.find({ where, order: { sortOrder: "ASC" } });
+      return await this.serviceRepo.find({
+        where,
+        order: { sortOrder: "ASC" },
+      });
     } catch (error) {
       this.logger.error("Error in findAll", error);
       return [];

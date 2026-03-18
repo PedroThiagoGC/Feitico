@@ -25,7 +25,10 @@ export class ProfessionalsService {
     try {
       const where: any = { active: true };
       if (salonId) where.salonId = salonId;
-      return await this.professionalRepo.find({ where, order: { name: "ASC" } });
+      return await this.professionalRepo.find({
+        where,
+        order: { name: "ASC" },
+      });
     } catch (error) {
       this.logger.error("Error in findAll", error);
       return [];
@@ -92,21 +95,34 @@ export class ProfessionalsService {
       .getMany();
   }
 
-  async createServiceLink(professionalId: string, payload: Partial<ProfessionalService>) {
-    const link = this.professionalServiceRepo.create({ professionalId, ...payload });
+  async createServiceLink(
+    professionalId: string,
+    payload: Partial<ProfessionalService>,
+  ) {
+    const link = this.professionalServiceRepo.create({
+      professionalId,
+      ...payload,
+    });
     return this.professionalServiceRepo.save(link);
   }
 
-  async updateServiceLink(linkId: string, payload: Partial<ProfessionalService>) {
+  async updateServiceLink(
+    linkId: string,
+    payload: Partial<ProfessionalService>,
+  ) {
     await this.professionalServiceRepo.update(linkId, payload);
-    const updated = await this.professionalServiceRepo.findOneBy({ id: linkId });
-    if (!updated) throw new NotFoundException("Professional service link not found");
+    const updated = await this.professionalServiceRepo.findOneBy({
+      id: linkId,
+    });
+    if (!updated)
+      throw new NotFoundException("Professional service link not found");
     return updated;
   }
 
   async deleteServiceLink(linkId: string) {
     const result = await this.professionalServiceRepo.delete(linkId);
-    if (!result.affected) throw new NotFoundException("Professional service link not found");
+    if (!result.affected)
+      throw new NotFoundException("Professional service link not found");
     return { success: true };
   }
 
@@ -119,21 +135,31 @@ export class ProfessionalsService {
     });
   }
 
-  async createAvailability(professionalId: string, payload: Partial<ProfessionalAvailability>) {
+  async createAvailability(
+    professionalId: string,
+    payload: Partial<ProfessionalAvailability>,
+  ) {
     const avail = this.availabilityRepo.create({ professionalId, ...payload });
     return this.availabilityRepo.save(avail);
   }
 
-  async updateAvailability(availabilityId: string, payload: Partial<ProfessionalAvailability>) {
+  async updateAvailability(
+    availabilityId: string,
+    payload: Partial<ProfessionalAvailability>,
+  ) {
     await this.availabilityRepo.update(availabilityId, payload);
-    const updated = await this.availabilityRepo.findOneBy({ id: availabilityId });
-    if (!updated) throw new NotFoundException("Professional availability not found");
+    const updated = await this.availabilityRepo.findOneBy({
+      id: availabilityId,
+    });
+    if (!updated)
+      throw new NotFoundException("Professional availability not found");
     return updated;
   }
 
   async deleteAvailability(availabilityId: string) {
     const result = await this.availabilityRepo.delete(availabilityId);
-    if (!result.affected) throw new NotFoundException("Professional availability not found");
+    if (!result.affected)
+      throw new NotFoundException("Professional availability not found");
     return { success: true };
   }
 
@@ -155,21 +181,29 @@ export class ProfessionalsService {
     return qb.getMany();
   }
 
-  async createException(professionalId: string, payload: Partial<ProfessionalException>) {
+  async createException(
+    professionalId: string,
+    payload: Partial<ProfessionalException>,
+  ) {
     const exc = this.exceptionRepo.create({ professionalId, ...payload });
     return this.exceptionRepo.save(exc);
   }
 
-  async updateException(exceptionId: string, payload: Partial<ProfessionalException>) {
+  async updateException(
+    exceptionId: string,
+    payload: Partial<ProfessionalException>,
+  ) {
     await this.exceptionRepo.update(exceptionId, payload);
     const updated = await this.exceptionRepo.findOneBy({ id: exceptionId });
-    if (!updated) throw new NotFoundException("Professional exception not found");
+    if (!updated)
+      throw new NotFoundException("Professional exception not found");
     return updated;
   }
 
   async deleteException(exceptionId: string) {
     const result = await this.exceptionRepo.delete(exceptionId);
-    if (!result.affected) throw new NotFoundException("Professional exception not found");
+    if (!result.affected)
+      throw new NotFoundException("Professional exception not found");
     return { success: true };
   }
 }

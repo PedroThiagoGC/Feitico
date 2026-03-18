@@ -19,8 +19,10 @@ export class TestimonialsService {
         .where("t.active = true")
         .orderBy("t.createdAt", "DESC");
 
-      if (filters?.salonId) qb.andWhere("t.salonId = :salonId", { salonId: filters.salonId });
-      if (filters?.minRating) qb.andWhere("t.rating >= :min", { min: filters.minRating });
+      if (filters?.salonId)
+        qb.andWhere("t.salonId = :salonId", { salonId: filters.salonId });
+      if (filters?.minRating)
+        qb.andWhere("t.rating >= :min", { min: filters.minRating });
 
       return await qb.getMany();
     } catch (error) {

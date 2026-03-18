@@ -16,7 +16,10 @@ export class GalleryService {
     try {
       const where: any = {};
       if (salonId) where.salonId = salonId;
-      return await this.galleryRepo.find({ where, order: { sortOrder: "ASC" } });
+      return await this.galleryRepo.find({
+        where,
+        order: { sortOrder: "ASC" },
+      });
     } catch (error) {
       this.logger.error("Error in findAll", error);
       return [];
