@@ -1,0 +1,52 @@
+version: "3.8"
+
+services:
+  feitico-api:
+    image: ${REGISTRY}/feitico-api:${IMAGE_TAG}
+    environment:
+      NODE_ENV: "${NODE_ENV}"
+      PORT: "3333"
+      SUPABASE_URL: "${SUPABASE_URL}"
+      SUPABASE_KEY: "${SUPABASE_KEY}"
+      SUPABASE_SERVICE_ROLE_KEY: "${SUPABASE_SERVICE_ROLE_KEY:-${SUPABASE_KEY}}"
+      JWT_SECRET: "${JWT_SECRET}"
+      FRONTEND_URL: "${FRONTEND_URL}"
+    networks:
+      - Technet
+    deploy:
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        # Router Backend API
+        - "traefik.http.routers.${STACK_NAME}-api.rule=Host(\`${DOMAIN}\`) && PathPrefix(\`/api\`)"
+        - "traefik.http.routers.${STACK_NAME}-api.entrypoints=websecure"
+        - "traefik.http.routers.${STACK_NAME}-api.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.${STACK_NAME}-api.loadbalancer.server.port=3333"
+        - "traefik.docker.network=Technet"
+
+  feitico-web:
+    image: ${REGISTRY}/feitico-web:${IMAGE_TAG}
+    environment:
+      NODE_ENV: "${NODE_ENV}"
+      VITE_API_URL: "${VITE_API_URL}"
+      VITE_SUPABASE_URL: "${VITE_SUPABASE_URL}"
+      VITE_SUPABASE_KEY: "${VITE_SUPABASE_KEY}"
+    networks:
+      - Technet
+    deploy:
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        # Router Frontend
+        - "traefik.http.routers.${STACK_NAME}-web.rule=Host(\`${DOMAIN}\`) && !PathPrefix(\`/api\`) && !PathPrefix(\`/backend\`)"
+        - "traefik.http.routers.${STACK_NAME}-web.entrypoints=websecure"
+        - "traefik.http.routers.${STACK_NAME}-web.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.${STACK_NAME}-web.loadbalancer.server.port=3000"
+        - "traefik.docker.network=Technet"
+
+networks:
+  Technet:
+    external: true
+    attachable: true
