@@ -13,6 +13,7 @@ import AdminTestimonials from "@/components/admin/AdminTestimonials";
 import AdminAvailability from "@/components/admin/AdminAvailability";
 import AdminProfessionals from "@/components/admin/AdminProfessionals";
 import AdminFinancials from "@/components/admin/AdminFinancials";
+import AdminCalendar from "@/components/admin/AdminCalendar";
 import { LogOut, LayoutDashboard, Menu, X } from "lucide-react";
 
 export default function Admin() {
