@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { buildWhatsAppUrl, normalizeWhatsAppPhone } from "@/lib/phone";
 
 export interface Booking {
   id: string;
@@ -264,11 +265,14 @@ export function generateWhatsAppMessage(info: WhatsAppBookingInfo) {
     (booking.booking_time ? `🕐 *Horário:* ${booking.booking_time}\n` : "") +
     `\nFavor seguir com a confirmação e atendimento. ✨`;
 
-  // Use the salon's whatsapp number, fallback to phone
-  const rawPhone = info.salonWhatsapp || info.salonPhone || "";
-  const phone = rawPhone.replace(/\D/g, "");
-  if (!phone) {
-    return `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+  // Usa WhatsApp do salão, com fallback para telefone.
+  const normalizedPhone =
+    normalizeWhatsAppPhone(info.salonWhatsapp) ||
+    normalizeWhatsAppPhone(info.salonPhone);
+
+  if (!normalizedPhone) {
+    return `https://api.whatsapp.com/send/?text=${encodeURIComponent(message)}&type=phone_number&app_absent=0`;
   }
-  return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+
+  return buildWhatsAppUrl(normalizedPhone, message);
 }

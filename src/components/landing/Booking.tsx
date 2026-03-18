@@ -203,7 +203,11 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
         salonPhone: salon?.phone || undefined,
         professionalName: selectedProfessional?.name || "",
       });
-      window.open(whatsappUrl, "_blank");
+
+      const tab = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      if (!tab) {
+        window.location.assign(whatsappUrl);
+      }
 
       form.reset();
       setSelectedServices([]);

@@ -8,11 +8,14 @@ import { toast } from "sonner";
 import { Save } from "lucide-react";
 import ImageUpload from "./ImageUpload";
 import OpeningHoursEditor from "./OpeningHoursEditor";
+import { normalizeWhatsAppPhone, splitWhatsAppPhone } from "@/lib/phone";
 
 export default function AdminSalon() {
   const [salon, setSalon] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [whatsappCountryCode, setWhatsappCountryCode] = useState("55");
+  const [whatsappNationalNumber, setWhatsappNationalNumber] = useState("");
 
   useEffect(() => {
     loadSalon();
@@ -20,26 +23,53 @@ export default function AdminSalon() {
 
   async function loadSalon() {
     const { data } = await supabase.from("salons").select("*").limit(1).maybeSingle();
-    setSalon(data || {
+    const initialSalon = data || {
       name: "", phone: "", whatsapp: "", address: "", about_text: "",
       logo_url: "", hero_image_url: "", video_url: "", instagram: "", facebook: "",
       opening_hours: {
         mon: "09:00-19:00", tue: "09:00-19:00", wed: "09:00-19:00",
         thu: "09:00-19:00", fri: "09:00-19:00", sat: "09:00-18:00", sun: "closed",
       },
-    });
+    };
+
+    setSalon(initialSalon);
+
+    const parts = splitWhatsAppPhone(initialSalon.whatsapp || initialSalon.phone || "", "55");
+    setWhatsappCountryCode(parts.countryCode);
+    setWhatsappNationalNumber(parts.nationalNumber);
+
     setLoading(false);
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
+
+    const normalizedWhatsapp = normalizeWhatsAppPhone(
+      `${whatsappCountryCode}${whatsappNationalNumber}`,
+      whatsappCountryCode || "55"
+    );
+
+    if (whatsappNationalNumber.trim() && !normalizedWhatsapp) {
+      toast.error("WhatsApp inválido. Informe DDI e número com DDD.");
+      setSaving(false);
+      return;
+    }
+
+    const payload = {
+      ...salon,
+      whatsapp: normalizedWhatsapp || null,
+    };
+
     if (salon.id) {
-      const { error } = await supabase.from("salons").update(salon).eq("id", salon.id);
+      const { error } = await supabase.from("salons").update(payload).eq("id", salon.id);
       if (error) toast.error(error.message);
-      else toast.success("Salão atualizado!");
+      else {
+        setSalon(payload);
+        toast.success("Salão atualizado!");
+      }
     } else {
-      const { data, error } = await supabase.from("salons").insert({ ...salon, active: true }).select().single();
+      const { data, error } = await supabase.from("salons").insert({ ...payload, active: true }).select().single();
       if (error) toast.error(error.message);
       else { setSalon(data); toast.success("Salão criado!"); }
     }
@@ -51,7 +81,6 @@ export default function AdminSalon() {
   const textFields = [
     { key: "name", label: "Nome do Salão" },
     { key: "phone", label: "Telefone" },
-    { key: "whatsapp", label: "WhatsApp (com DDD e DDI)" },
     { key: "address", label: "Endereço" },
     { key: "video_url", label: "URL do Vídeo (YouTube)" },
     { key: "instagram", label: "Instagram (@usuario)" },
@@ -76,6 +105,28 @@ export default function AdminSalon() {
                 />
               </div>
             ))}
+
+            <div>
+              <label className="font-body text-sm font-medium mb-1 block">WhatsApp (DDI)</label>
+              <Input
+                value={whatsappCountryCode}
+                onChange={(e) => setWhatsappCountryCode(e.target.value.replace(/\D/g, ""))}
+                className="bg-secondary border-border font-body"
+                placeholder="55"
+                maxLength={3}
+              />
+            </div>
+
+            <div>
+              <label className="font-body text-sm font-medium mb-1 block">WhatsApp (DDD + número)</label>
+              <Input
+                value={whatsappNationalNumber}
+                onChange={(e) => setWhatsappNationalNumber(e.target.value.replace(/\D/g, ""))}
+                className="bg-secondary border-border font-body"
+                placeholder="11912345678"
+                maxLength={12}
+              />
+            </div>
           </div>
 
           {/* Image uploads */}
