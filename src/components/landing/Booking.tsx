@@ -196,6 +196,8 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
         booking: bookingData,
         salonName: salon?.name || "Salão",
         salonAddress: salon?.address || "",
+        salonWhatsapp: salon?.whatsapp || undefined,
+        salonPhone: salon?.phone || undefined,
         professionalName: selectedProfessional?.name || "",
       });
       window.open(whatsappUrl, "_blank");
