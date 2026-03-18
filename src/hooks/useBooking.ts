@@ -205,8 +205,6 @@ export interface WhatsAppBookingInfo {
   professionalName: string;
 }
 
-const WHATSAPP_NUMBER = "5511961765421";
-
 export function generateWhatsAppMessage(info: WhatsAppBookingInfo) {
   const { booking, salonName, salonAddress, professionalName } = info;
 
@@ -234,5 +232,7 @@ export function generateWhatsAppMessage(info: WhatsAppBookingInfo) {
     (booking.booking_time ? `🕐 *Horário:* ${booking.booking_time}\n` : "") +
     `\nFavor seguir com a confirmação e atendimento. ✨`;
 
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  // Use the salon's whatsapp number, fallback to phone, then a default
+  const phone = (info.salonWhatsapp || info.salonPhone || "5511961765421").replace(/\D/g, "");
+  return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
 }
