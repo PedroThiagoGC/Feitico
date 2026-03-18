@@ -24,17 +24,9 @@ interface ServiceForm {
 }
 
 const emptyService: ServiceForm = {
-  name: "", description: "", price: "0", duration: "30", buffer_minutes: "0",
+  name: "", description: "", price: "0", duration: "5", buffer_minutes: "0",
   image_url: "", category: "", is_combo: false, active: true, sort_order: "0",
 };
-
-function validateMultipleOf5(value: number, label: string): boolean {
-  if (value % 5 !== 0) {
-    toast.error(`${label} deve ser múltiplo de 5 minutos`);
-    return false;
-  }
-  return true;
-}
 
 export default function AdminServices() {
   const [services, setServices] = useState<any[]>([]);
