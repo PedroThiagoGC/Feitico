@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -36,6 +37,35 @@ export function useBookings(salonId: string | undefined, date?: string) {
   });
 }
 
+/** Subscribe to realtime booking changes to keep slots/bookings fresh */
+export function useRealtimeBookings(salonId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!salonId) return;
+
+    const channel = supabase
+      .channel(`bookings-realtime-${salonId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "bookings",
+          filter: `salon_id=eq.${salonId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["bookings"] });
+          queryClient.invalidateQueries({ queryKey: ["available-slots"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [salonId, queryClient]);
+}
 export function useAvailableSlots(
   professionalId: string | undefined,
   date: string | undefined,
@@ -202,10 +232,10 @@ export interface WhatsAppBookingInfo {
   booking: CreateBookingData;
   salonName: string;
   salonAddress: string;
+  salonWhatsapp?: string;
+  salonPhone?: string;
   professionalName: string;
 }
-
-const WHATSAPP_NUMBER = "5511961765421";
 
 export function generateWhatsAppMessage(info: WhatsAppBookingInfo) {
   const { booking, salonName, salonAddress, professionalName } = info;
@@ -234,5 +264,7 @@ export function generateWhatsAppMessage(info: WhatsAppBookingInfo) {
     (booking.booking_time ? `🕐 *Horário:* ${booking.booking_time}\n` : "") +
     `\nFavor seguir com a confirmação e atendimento. ✨`;
 
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  // Use the salon's whatsapp number, fallback to phone, then a default
+  const phone = (info.salonWhatsapp || info.salonPhone || "5511961765421").replace(/\D/g, "");
+  return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
 }

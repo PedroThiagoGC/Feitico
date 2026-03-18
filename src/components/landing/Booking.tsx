@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
-import { useAvailableSlots, useCreateBooking, generateWhatsAppMessage, calculateCommission } from "@/hooks/useBooking";
+import { useAvailableSlots, useCreateBooking, useRealtimeBookings, generateWhatsAppMessage, calculateCommission } from "@/hooks/useBooking";
 import { useProfessionals, useProfessionalServices, useProfessionalAvailability } from "@/hooks/useProfessionals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,9 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [showConfirmation, setShowConfirmation] = useState(false);
   const createBooking = useCreateBooking();
+
+  // Realtime: auto-refresh slots when another person books
+  useRealtimeBookings(salon?.id);
 
   const { data: professionals } = useProfessionals(salon?.id);
   const { data: proServices } = useProfessionalServices(selectedProfessionalId || undefined);
@@ -196,6 +199,8 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
         booking: bookingData,
         salonName: salon?.name || "Salão",
         salonAddress: salon?.address || "",
+        salonWhatsapp: salon?.whatsapp || undefined,
+        salonPhone: salon?.phone || undefined,
         professionalName: selectedProfessional?.name || "",
       });
       window.open(whatsappUrl, "_blank");
