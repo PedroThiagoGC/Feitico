@@ -1,19 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable } from "@nestjs/common";
 
 @Injectable()
 export class AppService {
   getHealth() {
     return {
-      status: 'ok',
-      service: 'feitico-api',
+      status: "ok",
+      service: "feitico-api",
       timestamp: new Date().toISOString(),
-      version: '1.0.0',
+      version: "1.0.0",
     };
   }
 
   ping() {
     return {
-      message: 'pong',
+      message: "pong",
       timestamp: new Date().toISOString(),
     };
   }

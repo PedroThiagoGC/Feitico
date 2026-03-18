@@ -8,26 +8,26 @@ import {
   Param,
   Query,
   HttpCode,
-} from '@nestjs/common';
-import { TestimonialsService } from './testimonials.service';
+} from "@nestjs/common";
+import { TestimonialsService } from "./testimonials.service";
 
-@Controller('testimonials')
+@Controller("testimonials")
 export class TestimonialsController {
   constructor(private readonly testimonialsService: TestimonialsService) {}
 
   @Get()
   @HttpCode(200)
   async findAll(
-    @Query('minRating') minRating?: string,
-    @Query('salonId') salonId?: string,
+    @Query("minRating") minRating?: string,
+    @Query("salonId") salonId?: string,
   ) {
     const rating = minRating ? parseInt(minRating, 10) : undefined;
     return this.testimonialsService.findAll({ salonId, minRating: rating });
   }
 
-  @Get(':id')
+  @Get(":id")
   @HttpCode(200)
-  async findById(@Param('id') id: string) {
+  async findById(@Param("id") id: string) {
     return this.testimonialsService.findById(id);
   }
 
@@ -37,15 +37,15 @@ export class TestimonialsController {
     return this.testimonialsService.create(createTestimonialDto);
   }
 
-  @Put(':id')
+  @Put(":id")
   @HttpCode(200)
-  async update(@Param('id') id: string, @Body() updateTestimonialDto: any) {
+  async update(@Param("id") id: string, @Body() updateTestimonialDto: any) {
     return this.testimonialsService.update(id, updateTestimonialDto);
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @HttpCode(200)
-  async delete(@Param('id') id: string) {
+  async delete(@Param("id") id: string) {
     return this.testimonialsService.delete(id);
   }
 }

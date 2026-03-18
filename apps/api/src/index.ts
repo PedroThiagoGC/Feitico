@@ -1,5 +1,5 @@
-import 'dotenv/config';
-import { createApp } from './app';
+import "dotenv/config";
+import { createApp } from "./app";
 
 export default async function handler(req: any, res: any) {
   const app = await createApp();

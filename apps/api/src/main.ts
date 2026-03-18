@@ -1,5 +1,5 @@
-import 'reflect-metadata';
-import { createApp } from './app';
+import "reflect-metadata";
+import { createApp } from "./app";
 
 async function bootstrap() {
   const app = await createApp();
@@ -10,6 +10,6 @@ async function bootstrap() {
 }
 
 bootstrap().catch((error) => {
-  console.error('Failed to start application:', error);
+  console.error("Failed to start application:", error);
   process.exit(1);
 });

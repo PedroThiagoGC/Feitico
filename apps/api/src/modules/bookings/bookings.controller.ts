@@ -8,23 +8,23 @@ import {
   Param,
   Query,
   HttpCode,
-} from '@nestjs/common';
-import { BookingsService } from './bookings.service';
-import { BookingStatus, CreateBookingSchema } from '../../common/types';
-import { z } from 'zod';
+} from "@nestjs/common";
+import { BookingsService } from "./bookings.service";
+import { BookingStatus, CreateBookingSchema } from "../../common/types";
+import { z } from "zod";
 
-@Controller('bookings')
+@Controller("bookings")
 export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
 
   @Get()
   @HttpCode(200)
   async findAll(
-    @Query('status') status?: BookingStatus,
-    @Query('statuses') statuses?: string,
-    @Query('salonId') salonId?: string,
-    @Query('professionalId') professionalId?: string,
-    @Query('date') date?: string,
+    @Query("status") status?: BookingStatus,
+    @Query("statuses") statuses?: string,
+    @Query("salonId") salonId?: string,
+    @Query("professionalId") professionalId?: string,
+    @Query("date") date?: string,
   ) {
     return this.bookingsService.findAll({
       status,
@@ -32,20 +32,20 @@ export class BookingsController {
       professionalId,
       date,
       statuses: statuses
-        ? (statuses.split(',').filter(Boolean) as BookingStatus[])
+        ? (statuses.split(",").filter(Boolean) as BookingStatus[])
         : undefined,
     });
   }
 
-  @Get('stats')
+  @Get("stats")
   @HttpCode(200)
   async getStats() {
     return this.bookingsService.getStats();
   }
 
-  @Get(':id')
+  @Get(":id")
   @HttpCode(200)
-  async findById(@Param('id') id: string) {
+  async findById(@Param("id") id: string) {
     return this.bookingsService.findById(id);
   }
 
@@ -63,24 +63,24 @@ export class BookingsController {
     }
   }
 
-  @Put(':id')
+  @Put(":id")
   @HttpCode(200)
-  async update(@Param('id') id: string, @Body() updateBookingDto: any) {
+  async update(@Param("id") id: string, @Body() updateBookingDto: any) {
     return this.bookingsService.update(id, updateBookingDto);
   }
 
-  @Put(':id/status')
+  @Put(":id/status")
   @HttpCode(200)
   async updateStatus(
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Body() body: { status: BookingStatus },
   ) {
     return this.bookingsService.updateStatus(id, body.status);
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @HttpCode(200)
-  async delete(@Param('id') id: string) {
+  async delete(@Param("id") id: string) {
     return this.bookingsService.delete(id);
   }
 }

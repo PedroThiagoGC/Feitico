@@ -1,5 +1,5 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { SupabaseService } from '../../services/supabase.service';
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { SupabaseService } from "../../services/supabase.service";
 
 @Injectable()
 export class SalonsService {
@@ -11,28 +11,28 @@ export class SalonsService {
     try {
       const { data, error } = await this.supabaseService
         .getClient()
-        .from('salons')
-        .select('*')
-        .eq('active', true)
+        .from("salons")
+        .select("*")
+        .eq("active", true)
         .limit(1)
         .single();
 
       if (error || !data) {
-        throw new NotFoundException('Active salon not found');
+        throw new NotFoundException("Active salon not found");
       }
 
       return data;
     } catch (error) {
-      this.logger.error('Error loading current salon', error);
+      this.logger.error("Error loading current salon", error);
       throw error;
     }
   }
 
   async findById(id: string) {
-    const { data, error } = await this.supabaseService.findById('salons', id);
+    const { data, error } = await this.supabaseService.findById("salons", id);
 
     if (error || !data) {
-      throw new NotFoundException('Salon not found');
+      throw new NotFoundException("Salon not found");
     }
 
     return data;
@@ -44,23 +44,26 @@ export class SalonsService {
       active: true,
     };
 
-    const { data, error } = await this.supabaseService.create('salons', payload);
+    const { data, error } = await this.supabaseService.create(
+      "salons",
+      payload,
+    );
 
     if (error || !data) {
-      throw new NotFoundException('Failed to create salon');
+      throw new NotFoundException("Failed to create salon");
     }
 
     return data;
   }
 
   async update(id: string, updateData: Record<string, unknown>) {
-    const { data, error } = await this.supabaseService.update('salons', id, {
+    const { data, error } = await this.supabaseService.update("salons", id, {
       ...updateData,
       updated_at: new Date().toISOString(),
     });
 
     if (error || !data) {
-      throw new NotFoundException('Failed to update salon');
+      throw new NotFoundException("Failed to update salon");
     }
 
     return data;

@@ -3,9 +3,9 @@ import {
   BadRequestException,
   Logger,
   NotFoundException,
-} from '@nestjs/common';
-import { SupabaseService } from '../../services/supabase.service';
-import { BookingStatus, CreateBookingInput } from '../../common/types';
+} from "@nestjs/common";
+import { SupabaseService } from "../../services/supabase.service";
+import { BookingStatus, CreateBookingInput } from "../../common/types";
 
 @Injectable()
 export class BookingsService {
@@ -21,7 +21,7 @@ export class BookingsService {
     statuses?: BookingStatus[];
   }) {
     try {
-      let query = this.supabaseService.getClient().from('bookings').select(`
+      let query = this.supabaseService.getClient().from("bookings").select(`
         id,
         salon_id,
         professional_id,
@@ -44,35 +44,35 @@ export class BookingsService {
       `);
 
       if (filters?.salonId) {
-        query = query.eq('salon_id', filters.salonId);
+        query = query.eq("salon_id", filters.salonId);
       }
 
       if (filters?.professionalId) {
-        query = query.eq('professional_id', filters.professionalId);
+        query = query.eq("professional_id", filters.professionalId);
       }
 
       if (filters?.date) {
-        query = query.eq('booking_date', filters.date);
+        query = query.eq("booking_date", filters.date);
       }
 
       if (filters?.statuses?.length) {
-        query = query.in('status', filters.statuses);
+        query = query.in("status", filters.statuses);
       } else if (filters?.status) {
-        query = query.eq('status', filters.status);
+        query = query.eq("status", filters.status);
       }
 
       const { data, error } = await query
-        .order('booking_date', { ascending: false })
-        .order('booking_time', { ascending: false, nullsFirst: false });
+        .order("booking_date", { ascending: false })
+        .order("booking_time", { ascending: false, nullsFirst: false });
 
       if (error) {
-        this.logger.error('Failed to fetch bookings', error);
-        throw new BadRequestException('Failed to fetch bookings');
+        this.logger.error("Failed to fetch bookings", error);
+        throw new BadRequestException("Failed to fetch bookings");
       }
 
       return data || [];
     } catch (error) {
-      this.logger.error('Error in findAll', error);
+      this.logger.error("Error in findAll", error);
       throw error;
     }
   }
@@ -81,8 +81,9 @@ export class BookingsService {
     try {
       const { data, error } = await this.supabaseService
         .getClient()
-        .from('bookings')
-        .select(`
+        .from("bookings")
+        .select(
+          `
           id,
           salon_id,
           professional_id,
@@ -102,12 +103,13 @@ export class BookingsService {
           notes,
           created_at,
           professionals:professional_id(*)
-        `)
-        .eq('id', id)
+        `,
+        )
+        .eq("id", id)
         .single();
 
       if (error || !data) {
-        throw new NotFoundException('Booking not found');
+        throw new NotFoundException("Booking not found");
       }
 
       return data;
@@ -120,44 +122,47 @@ export class BookingsService {
   async create(createBookingInput: CreateBookingInput) {
     try {
       const { data: salon } = await this.supabaseService.findById(
-        'salons',
+        "salons",
         createBookingInput.salon_id,
       );
 
       if (!salon) {
-        throw new NotFoundException('Salon not found');
+        throw new NotFoundException("Salon not found");
       }
 
       const { data: professional } = await this.supabaseService.findById(
-        'professionals',
+        "professionals",
         createBookingInput.professional_id,
       );
 
       if (!professional) {
-        throw new NotFoundException('Professional not found');
+        throw new NotFoundException("Professional not found");
       }
 
-      const { data: conflictingBookings, error: conflictError } = await this.supabaseService
-        .getClient()
-        .from('bookings')
-        .select('id')
-        .eq('professional_id', createBookingInput.professional_id)
-        .eq('booking_date', createBookingInput.booking_date)
-        .eq('booking_time', createBookingInput.booking_time)
-        .in('status', [BookingStatus.PENDING, BookingStatus.CONFIRMED]);
+      const { data: conflictingBookings, error: conflictError } =
+        await this.supabaseService
+          .getClient()
+          .from("bookings")
+          .select("id")
+          .eq("professional_id", createBookingInput.professional_id)
+          .eq("booking_date", createBookingInput.booking_date)
+          .eq("booking_time", createBookingInput.booking_time)
+          .in("status", [BookingStatus.PENDING, BookingStatus.CONFIRMED]);
 
       if (conflictError) {
-        this.logger.error('Failed to validate booking conflict', conflictError);
-        throw new BadRequestException('Failed to validate booking availability');
+        this.logger.error("Failed to validate booking conflict", conflictError);
+        throw new BadRequestException(
+          "Failed to validate booking availability",
+        );
       }
 
       if (createBookingInput.booking_time && conflictingBookings?.length) {
-        throw new BadRequestException('Time slot is not available');
+        throw new BadRequestException("Time slot is not available");
       }
 
       const { data, error } = await this.supabaseService
         .getClient()
-        .from('bookings')
+        .from("bookings")
         .insert([
           {
             salon_id: createBookingInput.salon_id,
@@ -182,13 +187,13 @@ export class BookingsService {
         .single();
 
       if (error) {
-        this.logger.error('Failed to create booking', error);
-        throw new BadRequestException('Failed to create booking');
+        this.logger.error("Failed to create booking", error);
+        throw new BadRequestException("Failed to create booking");
       }
 
       return data;
     } catch (error) {
-      this.logger.error('Error creating booking', error);
+      this.logger.error("Error creating booking", error);
       throw error;
     }
   }
@@ -196,7 +201,7 @@ export class BookingsService {
   async update(id: string, updateData: Partial<CreateBookingInput>) {
     try {
       const { data, error } = await this.supabaseService.update(
-        'bookings',
+        "bookings",
         id,
         {
           ...(updateData.salon_id && { salon_id: updateData.salon_id }),
@@ -236,7 +241,7 @@ export class BookingsService {
       );
 
       if (error || !data) {
-        throw new NotFoundException('Booking not found or update failed');
+        throw new NotFoundException("Booking not found or update failed");
       }
 
       return data;
@@ -249,7 +254,7 @@ export class BookingsService {
   async updateStatus(id: string, status: BookingStatus) {
     try {
       const { data, error } = await this.supabaseService.update(
-        'bookings',
+        "bookings",
         id,
         {
           status,
@@ -257,7 +262,7 @@ export class BookingsService {
       );
 
       if (error || !data) {
-        throw new NotFoundException('Booking not found');
+        throw new NotFoundException("Booking not found");
       }
 
       return data;
@@ -269,13 +274,13 @@ export class BookingsService {
 
   async delete(id: string) {
     try {
-      const { error } = await this.supabaseService.delete('bookings', id);
+      const { error } = await this.supabaseService.delete("bookings", id);
 
       if (error) {
-        throw new NotFoundException('Booking not found');
+        throw new NotFoundException("Booking not found");
       }
 
-      return { success: true, message: 'Booking deleted successfully' };
+      return { success: true, message: "Booking deleted successfully" };
     } catch (error) {
       this.logger.error(`Error deleting booking ${id}`, error);
       throw error;
@@ -286,11 +291,11 @@ export class BookingsService {
     try {
       const { data, error } = await this.supabaseService
         .getClient()
-        .from('bookings')
-        .select('status');
+        .from("bookings")
+        .select("status");
 
       if (error) {
-        this.logger.error('Failed to get booking stats', error);
+        this.logger.error("Failed to get booking stats", error);
         return {
           total: 0,
           pending: 0,
@@ -316,7 +321,7 @@ export class BookingsService {
             .length || 0,
       };
     } catch (error) {
-      this.logger.error('Error getting booking stats', error);
+      this.logger.error("Error getting booking stats", error);
       return {
         total: 0,
         pending: 0,

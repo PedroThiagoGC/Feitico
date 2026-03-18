@@ -1,24 +1,24 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 // Enums
 export enum BookingStatus {
-  PENDING = 'pending',
-  CONFIRMED = 'confirmed',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
-  NO_SHOW = 'no_show',
+  PENDING = "pending",
+  CONFIRMED = "confirmed",
+  COMPLETED = "completed",
+  CANCELLED = "cancelled",
+  NO_SHOW = "no_show",
 }
 
 export enum ServiceLevel {
-  BASIC = 'basic',
-  STANDARD = 'standard',
-  PREMIUM = 'premium',
+  BASIC = "basic",
+  STANDARD = "standard",
+  PREMIUM = "premium",
 }
 
 export enum UserRole {
-  ADMIN = 'admin',
-  PROFESSIONAL = 'professional',
-  CLIENT = 'client',
+  ADMIN = "admin",
+  PROFESSIONAL = "professional",
+  CLIENT = "client",
 }
 
 export const BookingServiceItemSchema = z.object({
@@ -42,7 +42,7 @@ export const CreateBookingSchema = z.object({
   total_occupied_minutes: z.coerce.number().int().positive(),
   booking_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   booking_time: z.string().nullable().optional(),
-  booking_type: z.enum(['scheduled', 'walk_in']).default('scheduled'),
+  booking_type: z.enum(["scheduled", "walk_in"]).default("scheduled"),
   notes: z.string().optional(),
 });
 

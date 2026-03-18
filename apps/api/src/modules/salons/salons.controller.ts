@@ -1,19 +1,27 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Put } from '@nestjs/common';
-import { SalonsService } from './salons.service';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Put,
+} from "@nestjs/common";
+import { SalonsService } from "./salons.service";
 
-@Controller('salons')
+@Controller("salons")
 export class SalonsController {
   constructor(private readonly salonsService: SalonsService) {}
 
-  @Get('current')
+  @Get("current")
   @HttpCode(200)
   async findCurrent() {
     return this.salonsService.findCurrent();
   }
 
-  @Get(':id')
+  @Get(":id")
   @HttpCode(200)
-  async findById(@Param('id') id: string) {
+  async findById(@Param("id") id: string) {
     return this.salonsService.findById(id);
   }
 
@@ -23,9 +31,12 @@ export class SalonsController {
     return this.salonsService.create(createSalonDto);
   }
 
-  @Put(':id')
+  @Put(":id")
   @HttpCode(200)
-  async update(@Param('id') id: string, @Body() updateSalonDto: Record<string, unknown>) {
+  async update(
+    @Param("id") id: string,
+    @Body() updateSalonDto: Record<string, unknown>,
+  ) {
     return this.salonsService.update(id, updateSalonDto);
   }
 }

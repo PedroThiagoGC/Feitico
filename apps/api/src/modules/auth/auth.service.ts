@@ -1,7 +1,7 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { createClient } from '@supabase/supabase-js';
-import { SupabaseService } from '../../services/supabase.service';
+import { Injectable, Logger, UnauthorizedException } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { createClient } from "@supabase/supabase-js";
+import { SupabaseService } from "../../services/supabase.service";
 
 @Injectable()
 export class AuthService {
@@ -17,7 +17,7 @@ export class AuthService {
     const anonKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
 
     if (!url || !anonKey) {
-      throw new UnauthorizedException('Auth provider is not configured');
+      throw new UnauthorizedException("Auth provider is not configured");
     }
 
     return createClient(url, anonKey, {
@@ -29,12 +29,12 @@ export class AuthService {
   }
 
   private hasAdminAccess(email: string, appRole?: string) {
-    if (appRole === 'admin') {
+    if (appRole === "admin") {
       return true;
     }
 
-    const configuredAdmins = (process.env.ADMIN_EMAILS || '')
-      .split(',')
+    const configuredAdmins = (process.env.ADMIN_EMAILS || "")
+      .split(",")
       .map((value) => value.trim().toLowerCase())
       .filter(Boolean);
 
@@ -57,7 +57,7 @@ export class AuthService {
 
       if (error || !data.user) {
         this.logger.warn(`Invalid credentials for user: ${email}`);
-        throw new UnauthorizedException('Invalid credentials');
+        throw new UnauthorizedException("Invalid credentials");
       }
 
       const role =
@@ -66,20 +66,20 @@ export class AuthService {
 
       if (!this.hasAdminAccess(data.user.email || email, role)) {
         this.logger.warn(`User without admin access tried login: ${email}`);
-        throw new UnauthorizedException('Admin access required');
+        throw new UnauthorizedException("Admin access required");
       }
 
       return {
         id: data.user.id,
         email: data.user.email || email,
-        role: role || 'admin',
+        role: role || "admin",
       };
     } catch (error) {
-      this.logger.error('Error validating user', error);
+      this.logger.error("Error validating user", error);
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      throw new UnauthorizedException('Authentication failed');
+      throw new UnauthorizedException("Authentication failed");
     }
   }
 
@@ -87,7 +87,7 @@ export class AuthService {
     const user = await this.validateUser(email, password);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     const token = this.jwtService.sign({
@@ -107,8 +107,8 @@ export class AuthService {
       const decoded = this.jwtService.verify(token);
       return decoded;
     } catch (error) {
-      this.logger.error('Token verification failed', error);
-      throw new UnauthorizedException('Invalid token');
+      this.logger.error("Token verification failed", error);
+      throw new UnauthorizedException("Invalid token");
     }
   }
 }
