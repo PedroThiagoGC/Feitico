@@ -1,40 +1,64 @@
-# Feitico
+# Feitico Monorepo (Turborepo)
 
-Aplicacao de agendamento e gestao de salao com landing page publica e painel administrativo.
+Monorepo com frontend e backend separados para deploy independente (ex.: Vercel):
 
-## Stack
+- `apps/web`: frontend React + Vite
+- `apps/api`: backend Node + Express
 
-- React + TypeScript + Vite
-- Tailwind + componentes UI baseados em Radix
-- React Query para cache e sincronizacao
-- Supabase (Auth, Postgres, Storage, Realtime)
+## Requisitos
 
-## Setup
+- Node.js 20+
+- npm 10+
 
-1. Instale dependencias:
-   - npm install
-2. Configure ambiente a partir de `.env.example`:
-   - VITE_SUPABASE_URL
-   - VITE_SUPABASE_PUBLISHABLE_KEY
-3. Rode o projeto:
-   - npm run dev
+## Instalar
 
-## Scripts
+```bash
+npm install
+```
 
-- `npm run dev`: ambiente local
-- `npm run build`: build de producao
-- `npm run preview`: preview do build
-- `npm run lint`: lint
-- `npm run test`: testes (vitest)
+## Rodar local
 
-## Arquitetura e roadmap
+```bash
+npm run dev
+```
 
-Consulte o documento tecnico em:
+Comandos por app:
 
-- docs/ARQUITETURA-E-ROADMAP.md
+```bash
+npm run dev:web
+npm run dev:api
+```
 
-## Diretrizes
+## Build
 
-- Nao manter secrets hardcoded no codigo.
-- Preferir validacao de entrada com Zod.
-- Concentrar regras de negocio em camadas de dominio (services/hooks), evitando telas inchadas.
+```bash
+npm run build
+```
+
+## Lint e testes
+
+```bash
+npm run lint
+npm run test
+npm run typecheck
+```
+
+## Deploy na Vercel
+
+Crie dois projetos no mesmo repositório:
+
+1. Web
+
+- Root Directory: `apps/web`
+- Framework: Vite
+
+2. API
+
+- Root Directory: `apps/api`
+- Build/Output: usar `vercel.json` da pasta `apps/api`
+
+## Observações
+
+- O hook de pre-commit (Husky) roda `npm run lint` no monorepo.
+- Variáveis do frontend ficam em `apps/web/.env`.
+- Variáveis da API ficam em `apps/api/.env`.

@@ -8,6 +8,7 @@ import { appToast } from "@/lib/toast";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Star } from "lucide-react";
 import { type Database } from "@/integrations/supabase/types";
+import ImageUpload from "./ImageUpload";
 
 type Testimonial = Database["public"]["Tables"]["testimonials"]["Row"];
 
@@ -84,7 +85,11 @@ export default function AdminTestimonials() {
         <form onSubmit={handleSave} className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Input placeholder="Nome do autor" value={form.author_name} onChange={(e) => setForm({ ...form, author_name: e.target.value })} className="bg-secondary border-border font-body" required />
-            <Input placeholder="URL foto (opcional)" value={form.author_image} onChange={(e) => setForm({ ...form, author_image: e.target.value })} className="bg-secondary border-border font-body" />
+            <ImageUpload
+              value={form.author_image}
+              onChange={(url) => setForm({ ...form, author_image: url })}
+              folder="testimonials"
+            />
           </div>
           <Textarea placeholder="Conteúdo do depoimento" value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} className="bg-secondary border-border font-body" required />
           <div className="flex gap-3 items-end">
