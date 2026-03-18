@@ -385,7 +385,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
               )}
 
               {/* Step 4: Time Slots */}
-              {selectedDate && selectedServices.length > 0 && selectedProfessionalId && (
+              {selectedDate && selectedServices.length > 0 && selectedProfessionalId && incompatibleSelectedServices.length === 0 && (
                 <div>
                   <h4 className="font-display text-base md:text-lg font-semibold mb-3 md:mb-4 text-foreground flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">4</span>
