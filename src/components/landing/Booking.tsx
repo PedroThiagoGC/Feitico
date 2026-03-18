@@ -155,6 +155,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     if (!isReadyToConfirm) {
       if (selectedServices.length === 0) toast.error("Selecione pelo menos um serviço");
       else if (!selectedProfessionalId) toast.error("Selecione um profissional");
+      else if (incompatibleSelectedServices.length > 0) toast.error("Este profissional não realiza todos os serviços selecionados");
       else if (!selectedDate) toast.error("Selecione uma data");
       else if (!selectedTime) toast.error("Selecione um horário");
       else form.handleSubmit(() => {})();
