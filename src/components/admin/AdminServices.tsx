@@ -165,9 +165,18 @@ export default function AdminServices() {
                   <span className="text-primary font-bold">{parseInt(form.duration || "0") + parseInt(form.buffer_minutes || "0")} min</span>
                 </div>
               </div>
-              <Input placeholder="URL da Imagem" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} className="bg-secondary border-border font-body" />
-              <Input placeholder="Categoria" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="bg-secondary border-border font-body" />
-              <Input placeholder="Ordem" type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} className="bg-secondary border-border font-body" />
+              <div>
+                <label className="font-body text-sm font-medium mb-1 block">URL da Imagem</label>
+                <Input placeholder="https://..." value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} className="bg-secondary border-border font-body" />
+              </div>
+              <div>
+                <label className="font-body text-sm font-medium mb-1 block">Categoria</label>
+                <Input placeholder="Ex: Cabelo, Barba" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="bg-secondary border-border font-body" />
+              </div>
+              <div>
+                <label className="font-body text-sm font-medium mb-1 block">Ordem de exibição</label>
+                <Input placeholder="0" type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} className="bg-secondary border-border font-body" />
+              </div>
               <div className="flex items-center gap-6">
                 <label className="flex items-center gap-2 font-body text-sm">
                   <Switch checked={form.is_combo} onCheckedChange={(v) => setForm({ ...form, is_combo: v })} /> Combo

@@ -103,6 +103,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     if (selectedServices.length === 0) { toast.error("Selecione pelo menos um serviço"); return; }
     if (!selectedProfessionalId) { toast.error("Selecione um profissional"); return; }
     if (!selectedDate) { toast.error("Selecione uma data"); return; }
+    if (!salon?.id) { toast.error("Salão não encontrado"); return; }
     if (data.booking_type === "scheduled" && !selectedTime) { toast.error("Selecione um horário"); return; }
 
     const { type: commType, value: commValue } = getCommissionInfo();
@@ -110,7 +111,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     const profitAmount = totalPrice - commissionAmount;
 
     const bookingData = {
-      salon_id: salon!.id,
+      salon_id: salon.id,
       professional_id: selectedProfessionalId,
       customer_name: data.customer_name,
       customer_phone: data.customer_phone,

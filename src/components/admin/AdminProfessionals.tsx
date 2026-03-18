@@ -103,8 +103,14 @@ export default function AdminProfessionals() {
                 <DialogTitle className="font-display">{form.id ? "Editar" : "Novo"} Profissional</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSavePro} className="space-y-4">
-                <Input placeholder="Nome" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="bg-secondary border-border font-body" required />
-                <ImageUpload value={form.photo_url} onChange={(url) => setForm({ ...form, photo_url: url })} folder="professionals" />
+                <div>
+                  <label className="font-body text-sm font-medium mb-1 block">Nome do profissional</label>
+                  <Input placeholder="Ex: João Silva" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="bg-secondary border-border font-body" required />
+                </div>
+                <div>
+                  <label className="font-body text-sm font-medium mb-1 block">Foto</label>
+                  <ImageUpload value={form.photo_url} onChange={(url) => setForm({ ...form, photo_url: url })} folder="professionals" />
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="font-body text-sm">Tipo de comissão</label>
