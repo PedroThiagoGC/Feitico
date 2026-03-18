@@ -55,6 +55,7 @@ export default function AdminServices() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (!salonId) { toast.error("Nenhum salão cadastrado. Crie um salão primeiro."); return; }
     const duration = parseInt(form.duration);
     const buffer = parseInt(form.buffer_minutes);
     if (!validateMultipleOf5(duration, "Duração")) return;
