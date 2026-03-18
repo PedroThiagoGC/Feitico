@@ -137,16 +137,19 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     return { type: pro?.commission_type || "percentage", value: Number(pro?.commission_value || 0) };
   }
 
+  const customerName = form.watch("customer_name");
+  const customerPhone = form.watch("customer_phone");
+
   const isReadyToConfirm = useMemo(() => {
-    const values = form.getValues();
-    if (!values.customer_name || values.customer_name.trim().length < 2) return false;
-    if (!values.customer_phone || values.customer_phone.trim().length < 10) return false;
+    if (!customerName || customerName.trim().length < 2) return false;
+    if (!customerPhone || customerPhone.trim().length < 10) return false;
     if (selectedServices.length === 0) return false;
     if (!selectedProfessionalId) return false;
+    if (incompatibleSelectedServices.length > 0) return false;
     if (!selectedDate) return false;
     if (!selectedTime) return false;
     return true;
-  }, [form.watch("customer_name"), form.watch("customer_phone"), selectedServices, selectedProfessionalId, selectedDate, selectedTime]);
+  }, [customerName, customerPhone, selectedServices, selectedProfessionalId, incompatibleSelectedServices, selectedDate, selectedTime]);
 
   const handleShowConfirmation = () => {
     if (!isReadyToConfirm) {
