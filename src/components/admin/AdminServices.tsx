@@ -143,11 +143,11 @@ export default function AdminServices() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-body text-sm">Duração (min)</label>
-                  <Input type="number" step="5" min="5" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="bg-secondary border-border font-body" />
+                  <MinutesSelect value={form.duration} onChange={(v) => setForm({ ...form, duration: v })} min={5} max={480} placeholder="Duração" />
                 </div>
                 <div>
                   <label className="font-body text-sm">Margem operacional (min)</label>
-                  <Input type="number" step="5" min="0" value={form.buffer_minutes} onChange={(e) => setForm({ ...form, buffer_minutes: e.target.value })} className="bg-secondary border-border font-body" />
+                  <MinutesSelect value={form.buffer_minutes} onChange={(v) => setForm({ ...form, buffer_minutes: v })} min={0} max={120} placeholder="Margem" />
                 </div>
               </div>
               {/* Occupation summary */}
