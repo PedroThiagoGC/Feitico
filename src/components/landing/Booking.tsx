@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,8 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarIcon, Clock, Loader2, User, CheckCircle2 } from "lucide-react";
+import { CalendarIcon, Clock, Loader2, User, Check, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -84,18 +83,11 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     return services.filter((s) => linkedIds.has(s.id));
   }, [services, selectedProfessionalId, proServices]);
 
-  // When professional changes, filter selectedServices to only valid ones
-  const lastFilteredProId = useRef("");
-  useEffect(() => {
-    if (selectedProfessionalId && proServices && selectedProfessionalId !== lastFilteredProId.current) {
-      lastFilteredProId.current = selectedProfessionalId;
-      const linkedIds = new Set(proServices.map((ps) => ps.service_id));
-      setSelectedServices((prev) => {
-        const filtered = prev.filter((s) => linkedIds.has(s.id));
-        return filtered.length === prev.length ? prev : filtered;
-      });
-    }
-  }, [selectedProfessionalId, proServices]);
+  const incompatibleSelectedServices = useMemo(() => {
+    if (!selectedProfessionalId || !proServices || selectedServices.length === 0) return [];
+    const linkedIds = new Set(proServices.map((ps) => ps.service_id));
+    return selectedServices.filter((s) => !linkedIds.has(s.id));
+  }, [selectedProfessionalId, proServices, selectedServices]);
 
   function getEffectiveService(service: Service) {
     const override = proServices?.find((ps) => ps.service_id === service.id);
@@ -145,21 +137,25 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     return { type: pro?.commission_type || "percentage", value: Number(pro?.commission_value || 0) };
   }
 
+  const customerName = form.watch("customer_name");
+  const customerPhone = form.watch("customer_phone");
+
   const isReadyToConfirm = useMemo(() => {
-    const values = form.getValues();
-    if (!values.customer_name || values.customer_name.trim().length < 2) return false;
-    if (!values.customer_phone || values.customer_phone.trim().length < 10) return false;
+    if (!customerName || customerName.trim().length < 2) return false;
+    if (!customerPhone || customerPhone.trim().length < 10) return false;
     if (selectedServices.length === 0) return false;
     if (!selectedProfessionalId) return false;
+    if (incompatibleSelectedServices.length > 0) return false;
     if (!selectedDate) return false;
     if (!selectedTime) return false;
     return true;
-  }, [form.watch("customer_name"), form.watch("customer_phone"), selectedServices, selectedProfessionalId, selectedDate, selectedTime]);
+  }, [customerName, customerPhone, selectedServices, selectedProfessionalId, incompatibleSelectedServices, selectedDate, selectedTime]);
 
   const handleShowConfirmation = () => {
     if (!isReadyToConfirm) {
       if (selectedServices.length === 0) toast.error("Selecione pelo menos um serviço");
       else if (!selectedProfessionalId) toast.error("Selecione um profissional");
+      else if (incompatibleSelectedServices.length > 0) toast.error("Este profissional não realiza todos os serviços selecionados");
       else if (!selectedDate) toast.error("Selecione uma data");
       else if (!selectedTime) toast.error("Selecione um horário");
       else form.handleSubmit(() => {})();
@@ -264,24 +260,37 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                   {(services || []).map((service) => {
                     const isSelected = selectedServices.some((s) => s.id === service.id);
                     return (
-                      <button
-                        type="button"
+                      <div
                         key={service.id}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => toggleService(service)}
-                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left font-body text-sm ${
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            toggleService(service);
+                          }
+                        }}
+                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left font-body text-sm cursor-pointer ${
                           isSelected
                             ? "border-primary bg-primary/10 text-foreground"
                             : "border-border bg-secondary hover:border-primary/30 text-muted-foreground"
                         }`}
                       >
-                        <Checkbox checked={isSelected} className="pointer-events-none shrink-0" />
+                        <div className={`shrink-0 w-4 h-4 rounded-sm border flex items-center justify-center ${
+                          isSelected
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background text-transparent"
+                        }`}>
+                          <Check className="w-3 h-3" />
+                        </div>
                         <div className="flex-1 min-w-0">
                           <span className="block font-medium truncate">{service.name}</span>
                           <span className="text-xs text-muted-foreground">
                             R$ {Number(service.price).toFixed(2)} · {service.duration}min
                           </span>
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -329,12 +338,11 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                       </button>
                     ))}
                   </div>
-                  {/* Show which services this professional can do vs not */}
                   {selectedProfessionalId && proServices && (
                     <div className="mt-3 font-body text-xs text-muted-foreground">
-                      {selectedServices.filter(s => !availableServices.some(as => as.id === s.id)).length > 0 && (
+                      {incompatibleSelectedServices.length > 0 && (
                         <p className="text-destructive">
-                          ⚠ Este profissional não realiza: {selectedServices.filter(s => !availableServices.some(as => as.id === s.id)).map(s => s.name).join(", ")}
+                          ⚠ Este profissional não realiza: {incompatibleSelectedServices.map((s) => s.name).join(", ")}
                         </p>
                       )}
                     </div>
@@ -343,7 +351,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
               )}
 
               {/* Step 3: Date (only show after professional selection) */}
-              {selectedProfessionalId && selectedServices.length > 0 && (
+              {selectedProfessionalId && selectedServices.length > 0 && incompatibleSelectedServices.length === 0 && (
                 <div>
                   <h4 className="font-display text-base md:text-lg font-semibold mb-3 md:mb-4 text-foreground flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">3</span>
@@ -377,7 +385,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
               )}
 
               {/* Step 4: Time Slots */}
-              {selectedDate && selectedServices.length > 0 && selectedProfessionalId && (
+              {selectedDate && selectedServices.length > 0 && selectedProfessionalId && incompatibleSelectedServices.length === 0 && (
                 <div>
                   <h4 className="font-display text-base md:text-lg font-semibold mb-3 md:mb-4 text-foreground flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">4</span>
