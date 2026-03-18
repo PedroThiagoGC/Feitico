@@ -5,6 +5,7 @@ import { bookingFormSchema, type BookingFormData } from "@/schemas/booking.schem
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { useAvailableSlots, useCreateBooking, useRealtimeBookings, generateWhatsAppApiFallback, generateWhatsAppMessage, calculateCommission } from "@/hooks/useBooking";
 import { useProfessionals, useProfessionalServices, useProfessionalAvailability } from "@/hooks/useProfessionals";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -21,15 +22,19 @@ interface BookingProps {
   salon: Salon | undefined;
   services: Service[] | undefined;
   preselectedServices?: Service[];
+  preselectionToken?: number;
 }
 
-export default function Booking({ salon, services, preselectedServices }: BookingProps) {
+export default function Booking({ salon, services, preselectedServices, preselectionToken }: BookingProps) {
   const { ref, isVisible } = useScrollAnimation();
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [pendingPreselectedIds, setPendingPreselectedIds] = useState<string[]>([]);
+  const [servicePrefillHint, setServicePrefillHint] = useState<string>("");
+  const bookingCardRef = useRef<HTMLDivElement | null>(null);
   const createBooking = useCreateBooking();
 
   // Realtime: auto-refresh slots when another person books
@@ -39,18 +44,47 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   const { data: proServices } = useProfessionalServices(selectedProfessionalId || undefined);
   const { data: proAvailability } = useProfessionalAvailability(selectedProfessionalId || undefined);
 
-  // When preselectedServices changes (user clicked "Agendar" on a service card),
-  // find which professional offers it and pre-select that professional
+  // When user clicks "Agendar" in Services section, prefill booking flow.
   useEffect(() => {
-    if (preselectedServices && preselectedServices.length > 0) {
-      // We'll clear services and let user pick after choosing professional
-      setSelectedServices([]);
-      setSelectedProfessionalId("");
-      setSelectedDate(undefined);
-      setSelectedTime("");
-      setShowConfirmation(false);
+    if (!preselectionToken || !preselectedServices || preselectedServices.length === 0 || !professionals) {
+      return;
     }
-  }, [preselectedServices]);
+
+    const ids = preselectedServices.map((s) => s.id);
+    setSelectedDate(undefined);
+    setSelectedTime("");
+    setShowConfirmation(false);
+    setPendingPreselectedIds(ids);
+
+    void (async () => {
+      const { data, error } = await supabase
+        .from("professional_services")
+        .select("professional_id")
+        .in("service_id", ids)
+        .eq("active", true);
+
+      if (error) {
+        appToast.error("Não foi possível pré-selecionar o serviço automaticamente.");
+        return;
+      }
+
+      const candidateIds = Array.from(new Set((data || []).map((row) => row.professional_id)));
+      const activeCandidates = professionals.filter((p) => candidateIds.includes(p.id));
+
+      if (activeCandidates.length === 1) {
+        setSelectedProfessionalId(activeCandidates[0].id);
+      } else if (activeCandidates.length > 1) {
+        setSelectedProfessionalId(activeCandidates[0].id);
+        setServicePrefillHint(`Serviço pré-selecionado com ${activeCandidates[0].name}. Você pode trocar o profissional.`);
+      } else {
+        setSelectedProfessionalId("");
+        setServicePrefillHint("Selecione um profissional para aplicar o serviço escolhido.");
+      }
+
+      bookingCardRef.current?.classList.add("ring-2", "ring-primary/40");
+      setTimeout(() => bookingCardRef.current?.classList.remove("ring-2", "ring-primary/40"), 1400);
+    })();
+  }, [preselectedServices, preselectionToken, professionals]);
 
   // Disabled days based on professional availability
   const disabledDays = useMemo(() => {
@@ -69,6 +103,22 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     const linkedIds = new Set(proServices.map((ps) => ps.service_id));
     return services.filter((s) => linkedIds.has(s.id));
   }, [services, selectedProfessionalId, proServices]);
+
+  // Apply pending preselected services as soon as available services are loaded.
+  useEffect(() => {
+    if (!pendingPreselectedIds.length || !availableServices.length) return;
+
+    const autoSelected = availableServices.filter((s) => pendingPreselectedIds.includes(s.id));
+    if (!autoSelected.length) {
+      return;
+    }
+
+    setSelectedServices(autoSelected);
+    setPendingPreselectedIds([]);
+    setSelectedTime("");
+    setShowConfirmation(false);
+    setServicePrefillHint(`Serviço${autoSelected.length > 1 ? "s" : ""} aplicado${autoSelected.length > 1 ? "s" : ""} automaticamente no agendamento.`);
+  }, [pendingPreselectedIds, availableServices]);
 
   // When professional changes, remove services that are not available for the new professional
   useEffect(() => {
@@ -247,7 +297,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
           ))}
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 md:p-8 shadow-gold">
+        <div ref={bookingCardRef} className="bg-card border border-border rounded-2xl p-4 sm:p-6 md:p-8 shadow-gold transition-all duration-300">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 md:space-y-8">
               {/* Step 1: Professional */}
@@ -291,6 +341,11 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                     <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">2</span>
                     Selecione os serviços
                   </h4>
+                  {servicePrefillHint && (
+                    <div className="mb-3 p-3 rounded-lg bg-primary/10 border border-primary/20 font-body text-xs md:text-sm text-foreground">
+                      {servicePrefillHint}
+                    </div>
+                  )}
                   {availableServices.length === 0 ? (
                     <p className="text-muted-foreground font-body text-sm p-4 bg-secondary rounded-lg">
                       Este profissional ainda não tem serviços habilitados.
@@ -312,10 +367,10 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                                 toggleService(service);
                               }
                             }}
-                            className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left font-body text-sm cursor-pointer ${
+                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left font-body text-sm cursor-pointer ${
                               isSelected
-                                ? "border-primary bg-primary/10 text-foreground"
-                                : "border-border bg-secondary hover:border-primary/30 text-muted-foreground"
+                                ? "border-primary bg-primary/10 text-foreground shadow-[0_0_0_1px_rgba(212,175,55,0.25)]"
+                                : "border-border bg-secondary hover:border-primary/30 text-muted-foreground hover:bg-secondary/80"
                             }`}
                           >
                             <div className={`shrink-0 w-4 h-4 rounded-sm border flex items-center justify-center ${
@@ -326,10 +381,25 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                               <Check className="w-3 h-3" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <span className="block font-medium truncate">{service.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                R$ {eff.price.toFixed(2)} · {eff.duration}min
-                              </span>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="block font-medium truncate">{service.name}</span>
+                                {isSelected && (
+                                  <span className="text-[10px] uppercase tracking-wide font-semibold px-2 py-0.5 rounded bg-primary/20 text-primary">
+                                    Selecionado
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="font-semibold text-primary">R$ {eff.price.toFixed(2)}</span>
+                                <span>•</span>
+                                <span>{eff.duration}min</span>
+                                {eff.buffer > 0 && (
+                                  <>
+                                    <span>•</span>
+                                    <span>+ {eff.buffer}min margem</span>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
                         );

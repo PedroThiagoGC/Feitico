@@ -20,9 +20,11 @@ const Index = () => {
   const { data: gallery } = useGallery(salon?.id);
   const { data: testimonials } = useTestimonials(salon?.id);
   const [preselected, setPreselected] = useState<Service[]>([]);
+  const [preselectionToken, setPreselectionToken] = useState(0);
 
   const handleBookService = useCallback((service: Service) => {
     setPreselected([service]);
+    setPreselectionToken(Date.now());
     setTimeout(() => {
       document.querySelector("#booking")?.scrollIntoView({ behavior: "smooth" });
     }, 100);
@@ -54,7 +56,12 @@ const Index = () => {
         <Testimonials testimonials={testimonials} />
       </ErrorBoundary>
       <ErrorBoundary fallbackTitle="Erro ao carregar agendamento">
-        <Booking salon={salon} services={services} preselectedServices={preselected} />
+        <Booking
+          salon={salon}
+          services={services}
+          preselectedServices={preselected}
+          preselectionToken={preselectionToken}
+        />
       </ErrorBoundary>
       <Footer salon={salon} />
     </div>
