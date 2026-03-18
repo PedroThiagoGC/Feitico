@@ -55,6 +55,7 @@ export default function AdminServices() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (!salonId) { toast.error("Nenhum salão cadastrado. Crie um salão primeiro."); return; }
     const duration = parseInt(form.duration);
     const buffer = parseInt(form.buffer_minutes);
     if (!validateMultipleOf5(duration, "Duração")) return;
@@ -127,9 +128,18 @@ export default function AdminServices() {
               <DialogTitle className="font-display">{form.id ? "Editar" : "Novo"} Serviço</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSave} className="space-y-4">
-              <Input placeholder="Nome" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="bg-secondary border-border font-body" required />
-              <Input placeholder="Descrição" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="bg-secondary border-border font-body" />
-              <Input placeholder="Preço (R$)" type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="bg-secondary border-border font-body" />
+              <div>
+                <label className="font-body text-sm font-medium mb-1 block">Nome do serviço</label>
+                <Input placeholder="Ex: Corte masculino" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="bg-secondary border-border font-body" required />
+              </div>
+              <div>
+                <label className="font-body text-sm font-medium mb-1 block">Descrição</label>
+                <Input placeholder="Descrição opcional do serviço" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="bg-secondary border-border font-body" />
+              </div>
+              <div>
+                <label className="font-body text-sm font-medium mb-1 block">Preço (R$)</label>
+                <Input placeholder="0.00" type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="bg-secondary border-border font-body" />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-body text-sm">Duração (min)</label>
@@ -155,9 +165,18 @@ export default function AdminServices() {
                   <span className="text-primary font-bold">{parseInt(form.duration || "0") + parseInt(form.buffer_minutes || "0")} min</span>
                 </div>
               </div>
-              <Input placeholder="URL da Imagem" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} className="bg-secondary border-border font-body" />
-              <Input placeholder="Categoria" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="bg-secondary border-border font-body" />
-              <Input placeholder="Ordem" type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} className="bg-secondary border-border font-body" />
+              <div>
+                <label className="font-body text-sm font-medium mb-1 block">URL da Imagem</label>
+                <Input placeholder="https://..." value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} className="bg-secondary border-border font-body" />
+              </div>
+              <div>
+                <label className="font-body text-sm font-medium mb-1 block">Categoria</label>
+                <Input placeholder="Ex: Cabelo, Barba" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="bg-secondary border-border font-body" />
+              </div>
+              <div>
+                <label className="font-body text-sm font-medium mb-1 block">Ordem de exibição</label>
+                <Input placeholder="0" type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} className="bg-secondary border-border font-body" />
+              </div>
               <div className="flex items-center gap-6">
                 <label className="flex items-center gap-2 font-body text-sm">
                   <Switch checked={form.is_combo} onCheckedChange={(v) => setForm({ ...form, is_combo: v })} /> Combo
