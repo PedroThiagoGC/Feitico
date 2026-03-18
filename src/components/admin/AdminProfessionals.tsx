@@ -43,6 +43,7 @@ export default function AdminProfessionals() {
 
   async function handleSavePro(e: React.FormEvent) {
     e.preventDefault();
+    if (!salonId) { toast.error("Nenhum salão cadastrado. Crie um salão primeiro."); return; }
     const payload = {
       salon_id: salonId,
       name: form.name,
