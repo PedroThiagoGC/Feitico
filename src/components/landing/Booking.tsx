@@ -260,24 +260,37 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                   {(services || []).map((service) => {
                     const isSelected = selectedServices.some((s) => s.id === service.id);
                     return (
-                      <button
-                        type="button"
+                      <div
                         key={service.id}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => toggleService(service)}
-                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left font-body text-sm ${
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            toggleService(service);
+                          }
+                        }}
+                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left font-body text-sm cursor-pointer ${
                           isSelected
                             ? "border-primary bg-primary/10 text-foreground"
                             : "border-border bg-secondary hover:border-primary/30 text-muted-foreground"
                         }`}
                       >
-                        <Checkbox checked={isSelected} className="pointer-events-none shrink-0" />
+                        <div className={`shrink-0 w-4 h-4 rounded-sm border flex items-center justify-center ${
+                          isSelected
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background text-transparent"
+                        }`}>
+                          <Check className="w-3 h-3" />
+                        </div>
                         <div className="flex-1 min-w-0">
                           <span className="block font-medium truncate">{service.name}</span>
                           <span className="text-xs text-muted-foreground">
                             R$ {Number(service.price).toFixed(2)} · {service.duration}min
                           </span>
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
