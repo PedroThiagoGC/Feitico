@@ -8,6 +8,8 @@ import PwaAssistant from "@/components/pwa/PwaAssistant";
 import Index from "./pages/Index";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+import SuperAdmin from "./pages/SuperAdmin";
+import SuperAdminLogin from "./pages/SuperAdminLogin";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +33,22 @@ const App = () => (
             element={
               <ErrorBoundary fallbackTitle="Erro no painel administrativo">
                 <Admin />
+              </ErrorBoundary>
+            }
+          />
+          <Route
+            path="/superadmin/login"
+            element={
+              <ErrorBoundary fallbackTitle="Erro no login">
+                <SuperAdminLogin />
+              </ErrorBoundary>
+            }
+          />
+          <Route
+            path="/superadmin/*"
+            element={
+              <ErrorBoundary fallbackTitle="Erro no SuperAdmin">
+                <SuperAdmin />
               </ErrorBoundary>
             }
           />
