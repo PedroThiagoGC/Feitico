@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "turbo run dev --parallel",
+    "dev": "turbo run dev --filter=@feitico/web",
     "dev:web": "turbo run dev --filter=@feitico/web",
     "dev:api": "turbo run dev --filter=@feitico/api",
     "build": "turbo run build",
