@@ -11,6 +11,9 @@ export default defineConfig(({ mode }: { mode: string }) => {
     : /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*$/i;
 
   return {
+    build: {
+      outDir: path.resolve(__dirname, "../../dist"),
+    },
     server: {
       host: "::",
       port: 8080,
