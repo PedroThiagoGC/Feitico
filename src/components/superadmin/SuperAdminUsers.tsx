@@ -1,14 +1,25 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Pencil, Trash2 } from "lucide-react";
+import { toast } from "@/components/ui/sonner";
+
+interface UserForm { name: string; email: string; role: string; active: boolean; }
+const emptyForm: UserForm = { name: "", email: "", role: "tenant_admin", active: true };
 
 export default function SuperAdminUsers() {
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [form, setForm] = useState<UserForm>(emptyForm);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: users = [] } = useQuery({
     queryKey: ["superadmin-users"],
@@ -19,6 +30,33 @@ export default function SuperAdminUsers() {
     },
   });
 
+  const saveMutation = useMutation({
+    mutationFn: async (payload: { id?: string; form: UserForm }) => {
+      const row = { name: payload.form.name, email: payload.form.email, role: payload.form.role, active: payload.form.active };
+      if (payload.id) {
+        const { error } = await supabase.from("platform_users").update(row).eq("id", payload.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("platform_users").insert(row);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["superadmin-users"] }); toast.success(editId ? "Usuário atualizado!" : "Usuário criado!"); closeForm(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("platform_users").update({ active: false }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["superadmin-users"] }); toast.success("Usuário desativado!"); setDeleteId(null); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const openEdit = (user: any) => { setForm({ name: user.name, email: user.email, role: user.role, active: user.active !== false }); setEditId(user.id); };
+  const closeForm = () => { setEditId(null); setShowNew(false); setForm(emptyForm); };
+
   const filtered = users.filter((u) => {
     if (search && !u.name.toLowerCase().includes(search.toLowerCase()) && !u.email.toLowerCase().includes(search.toLowerCase())) return false;
     if (roleFilter !== "all" && u.role !== roleFilter) return false;
@@ -26,34 +64,61 @@ export default function SuperAdminUsers() {
   });
 
   const getInitials = (name: string) => name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-
-  const roleBadgeClass: Record<string, string> = {
-    superadmin: "bg-primary/15 text-primary",
-    tenant_admin: "bg-purple/15 text-purple",
-    manager: "bg-info/15 text-info",
-    professional: "bg-success/15 text-success",
-  };
+  const roleBadgeClass: Record<string, string> = { superadmin: "bg-primary/15 text-primary", tenant_admin: "bg-purple/15 text-purple", manager: "bg-info/15 text-info", professional: "bg-success/15 text-success" };
+  const isFormOpen = !!editId || showNew;
 
   return (
     <Card className="bg-card border-border p-6">
       <div className="flex items-center justify-between mb-5">
-        <h3 className="font-display text-xl font-semibold">
-          Usuários da <em className="text-primary">Plataforma</em>
-        </h3>
-        <Button className="bg-primary text-primary-foreground">+ Novo Usuário</Button>
+        <h3 className="font-display text-xl font-semibold">Usuários da <em className="text-primary">Plataforma</em></h3>
+        <Button className="bg-primary text-primary-foreground" onClick={() => { setForm(emptyForm); setShowNew(true); }}>+ Novo Usuário</Button>
       </div>
 
+      <Dialog open={isFormOpen} onOpenChange={(open) => { if (!open) closeForm(); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{editId ? "Editar Usuário" : "Novo Usuário"}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><label className="text-xs text-muted-foreground">Nome</label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+            <div><label className="text-xs text-muted-foreground">Email</label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+            <div>
+              <label className="text-xs text-muted-foreground">Role</label>
+              <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
+                <SelectTrigger className="bg-muted border-border"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="superadmin">SuperAdmin</SelectItem>
+                  <SelectItem value="tenant_admin">Tenant Admin</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
+                  <SelectItem value="professional">Professional</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} className="accent-primary" />
+              <label className="text-sm">Ativo</label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeForm}>Cancelar</Button>
+            <Button onClick={() => saveMutation.mutate({ id: editId || undefined, form })} disabled={!form.name || !form.email || saveMutation.isPending}>{saveMutation.isPending ? "Salvando..." : "Salvar"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Desativar usuário?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">O usuário será desativado e perderá acesso à plataforma.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={() => deleteId && deleteMutation.mutate(deleteId)} disabled={deleteMutation.isPending}>{deleteMutation.isPending ? "Desativando..." : "Desativar"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <Input
-          placeholder="Buscar por nome ou email..."
-          className="max-w-[300px] bg-muted border-border text-sm"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <Input placeholder="Buscar por nome ou email..." className="max-w-[300px] bg-muted border-border text-sm" value={search} onChange={(e) => setSearch(e.target.value)} />
         <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-[160px] bg-muted border-border text-sm">
-            <SelectValue placeholder="Todos os roles" />
-          </SelectTrigger>
+          <SelectTrigger className="w-[160px] bg-muted border-border text-sm"><SelectValue placeholder="Todos os roles" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os roles</SelectItem>
             <SelectItem value="superadmin">SuperAdmin</SelectItem>
@@ -79,49 +144,24 @@ export default function SuperAdminUsers() {
           <tbody>
             {filtered.map((user) => (
               <tr key={user.id} className="border-b border-border hover:bg-muted/30">
-                <td className="py-3 px-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-primary">
-                      {getInitials(user.name)}
-                    </div>
-                    <strong>{user.name}</strong>
-                  </div>
-                </td>
+                <td className="py-3 px-4"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-primary">{getInitials(user.name)}</div><strong>{user.name}</strong></div></td>
                 <td className="py-3 px-4 text-muted-foreground">{user.email}</td>
+                <td className="py-3 px-4"><span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${roleBadgeClass[user.role] || "bg-muted text-muted-foreground"}`}>{user.role}</span></td>
+                <td className="py-3 px-4 text-muted-foreground">{(user as any).tenants?.name || "— (global)"}</td>
+                <td className="py-3 px-4"><span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${user.active !== false ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>{user.active !== false ? "Ativo" : "Inativo"}</span></td>
                 <td className="py-3 px-4">
-                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${roleBadgeClass[user.role] || "bg-muted text-muted-foreground"}`}>
-                    {user.role}
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-muted-foreground">
-                  {(user as any).tenants?.name || "— (global)"}
-                </td>
-                <td className="py-3 px-4">
-                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                    user.active !== false ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                  }`}>
-                    {user.active !== false ? "Ativo" : "Inativo"}
-                  </span>
-                </td>
-                <td className="py-3 px-4">
-                  <Button variant="outline" size="sm" className="text-xs border-border">
-                    Editar
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" className="text-xs border-border" onClick={() => openEdit(user)}><Pencil className="w-3 h-3 mr-1" /> Editar</Button>
+                    <Button variant="outline" size="sm" className="text-xs border-border text-destructive hover:bg-destructive/10" onClick={() => setDeleteId(user.id)}><Trash2 className="w-3 h-3" /></Button>
+                  </div>
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={6} className="py-8 text-center text-muted-foreground">Nenhum usuário encontrado.</td>
-              </tr>
-            )}
+            {filtered.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-muted-foreground">Nenhum usuário encontrado.</td></tr>}
           </tbody>
         </table>
       </div>
-
-      <div className="flex items-center justify-between mt-4">
-        <p className="text-xs text-muted-foreground">Mostrando {filtered.length} de {users.length} usuários</p>
-      </div>
+      <div className="flex items-center justify-between mt-4"><p className="text-xs text-muted-foreground">Mostrando {filtered.length} de {users.length} usuários</p></div>
     </Card>
   );
 }
