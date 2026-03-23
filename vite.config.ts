@@ -1,15 +1,25 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
-export default defineConfig(({ mode }: { mode: string }) => {
+export default defineConfig(async ({ mode }: { mode: string }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const supabaseUrl = env.VITE_SUPABASE_URL;
   const supabaseApiPattern = supabaseUrl
     ? new RegExp(`^${supabaseUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/rest/v1/.*`, "i")
     : /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*$/i;
+
+  // Avoid hard failure in CI/CD environments that install only production deps.
+  const plugins = [react()];
+  if (mode === "development") {
+    try {
+      const { componentTagger } = await import("lovable-tagger");
+      plugins.push(componentTagger());
+    } catch {
+      // Optional plugin for local dev only.
+    }
+  }
 
   return {
     server: {
@@ -20,8 +30,7 @@ export default defineConfig(({ mode }: { mode: string }) => {
       },
     },
     plugins: [
-      react(),
-      mode === "development" && componentTagger(),
+      ...plugins,
       VitePWA({
         injectRegister: "auto",
         registerType: "autoUpdate",
@@ -42,7 +51,7 @@ export default defineConfig(({ mode }: { mode: string }) => {
           ],
         },
       }),
-    ].filter(Boolean),
+    ],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
