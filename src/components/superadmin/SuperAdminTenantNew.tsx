@@ -7,14 +7,34 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
+import ImageUpload from "@/components/admin/ImageUpload";
+import { Loader2 } from "lucide-react";
 
 interface Props {
   onSuccess: () => void;
   onCancel: () => void;
 }
 
+// Masks
+function maskCPF(v: string) {
+  return v.replace(/\D/g, "").slice(0, 11).replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+}
+function maskCNPJ(v: string) {
+  return v.replace(/\D/g, "").slice(0, 14).replace(/(\d{2})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1/$2").replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+}
+function maskCEP(v: string) {
+  return v.replace(/\D/g, "").slice(0, 8).replace(/(\d{5})(\d)/, "$1-$2");
+}
+
+function applyDocMask(value: string, type: string) {
+  return type === "cpf" ? maskCPF(value) : maskCNPJ(value);
+}
+
 export default function SuperAdminTenantNew({ onSuccess, onCancel }: Props) {
   const [loading, setLoading] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
+  const [docType, setDocType] = useState<"cpf" | "cnpj">("cnpj");
+  const [cep, setCep] = useState("");
   const [form, setForm] = useState({
     name: "",
     slug: "",
@@ -55,6 +75,39 @@ export default function SuperAdminTenantNew({ onSuccess, onCancel }: Props) {
     }
   };
 
+  const handleDocChange = (value: string) => {
+    const masked = applyDocMask(value, docType);
+    setForm((prev) => ({ ...prev, document: masked }));
+  };
+
+  const handleCepChange = async (value: string) => {
+    const masked = maskCEP(value);
+    setCep(masked);
+    const digits = value.replace(/\D/g, "");
+    if (digits.length === 8) {
+      setCepLoading(true);
+      try {
+        const res = await fetch(`https://brasilapi.com.br/api/cep/v1/${digits}`);
+        if (res.ok) {
+          const data = await res.json();
+          setForm((prev) => ({
+            ...prev,
+            address: data.street || prev.address,
+            city: data.city || prev.city,
+            state: data.state || prev.state,
+          }));
+          toast.success("Endereço encontrado!");
+        } else {
+          toast.error("CEP não encontrado.");
+        }
+      } catch {
+        toast.error("Erro ao buscar CEP.");
+      } finally {
+        setCepLoading(false);
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.slug || !form.adminName || !form.adminEmail || !form.adminPassword) {
@@ -63,7 +116,6 @@ export default function SuperAdminTenantNew({ onSuccess, onCancel }: Props) {
     }
     setLoading(true);
     try {
-      // 1. Create tenant
       const { data: tenant, error: tenantErr } = await supabase
         .from("tenants")
         .insert({ name: form.name, slug: form.slug, plan: "trial" })
@@ -71,7 +123,6 @@ export default function SuperAdminTenantNew({ onSuccess, onCancel }: Props) {
         .single();
       if (tenantErr) throw tenantErr;
 
-      // 2. Create tenant_details
       await supabase.from("tenant_details").insert({
         tenant_id: tenant.id,
         legal_name: form.legalName || null,
@@ -79,10 +130,10 @@ export default function SuperAdminTenantNew({ onSuccess, onCancel }: Props) {
         address: form.address || null,
         city: form.city || null,
         state: form.state || null,
+        zip_code: cep.replace(/\D/g, "") || null,
         whatsapp_phone: form.whatsapp || null,
       });
 
-      // 3. Create tenant_branding
       await supabase.from("tenant_branding").insert({
         tenant_id: tenant.id,
         primary_color: form.primaryColor,
@@ -91,7 +142,6 @@ export default function SuperAdminTenantNew({ onSuccess, onCancel }: Props) {
         hero_title: form.heroTitle,
       });
 
-      // 4. Create tenant_settings
       await supabase.from("tenant_settings").insert({
         tenant_id: tenant.id,
         timezone: form.timezone,
@@ -100,7 +150,6 @@ export default function SuperAdminTenantNew({ onSuccess, onCancel }: Props) {
         testimonials_enabled: true,
       });
 
-      // 5. Create subscription
       if (form.planId) {
         const selectedPlan = plans.find((p) => p.id === form.planId);
         await supabase.from("tenant_subscriptions").insert({
@@ -115,7 +164,6 @@ export default function SuperAdminTenantNew({ onSuccess, onCancel }: Props) {
         });
       }
 
-      // 6. Create platform user
       await supabase.from("platform_users").insert({
         name: form.adminName,
         email: form.adminEmail,
@@ -123,7 +171,7 @@ export default function SuperAdminTenantNew({ onSuccess, onCancel }: Props) {
         tenant_id: tenant.id,
       });
 
-      toast.success("Tenant criado com sucesso! Cascata completa.");
+      toast.success("Tenant criado com sucesso!");
       onSuccess();
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar tenant.");
@@ -138,7 +186,7 @@ export default function SuperAdminTenantNew({ onSuccess, onCancel }: Props) {
         Criar Novo <em className="text-primary">Tenant</em>
       </h3>
       <p className="text-sm text-muted-foreground mb-6">
-        Ao salvar, o sistema cria automaticamente: tenant + branding padrão + settings + unidade principal + usuário admin + assinatura trial (14 dias).
+        Ao salvar, o sistema cria automaticamente: tenant + branding + settings + usuário admin + assinatura.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -160,8 +208,22 @@ export default function SuperAdminTenantNew({ onSuccess, onCancel }: Props) {
               <Input className="bg-muted border-border" placeholder="Nome legal da empresa" value={form.legalName} onChange={(e) => updateField("legalName", e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">CNPJ</Label>
-              <Input className="bg-muted border-border" placeholder="00.000.000/0000-00" value={form.document} onChange={(e) => updateField("document", e.target.value)} />
+              <Label className="text-xs">Tipo de Documento</Label>
+              <div className="flex gap-2">
+                <Select value={docType} onValueChange={(v: "cpf" | "cnpj") => { setDocType(v); setForm((prev) => ({ ...prev, document: "" })); }}>
+                  <SelectTrigger className="bg-muted border-border w-[100px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cpf">CPF</SelectItem>
+                    <SelectItem value="cnpj">CNPJ</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  className="bg-muted border-border flex-1"
+                  placeholder={docType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
+                  value={form.document}
+                  onChange={(e) => handleDocChange(e.target.value)}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -171,6 +233,13 @@ export default function SuperAdminTenantNew({ onSuccess, onCancel }: Props) {
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Endereço</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
+              <Label className="text-xs">CEP</Label>
+              <div className="flex gap-2 items-center">
+                <Input className="bg-muted border-border" placeholder="00000-000" value={cep} onChange={(e) => handleCepChange(e.target.value)} />
+                {cepLoading && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+              </div>
+            </div>
+            <div className="space-y-1.5">
               <Label className="text-xs">Endereço</Label>
               <Input className="bg-muted border-border" placeholder="Rua, número" value={form.address} onChange={(e) => updateField("address", e.target.value)} />
             </div>
@@ -179,11 +248,13 @@ export default function SuperAdminTenantNew({ onSuccess, onCancel }: Props) {
               <Input className="bg-muted border-border" placeholder="São Paulo" value={form.city} onChange={(e) => updateField("city", e.target.value)} />
             </div>
             <div className="space-y-1.5">
+              <Label className="text-xs">Estado</Label>
+              <Input className="bg-muted border-border" placeholder="SP" value={form.state} onChange={(e) => updateField("state", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
               <Label className="text-xs">Timezone</Label>
               <Select value={form.timezone} onValueChange={(v) => updateField("timezone", v)}>
-                <SelectTrigger className="bg-muted border-border">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="bg-muted border-border"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="America/Sao_Paulo">America/Sao_Paulo</SelectItem>
                   <SelectItem value="America/Manaus">America/Manaus</SelectItem>
@@ -219,14 +290,10 @@ export default function SuperAdminTenantNew({ onSuccess, onCancel }: Props) {
             <div className="space-y-1.5">
               <Label className="text-xs">Plano Inicial</Label>
               <Select value={form.planId} onValueChange={(v) => updateField("planId", v)}>
-                <SelectTrigger className="bg-muted border-border">
-                  <SelectValue placeholder="Selecionar plano" />
-                </SelectTrigger>
+                <SelectTrigger className="bg-muted border-border"><SelectValue placeholder="Selecionar plano" /></SelectTrigger>
                 <SelectContent>
                   {plans.map((plan) => (
-                    <SelectItem key={plan.id} value={plan.id}>
-                      {plan.name} — R${plan.monthly_price}/mês
-                    </SelectItem>
+                    <SelectItem key={plan.id} value={plan.id}>{plan.name} — R${plan.monthly_price}/mês</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -252,9 +319,9 @@ export default function SuperAdminTenantNew({ onSuccess, onCancel }: Props) {
                 <div className="w-6 h-6 rounded-md border-2 border-border" style={{ background: form.secondaryColor }} />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Logo (URL)</Label>
-              <Input className="bg-muted border-border" placeholder="https://..." value={form.logoUrl} onChange={(e) => updateField("logoUrl", e.target.value)} />
+            <div className="space-y-1.5 md:col-span-2">
+              <Label className="text-xs">Logo do Salão</Label>
+              <ImageUpload value={form.logoUrl} onChange={(url) => updateField("logoUrl", url)} folder="logos" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Hero Title</Label>
@@ -265,7 +332,7 @@ export default function SuperAdminTenantNew({ onSuccess, onCancel }: Props) {
 
         {/* Actions */}
         <div className="flex justify-between items-center pt-4 border-t border-border">
-          <span className="text-xs text-muted-foreground">* Campos obrigatórios — Cascata: cria 6 registros em transação única</span>
+          <span className="text-xs text-muted-foreground">* Campos obrigatórios</span>
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
             <Button type="submit" className="bg-primary text-primary-foreground" disabled={loading}>

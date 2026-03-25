@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function SuperAdminAudit() {
@@ -35,7 +34,7 @@ export default function SuperAdminAudit() {
         <h3 className="font-display text-xl font-semibold">
           Audit <em className="text-primary">Logs</em>
         </h3>
-        <Button variant="outline" className="border-border">↓ Export CSV</Button>
+        <Button variant="outline" className="border-border">↓ Exportar CSV</Button>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -46,11 +45,11 @@ export default function SuperAdminAudit() {
           <SelectContent>
             <SelectItem value="all">Todos os módulos</SelectItem>
             <SelectItem value="Tenants">Tenants</SelectItem>
-            <SelectItem value="Bookings">Bookings</SelectItem>
-            <SelectItem value="Professionals">Professionals</SelectItem>
-            <SelectItem value="Services">Services</SelectItem>
-            <SelectItem value="Auth">Auth</SelectItem>
-            <SelectItem value="Settings">Settings</SelectItem>
+            <SelectItem value="Bookings">Agendamentos</SelectItem>
+            <SelectItem value="Professionals">Profissionais</SelectItem>
+            <SelectItem value="Services">Serviços</SelectItem>
+            <SelectItem value="Auth">Autenticação</SelectItem>
+            <SelectItem value="Settings">Configurações</SelectItem>
           </SelectContent>
         </Select>
         <Select value={actionFilter} onValueChange={setActionFilter}>
@@ -59,10 +58,10 @@ export default function SuperAdminAudit() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas as ações</SelectItem>
-            <SelectItem value="CREATE">CREATE</SelectItem>
-            <SelectItem value="UPDATE">UPDATE</SelectItem>
-            <SelectItem value="DELETE">DELETE</SelectItem>
-            <SelectItem value="LOGIN">LOGIN</SelectItem>
+            <SelectItem value="CREATE">Criar</SelectItem>
+            <SelectItem value="UPDATE">Atualizar</SelectItem>
+            <SelectItem value="DELETE">Excluir</SelectItem>
+            <SelectItem value="LOGIN">Login</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -76,12 +75,12 @@ export default function SuperAdminAudit() {
             <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${dotColor[log.action] || "bg-muted-foreground"}`} />
             <div>
               <p className="text-sm">
-                <strong className="text-primary">{log.user_id ? log.user_id.slice(0, 8) : "Sistema"}</strong>{" "}
-                {log.action.toLowerCase()} {log.entity_type || log.entity}
-                {log.entity_id && <span className="text-muted-foreground"> ({log.entity_id.slice(0, 8)}...)</span>}
+                <strong className="text-primary">{log.user_name || log.user_email || "Sistema"}</strong>{" "}
+                {log.action.toLowerCase()} — {log.module}
+                {log.description && <span className="text-muted-foreground"> ({log.description})</span>}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Módulo: {log.module || "—"} · Ação: {log.action} · {new Date(log.created_at).toLocaleString("pt-BR")}
+                Módulo: {log.module} · Ação: {log.action} · {new Date(log.created_at).toLocaleString("pt-BR")}
               </p>
             </div>
           </div>
