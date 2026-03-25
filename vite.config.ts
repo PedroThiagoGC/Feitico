@@ -11,7 +11,7 @@ export default defineConfig(async ({ mode }: { mode: string }) => {
     : /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*$/i;
 
   // Avoid hard failure in CI/CD environments that install only production deps.
-  const plugins = [react()];
+  const plugins: any[] = [react()];
   if (mode === "development") {
     try {
       const { componentTagger } = await import("lovable-tagger");
