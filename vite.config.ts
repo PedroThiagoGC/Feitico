@@ -31,7 +31,7 @@ export default defineConfig(async ({ mode }: { mode: string }) => {
     },
     plugins: [
       ...plugins,
-      ...(Array.isArray(VitePWA({
+      VitePWA({
         injectRegister: "auto",
         registerType: "autoUpdate",
         includeAssets: ["favicon.ico", "robots.txt", "manifest.webmanifest"],
@@ -50,7 +50,7 @@ export default defineConfig(async ({ mode }: { mode: string }) => {
             },
           ],
         },
-      }),
+      }) as any,
     ],
     resolve: {
       alias: {
