@@ -118,14 +118,12 @@ export default function SuperAdminPlans() {
             <Input placeholder="Descrição" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-xs text-muted-foreground">Preço mensal (R$)</label><Input type="number" value={form.monthly_price} onChange={(e) => setForm({ ...form, monthly_price: +e.target.value })} /></div>
-              <div><label className="text-xs text-muted-foreground">Preço anual (R$)</label><Input type="number" value={form.annual_price} onChange={(e) => setForm({ ...form, annual_price: +e.target.value })} /></div>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div><label className="text-xs text-muted-foreground">Máx unidades</label><Input type="number" value={form.max_units} onChange={(e) => setForm({ ...form, max_units: +e.target.value })} /></div>
               <div><label className="text-xs text-muted-foreground">Máx profissionais</label><Input type="number" value={form.max_professionals} onChange={(e) => setForm({ ...form, max_professionals: +e.target.value })} /></div>
-              <div><label className="text-xs text-muted-foreground">Bookings/mês</label><Input type="number" value={form.max_bookings_per_month} onChange={(e) => setForm({ ...form, max_bookings_per_month: +e.target.value })} /></div>
             </div>
-            <div><label className="text-xs text-muted-foreground">Features (uma por linha)</label><Textarea rows={4} value={form.features_json} onChange={(e) => setForm({ ...form, features_json: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-xs text-muted-foreground">Máx serviços</label><Input type="number" value={form.max_services} onChange={(e) => setForm({ ...form, max_services: +e.target.value })} /></div>
+            </div>
+            <div><label className="text-xs text-muted-foreground">Features (uma por linha)</label><Textarea rows={4} value={form.features_text} onChange={(e) => setForm({ ...form, features_text: e.target.value })} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeForm}>Cancelar</Button>
