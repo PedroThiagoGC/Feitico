@@ -74,10 +74,17 @@ export default function Footer({ salon }: FooterProps) {
           </div>
         </div>
 
-        <div className="border-t border-border mt-12 pt-8 text-center">
+        <div className="border-t border-border mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="font-body text-xs text-muted-foreground">
             © {new Date().getFullYear()} {salon?.name || "Salão"}. Todos os direitos reservados.
           </p>
+          <Link
+            to="/admin"
+            className="font-body text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+          >
+            <Settings className="w-3 h-3" />
+            Painel Admin
+          </Link>
         </div>
       </div>
     </footer>

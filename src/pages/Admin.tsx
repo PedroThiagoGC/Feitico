@@ -87,6 +87,10 @@ export default function Admin() {
           <h1 className="font-display text-lg md:text-xl font-bold text-gradient-gold">Painel Admin</h1>
         </div>
         <div className="flex items-center gap-2 md:gap-4">
+          <Link to="/" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 font-body">
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Ver Site</span>
+          </Link>
           <span className="hidden sm:inline text-sm text-muted-foreground font-body truncate max-w-[200px]">{session.user.email}</span>
           <Button variant="ghost" size="sm" onClick={handleLogout} className="shrink-0">
             <LogOut className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Sair</span>
