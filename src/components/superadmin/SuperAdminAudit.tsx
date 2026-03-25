@@ -76,9 +76,9 @@ export default function SuperAdminAudit() {
             <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${dotColor[log.action] || "bg-muted-foreground"}`} />
             <div>
               <p className="text-sm">
-                <strong className="text-primary">{log.user_id ? log.user_id.slice(0, 8) : "Sistema"}</strong>{" "}
-                {log.action.toLowerCase()} {log.entity_type || log.entity}
-                {log.entity_id && <span className="text-muted-foreground"> ({log.entity_id.slice(0, 8)}...)</span>}
+                <strong className="text-primary">{log.user_name || log.user_email || "Sistema"}</strong>{" "}
+                {log.action.toLowerCase()} {log.module}
+                {log.description && <span className="text-muted-foreground"> — {log.description}</span>}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Módulo: {log.module || "—"} · Ação: {log.action} · {new Date(log.created_at).toLocaleString("pt-BR")}
