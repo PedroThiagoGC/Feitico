@@ -14,16 +14,14 @@ interface PlanForm {
   name: string;
   description: string;
   monthly_price: number;
-  annual_price: number;
-  max_units: number;
   max_professionals: number;
-  max_bookings_per_month: number;
-  features_json: string;
+  max_services: number;
+  features_text: string;
 }
 
 const emptyForm: PlanForm = {
-  name: "", description: "", monthly_price: 0, annual_price: 0,
-  max_units: 1, max_professionals: 5, max_bookings_per_month: 500, features_json: "",
+  name: "", description: "", monthly_price: 0,
+  max_professionals: 5, max_services: 20, features_text: "",
 };
 
 export default function SuperAdminPlans() {
