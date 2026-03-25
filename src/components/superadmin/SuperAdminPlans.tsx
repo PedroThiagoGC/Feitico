@@ -149,7 +149,7 @@ export default function SuperAdminPlans() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {plans.map((plan, i) => {
-          const features = parseFeatures(plan.features_json);
+          const features = parseFeatures(plan.features as any);
           const isFeatured = i === 2;
           return (
             <div key={plan.id} className={`relative bg-muted border rounded-xl p-6 transition-colors hover:border-primary/40 ${isFeatured ? "border-primary" : "border-border"}`}>
@@ -159,9 +159,8 @@ export default function SuperAdminPlans() {
               <p className="text-3xl font-bold text-primary mb-4">R$ {plan.monthly_price} <span className="text-sm font-normal text-muted-foreground">/mês</span></p>
               <ul className="space-y-2 mb-4">
                 {features.map((f, idx) => (<li key={idx} className="flex items-center gap-2 text-xs text-muted-foreground border-b border-border pb-2"><Check className="w-3.5 h-3.5 text-success flex-shrink-0" />{f}</li>))}
-                {plan.max_units && <li className="flex items-center justify-between text-xs text-muted-foreground pb-2"><span>Unidades</span><span>máx {plan.max_units === 999 ? "ilimitado" : plan.max_units}</span></li>}
                 {plan.max_professionals && <li className="flex items-center justify-between text-xs text-muted-foreground pb-2"><span>Profissionais</span><span>máx {plan.max_professionals === 999 ? "ilimitado" : plan.max_professionals}</span></li>}
-                {plan.max_bookings_per_month && <li className="flex items-center justify-between text-xs text-muted-foreground pb-2"><span>Bookings/mês</span><span>máx {plan.max_bookings_per_month === 999999 ? "ilimitado" : plan.max_bookings_per_month.toLocaleString("pt-BR")}</span></li>}
+                {plan.max_services && <li className="flex items-center justify-between text-xs text-muted-foreground pb-2"><span>Serviços</span><span>máx {plan.max_services === 999 ? "ilimitado" : plan.max_services}</span></li>}
               </ul>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" className="flex-1 border-border" onClick={() => openEdit(plan)}><Pencil className="w-3 h-3 mr-1" /> Editar</Button>
