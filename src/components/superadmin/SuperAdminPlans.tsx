@@ -55,13 +55,13 @@ export default function SuperAdminPlans() {
 
   const saveMutation = useMutation({
     mutationFn: async (payload: { id?: string; form: PlanForm }) => {
-      const features = payload.form.features_json ? payload.form.features_json.split("\n").map(s => s.trim()).filter(Boolean) : [];
+      const features = payload.form.features_text ? payload.form.features_text.split("\n").map(s => s.trim()).filter(Boolean) : [];
       const row = {
         name: payload.form.name, description: payload.form.description || null,
-        monthly_price: payload.form.monthly_price, annual_price: payload.form.annual_price,
-        max_units: payload.form.max_units, max_professionals: payload.form.max_professionals,
-        max_bookings_per_month: payload.form.max_bookings_per_month,
-        features_json: features as unknown as Json,
+        monthly_price: payload.form.monthly_price,
+        max_professionals: payload.form.max_professionals,
+        max_services: payload.form.max_services,
+        features: features as unknown as Json,
       };
       if (payload.id) {
         const { error } = await supabase.from("subscription_plans").update(row).eq("id", payload.id);
@@ -87,10 +87,10 @@ export default function SuperAdminPlans() {
   const openEdit = (plan: any) => {
     setForm({
       name: plan.name, description: plan.description || "",
-      monthly_price: plan.monthly_price, annual_price: plan.annual_price,
-      max_units: plan.max_units || 1, max_professionals: plan.max_professionals || 5,
-      max_bookings_per_month: plan.max_bookings_per_month || 500,
-      features_json: parseFeatures(plan.features_json).join("\n"),
+      monthly_price: plan.monthly_price,
+      max_professionals: plan.max_professionals || 5,
+      max_services: plan.max_services || 20,
+      features_text: parseFeatures(plan.features).join("\n"),
     });
     setEditId(plan.id);
   };
