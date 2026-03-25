@@ -18,20 +18,25 @@ export default function SuperAdminFinancial() {
   });
 
   const activeSubs = subscriptions.filter((s) => s.status === "active");
+  const trialSubs = subscriptions.filter((s) => s.status === "trial");
+  const canceledSubs = subscriptions.filter((s) => s.status === "canceled" || s.status === "suspended");
   const mrr = activeSubs.reduce((sum, s) => sum + (s.amount || 0), 0);
   const arr = mrr * 12;
+  const totalSubs = subscriptions.length;
 
-  const planMrr: Record<string, { name: string; total: number; color: string }> = {};
+  const planMrr: Record<string, { name: string; total: number; count: number }> = {};
   subscriptions.forEach((s) => {
     const planName = (s.subscription_plans as any)?.name || "Outro";
-    if (!planMrr[planName]) {
-      const colors: Record<string, string> = { Starter: "hsl(var(--info))", Pro: "hsl(var(--purple))", Premium: "hsl(var(--gold))" };
-      planMrr[planName] = { name: planName, total: 0, color: colors[planName] || "hsl(var(--muted-foreground))" };
-    }
+    if (!planMrr[planName]) planMrr[planName] = { name: planName, total: 0, count: 0 };
+    planMrr[planName].count++;
     if (s.status === "active") planMrr[planName].total += s.amount || 0;
   });
 
   const maxPlanMrr = Math.max(...Object.values(planMrr).map((p) => p.total), 1);
+
+  // Real retention metrics
+  const conversionRate = totalSubs > 0 ? ((activeSubs.length / totalSubs) * 100).toFixed(1) : "0";
+  const churnRate = totalSubs > 0 ? ((canceledSubs.length / totalSubs) * 100).toFixed(1) : "0";
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
@@ -66,31 +71,25 @@ export default function SuperAdminFinancial() {
         <Card className="bg-card border-border">
           <CardContent className="p-5">
             <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">ARR Projetado</p>
-            <p className="font-display text-2xl font-bold text-gold-dark">R$ {arr.toLocaleString("pt-BR")}</p>
+            <p className="font-display text-2xl font-bold text-primary">R$ {arr.toLocaleString("pt-BR")}</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
           <CardContent className="p-5">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Receita Mês</p>
-            <p className="font-display text-3xl font-bold text-success">R$ {mrr.toLocaleString("pt-BR")}</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Assinaturas Ativas</p>
+            <p className="font-display text-3xl font-bold text-success">{activeSubs.length}</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
           <CardContent className="p-5">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Custo Infra/mês</p>
-            <p className="font-display text-2xl font-bold">R$ 84</p>
-            <p className="text-xs text-muted-foreground mt-1">Energia + Domínio</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Em Trial</p>
+            <p className="font-display text-3xl font-bold text-warning">{trialSubs.length}</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
           <CardContent className="p-5">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Lucro Líquido</p>
-            <p className="font-display text-3xl font-bold text-success">
-              R$ {(mrr - 84).toLocaleString("pt-BR")}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Margem: {mrr > 0 ? (((mrr - 84) / mrr) * 100).toFixed(1) : 0}%
-            </p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Total Assinaturas</p>
+            <p className="font-display text-3xl font-bold">{totalSubs}</p>
           </CardContent>
         </Card>
       </div>
@@ -101,7 +100,7 @@ export default function SuperAdminFinancial() {
           <h3 className="font-display text-xl font-semibold">
             Receita por <em className="text-primary">Tenant</em>
           </h3>
-          <Button variant="outline" size="sm" className="border-border">↓ Export CSV</Button>
+          <Button variant="outline" size="sm" className="border-border">↓ Exportar CSV</Button>
         </div>
 
         <div className="overflow-x-auto">
@@ -119,34 +118,22 @@ export default function SuperAdminFinancial() {
               {subscriptions.map((sub) => {
                 const planName = (sub.subscription_plans as any)?.name || "—";
                 const tenantName = (sub as any).tenants?.name || sub.tenant_id.slice(0, 8);
-                const planColors: Record<string, string> = {
-                  Trial: "bg-warning/10 text-warning",
-                  Starter: "bg-info/10 text-info",
-                  Pro: "bg-purple/10 text-purple",
-                  Premium: "bg-primary/10 text-primary",
-                };
                 return (
                   <tr key={sub.id} className="border-b border-border hover:bg-muted/30">
                     <td className="py-3 px-4 font-medium">{tenantName}</td>
                     <td className="py-3 px-4">
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${planColors[planName] || "bg-muted text-muted-foreground"}`}>
-                        {planName}
-                      </span>
+                      <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-muted text-muted-foreground">{planName}</span>
                     </td>
-                    <td className="py-3 px-4 text-primary font-medium">
-                      R$ {(sub.amount || 0).toLocaleString("pt-BR")}
-                    </td>
+                    <td className="py-3 px-4 text-primary font-medium">R$ {(sub.amount || 0).toLocaleString("pt-BR")}</td>
                     <td className="py-3 px-4">{getStatusBadge(sub.status)}</td>
                     <td className="py-3 px-4 text-muted-foreground">
-                      {new Date(sub.start_date).toLocaleDateString("pt-BR", { month: "short", year: "numeric" })}
+                      {sub.start_date ? new Date(sub.start_date).toLocaleDateString("pt-BR", { month: "short", year: "numeric" }) : "—"}
                     </td>
                   </tr>
                 );
               })}
               {subscriptions.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-8 text-center text-muted-foreground">Nenhuma assinatura encontrada.</td>
-                </tr>
+                <tr><td colSpan={5} className="py-8 text-center text-muted-foreground">Nenhuma assinatura encontrada.</td></tr>
               )}
             </tbody>
           </table>
@@ -160,19 +147,20 @@ export default function SuperAdminFinancial() {
             MRR por <em className="text-primary">Plano</em>
           </h4>
           <div className="space-y-4">
-            {Object.values(planMrr)
-              .filter((p) => p.total > 0)
-              .map((plan) => (
-                <div key={plan.name} className="flex items-center gap-3 text-sm">
-                  <span className="min-w-[80px]">{plan.name}</span>
-                  <div className="flex-1">
-                    <Progress value={(plan.total / maxPlanMrr) * 100} className="h-1.5" />
-                  </div>
-                  <span style={{ color: plan.color }} className="min-w-[80px] text-right font-medium">
-                    R$ {plan.total.toLocaleString("pt-BR")}
-                  </span>
+            {Object.values(planMrr).map((plan) => (
+              <div key={plan.name} className="flex items-center gap-3 text-sm">
+                <span className="min-w-[80px]">{plan.name}</span>
+                <div className="flex-1">
+                  <Progress value={maxPlanMrr > 0 ? (plan.total / maxPlanMrr) * 100 : 0} className="h-1.5" />
                 </div>
-              ))}
+                <span className="min-w-[80px] text-right font-medium text-primary">
+                  R$ {plan.total.toLocaleString("pt-BR")}
+                </span>
+              </div>
+            ))}
+            {Object.keys(planMrr).length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhum dado disponível.</p>
+            )}
           </div>
         </Card>
 
@@ -183,19 +171,21 @@ export default function SuperAdminFinancial() {
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-muted p-4 rounded-lg text-center">
               <p className="text-[11px] text-muted-foreground mb-1">Taxa de Conversão Trial→Pago</p>
-              <p className="text-2xl font-bold text-success">67%</p>
+              <p className="text-2xl font-bold text-success">{conversionRate}%</p>
             </div>
             <div className="bg-muted p-4 rounded-lg text-center">
-              <p className="text-[11px] text-muted-foreground mb-1">Churn Mensal</p>
-              <p className="text-2xl font-bold text-destructive">3.7%</p>
+              <p className="text-[11px] text-muted-foreground mb-1">Churn</p>
+              <p className="text-2xl font-bold text-destructive">{churnRate}%</p>
             </div>
             <div className="bg-muted p-4 rounded-lg text-center">
-              <p className="text-[11px] text-muted-foreground mb-1">LTV Médio</p>
-              <p className="text-2xl font-bold text-primary">R$ 2.430</p>
+              <p className="text-[11px] text-muted-foreground mb-1">Assinaturas Ativas</p>
+              <p className="text-2xl font-bold text-primary">{activeSubs.length}</p>
             </div>
             <div className="bg-muted p-4 rounded-lg text-center">
-              <p className="text-[11px] text-muted-foreground mb-1">Tempo Médio de Vida</p>
-              <p className="text-2xl font-bold">14 <span className="text-xs text-muted-foreground">meses</span></p>
+              <p className="text-[11px] text-muted-foreground mb-1">Ticket Médio</p>
+              <p className="text-2xl font-bold">
+                R$ {activeSubs.length > 0 ? (mrr / activeSubs.length).toFixed(0) : "0"}
+              </p>
             </div>
           </div>
         </Card>
