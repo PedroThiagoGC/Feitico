@@ -14,7 +14,8 @@ import AdminTestimonials from "@/components/admin/AdminTestimonials";
 import AdminAvailability from "@/components/admin/AdminAvailability";
 import AdminProfessionals from "@/components/admin/AdminProfessionals";
 import AdminCalendar from "@/components/admin/AdminCalendar";
-import { LogOut, LayoutDashboard, Menu, X } from "lucide-react";
+import { LogOut, LayoutDashboard, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function Admin() {
   const [session, setSession] = useState<Session | null>(null);

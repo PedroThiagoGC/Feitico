@@ -1,4 +1,5 @@
-import { MapPin, Phone, Clock, Instagram } from "lucide-react";
+import { MapPin, Phone, Clock, Instagram, Settings } from "lucide-react";
+import { Link } from "react-router-dom";
 import type { Salon } from "@/hooks/useSalon";
 
 interface FooterProps {
