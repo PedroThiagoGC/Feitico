@@ -64,6 +64,11 @@ export function buildWhatsAppUrl(phone: string, message: string): string {
   return `https://wa.me/${phone}?text=${encodedMessage}`;
 }
 
+export function buildWhatsAppWebUrl(phone: string, message: string): string {
+  const encodedMessage = encodeURIComponent(message);
+  return `https://web.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`;
+}
+
 export function buildWhatsAppApiUrl(phone: string, message: string): string {
   const encodedMessage = encodeURIComponent(message);
   return `https://api.whatsapp.com/send/?phone=${phone}&text=${encodedMessage}&type=phone_number&app_absent=0`;

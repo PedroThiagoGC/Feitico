@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client"
 import type { Database } from "@/integrations/supabase/types"
-import { buildWhatsAppUrl, buildWhatsAppApiUrl, normalizeWhatsAppPhone } from "@/lib/phone"
+import { buildWhatsAppUrl, buildWhatsAppWebUrl, normalizeWhatsAppPhone } from "@/lib/phone"
 
 type BookingRow = Database["public"]["Tables"]["bookings"]["Row"]
 
@@ -43,39 +43,42 @@ export async function createBooking(payload: CreateBookingPayload): Promise<Book
 
     if (conflictError) throw conflictError
     if (hasConflict) {
-      throw new Error("Profissional já possui agendamento neste horário. Escolha outro horário.")
+      throw new Error("Profissional ja possui agendamento neste horario. Escolha outro horario.")
     }
   }
 
   const { data: booking, error } = await supabase
     .from("bookings")
-    .insert([{
-      salon_id: payload.salon_id,
-      professional_id: payload.professional_id,
-      customer_name: payload.customer_name,
-      customer_phone: payload.customer_phone,
-      services: JSON.parse(JSON.stringify(payload.services)),
-      total_price: payload.total_price,
-      total_duration: payload.total_duration,
-      total_buffer_minutes: payload.total_buffer_minutes,
-      total_occupied_minutes: payload.total_occupied_minutes,
-      commission_amount: payload.commission_amount,
-      profit_amount: payload.profit_amount,
-      booking_date: payload.booking_date,
-      booking_time: payload.booking_time,
-      booking_type: payload.booking_type,
-      status: payload.status ?? "pending",
-      notes: payload.notes ?? null,
-    }])
+    .insert([
+      {
+        salon_id: payload.salon_id,
+        professional_id: payload.professional_id,
+        customer_name: payload.customer_name,
+        customer_phone: payload.customer_phone,
+        services: JSON.parse(JSON.stringify(payload.services)),
+        total_price: payload.total_price,
+        total_duration: payload.total_duration,
+        total_buffer_minutes: payload.total_buffer_minutes,
+        total_occupied_minutes: payload.total_occupied_minutes,
+        commission_amount: payload.commission_amount,
+        profit_amount: payload.profit_amount,
+        booking_date: payload.booking_date,
+        booking_time: payload.booking_time,
+        booking_type: payload.booking_type,
+        status: payload.status ?? "pending",
+        notes: payload.notes ?? null,
+      },
+    ])
     .select()
     .single()
+
   if (error) {
-    // Erro de conflito de horário gerado pelo trigger PostgreSQL
     if (error.message?.includes("BOOKING_CONFLICT")) {
-      throw new Error("Profissional já possui agendamento neste horário. Escolha outro horário.")
+      throw new Error("Profissional ja possui agendamento neste horario. Escolha outro horario.")
     }
     throw error
   }
+
   return booking as unknown as BookingRow
 }
 
@@ -155,9 +158,7 @@ export async function getAvailableSlots(
 
       if (isToday && slotStart < nowMinutes) continue
 
-      const isBlocked = blockedRanges.some(
-        (b) => slotStart < b.end && slotEnd > b.start
-      )
+      const isBlocked = blockedRanges.some((b) => slotStart < b.end && slotEnd > b.start)
       if (isBlocked) continue
 
       const hasConflict = bookings?.some((b) => {
@@ -205,34 +206,40 @@ function buildBookingWhatsAppText(info: WhatsAppBookingInfo): string {
   const { booking, salonName, salonAddress, professionalName } = info
 
   const servicesList = booking.services
-    .map((s) => `• ${s.name} — R$ ${s.price.toFixed(2)}`)
+    .map((s) => `- ${s.name} - R$ ${s.price.toFixed(2)}`)
     .join("\n")
 
   const bookingTypeLabel =
     booking.booking_type === "scheduled"
-      ? "Horário marcado"
+      ? "Horario marcado"
       : booking.booking_type === "waitlist"
         ? "Fila de espera"
         : "Na hora / ordem de chegada"
+
   const dateFormatted = new Date(booking.booking_date + "T12:00:00").toLocaleDateString("pt-BR")
 
   return (
-    `Olá, segue novo agendamento confirmado:\n\n` +
-    `👤 *Cliente:* ${booking.customer_name}\n` +
-    `📱 *Telefone:* ${booking.customer_phone}\n\n` +
-    `🏢 *Unidade:* ${salonName}\n` +
-    `📍 *Endereço:* ${salonAddress || "Não informado"}\n\n` +
-    `💈 *Profissional:* ${professionalName}\n\n` +
-    `✂️ *Serviços:*\n${servicesList}\n\n` +
-    `💰 *Valor total:* R$ ${booking.total_price.toFixed(2)}\n` +
-    `⏱️ *Duração total:* ${booking.total_duration} min\n` +
-    `🔄 *Margem operacional:* ${booking.total_buffer_minutes} min\n` +
-    `📊 *Tempo total reservado na agenda:* ${booking.total_occupied_minutes} min\n\n` +
-    `📋 *Tipo de atendimento:* ${bookingTypeLabel}\n` +
-    `📅 *Data:* ${dateFormatted}\n` +
-    (booking.booking_time ? `🕐 *Horário:* ${booking.booking_time}\n` : "") +
-    `\nFavor seguir com a confirmação e atendimento. ✨`
+    `Ola, segue novo agendamento confirmado:\n\n` +
+    `*Cliente:* ${booking.customer_name}\n` +
+    `*Telefone:* ${booking.customer_phone}\n\n` +
+    `*Unidade:* ${salonName}\n` +
+    `*Endereco:* ${salonAddress || "Nao informado"}\n\n` +
+    `*Profissional:* ${professionalName}\n\n` +
+    `*Servicos:*\n${servicesList}\n\n` +
+    `*Valor total:* R$ ${booking.total_price.toFixed(2)}\n` +
+    `*Duracao total:* ${booking.total_duration} min\n` +
+    `*Margem operacional:* ${booking.total_buffer_minutes} min\n` +
+    `*Tempo total reservado na agenda:* ${booking.total_occupied_minutes} min\n\n` +
+    `*Tipo de atendimento:* ${bookingTypeLabel}\n` +
+    `*Data:* ${dateFormatted}\n` +
+    (booking.booking_time ? `*Horario:* ${booking.booking_time}\n` : "") +
+    `\nFavor seguir com a confirmacao e atendimento.`
   )
+}
+
+function isMobileBrowser(): boolean {
+  if (typeof navigator === "undefined") return false
+  return /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent)
 }
 
 export function generateWhatsAppMessage(info: WhatsAppBookingInfo): string {
@@ -242,23 +249,22 @@ export function generateWhatsAppMessage(info: WhatsAppBookingInfo): string {
     normalizeWhatsAppPhone(info.salonWhatsapp) ||
     normalizeWhatsAppPhone(info.salonPhone)
 
+  const isMobile = isMobileBrowser()
+
   if (!normalizedPhone) {
-    return `https://api.whatsapp.com/send/?text=${encodeURIComponent(message)}&type=phone_number&app_absent=0`
+    const encodedMessage = encodeURIComponent(message)
+    return isMobile
+      ? `https://wa.me/?text=${encodedMessage}`
+      : `https://web.whatsapp.com/send?text=${encodedMessage}`
   }
 
-  return buildWhatsAppUrl(normalizedPhone, message)
+  return isMobile
+    ? buildWhatsAppUrl(normalizedPhone, message)
+    : buildWhatsAppWebUrl(normalizedPhone, message)
 }
 
 export function generateWhatsAppApiFallback(info: WhatsAppBookingInfo): string {
-  const message = buildBookingWhatsAppText(info)
-
-  const normalizedPhone =
-    normalizeWhatsAppPhone(info.salonWhatsapp) ||
-    normalizeWhatsAppPhone(info.salonPhone)
-
-  if (!normalizedPhone) {
-    return `https://api.whatsapp.com/send/?text=${encodeURIComponent(message)}&type=phone_number&app_absent=0`
-  }
-
-  return buildWhatsAppApiUrl(normalizedPhone, message)
+  // Mantido por compatibilidade. Agora retorna a mesma rota primaria
+  // para evitar a ponte do api.whatsapp.com, que vinha gerando UX ruim.
+  return generateWhatsAppMessage(info)
 }
