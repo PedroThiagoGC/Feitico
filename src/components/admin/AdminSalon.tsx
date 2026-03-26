@@ -10,6 +10,7 @@ import ImageUpload from "./ImageUpload";
 import OpeningHoursEditor from "./OpeningHoursEditor";
 import { normalizeWhatsAppPhone, splitWhatsAppPhone } from "@/lib/phone";
 import { type Database } from "@/integrations/supabase/types";
+import { getSalon } from "@/services/salonService";
 
 type SalonRow = Database["public"]["Tables"]["salons"]["Row"];
 
@@ -25,7 +26,7 @@ export default function AdminSalon() {
   }, []);
 
   async function loadSalon() {
-    const { data } = await supabase.from("salons").select("*").limit(1).maybeSingle();
+    const data = await getSalon();
     const initialSalon = data || {
       name: "", phone: "", whatsapp: "", address: "", about_text: "",
       logo_url: "", hero_image_url: "", video_url: "", instagram: "", facebook: "",

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { type Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { formatAuthErrorMessage } from "@/integrations/supabase/authErrors";
+import { ADMIN_ALLOWED_EMAILS } from "@/integrations/supabase/authConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +18,7 @@ import AdminProfessionals from "@/components/admin/AdminProfessionals";
 import AdminCalendar from "@/components/admin/AdminCalendar";
 import { LogOut, LayoutDashboard, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
+import { getPrimarySalonId } from "@/services/salonService";
 
 export default function Admin() {
   const [session, setSession] = useState<Session | null>(null);
@@ -23,7 +26,6 @@ export default function Admin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -40,8 +42,9 @@ export default function Admin() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) toast.error(error.message); else toast.success("Login realizado!");
+    const normalizedEmail = email.trim().toLowerCase();
+    const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+    if (error) toast.error(formatAuthErrorMessage(error)); else toast.success("Login realizado!");
     setAuthLoading(false);
   };
 
@@ -49,6 +52,10 @@ export default function Admin() {
     await supabase.auth.signOut();
     toast.success("Logout realizado!");
   };
+
+  const currentUserEmail = session?.user?.email?.toLowerCase() || "";
+  const isAdminRestricted = ADMIN_ALLOWED_EMAILS.length > 0;
+  const isAdminAllowed = !isAdminRestricted || ADMIN_ALLOWED_EMAILS.includes(currentUserEmail);
 
   if (loading) {
     return (
@@ -73,6 +80,26 @@ export default function Admin() {
                 {authLoading ? "Entrando..." : "Entrar"}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!isAdminAllowed) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-card border-border">
+          <CardHeader className="text-center">
+            <CardTitle className="font-display text-2xl text-gradient-gold">Acesso negado</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground text-center font-body">
+              Este usuário não está autorizado para o painel administrativo deste salão.
+            </p>
+            <Button type="button" className="w-full bg-primary text-primary-foreground font-body h-12" onClick={handleLogout}>
+              Sair
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -152,11 +179,17 @@ function DashboardOverview() {
 
   useEffect(() => {
     async function load() {
+      const salonId = await getPrimarySalonId();
+      if (!salonId) {
+        setStats({ bookings: 0, services: 0, pending: 0, professionals: 0 });
+        return;
+      }
+
       const [{ count: bookings }, { count: services }, { count: pending }, { count: professionals }] = await Promise.all([
-        supabase.from("bookings").select("*", { count: "exact", head: true }),
-        supabase.from("services").select("*", { count: "exact", head: true }),
-        supabase.from("bookings").select("*", { count: "exact", head: true }).eq("status", "pending"),
-        supabase.from("professionals").select("*", { count: "exact", head: true }),
+        supabase.from("bookings").select("*", { count: "exact", head: true }).eq("salon_id", salonId),
+        supabase.from("services").select("*", { count: "exact", head: true }).eq("salon_id", salonId),
+        supabase.from("bookings").select("*", { count: "exact", head: true }).eq("salon_id", salonId).eq("status", "pending"),
+        supabase.from("professionals").select("*", { count: "exact", head: true }).eq("salon_id", salonId),
       ]);
       setStats({
         bookings: bookings || 0,
@@ -170,13 +203,14 @@ function DashboardOverview() {
 
   useEffect(() => {
     async function loadFinancial() {
-      const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
-      if (!salon) return;
-      const { data: pros } = await supabase.from("professionals").select("id, name").eq("salon_id", salon.id);
+      const salonId = await getPrimarySalonId();
+      if (!salonId) return;
+
+      const { data: pros } = await supabase.from("professionals").select("id, name").eq("salon_id", salonId);
       const { data: bks } = await supabase
         .from("bookings")
         .select("professional_id, total_price, commission_amount, profit_amount, total_occupied_minutes, total_duration, status")
-        .eq("salon_id", salon.id)
+        .eq("salon_id", salonId)
         .in("status", ["confirmed", "completed"])
         .gte("booking_date", dateFrom)
         .lte("booking_date", dateTo);

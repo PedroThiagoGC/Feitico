@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { MinutesSelect } from "@/components/ui/minutes-select";
 import { type Database } from "@/integrations/supabase/types";
+import { getPrimarySalonId } from "@/services/salonService";
 
 type ServiceRow = Database["public"]["Tables"]["services"]["Row"];
 
@@ -41,12 +42,12 @@ export default function AdminServices() {
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
-    const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
-    if (salon) {
-      setSalonId(salon.id);
-      const { data } = await supabase.from("services").select("*").eq("salon_id", salon.id).order("sort_order");
-      setServices(data || []);
-    }
+    const nextSalonId = await getPrimarySalonId();
+    if (!nextSalonId) return;
+
+    setSalonId(nextSalonId);
+    const { data } = await supabase.from("services").select("*").eq("salon_id", nextSalonId).order("sort_order");
+    setServices(data || []);
   }
 
   async function handleSave(e: React.FormEvent) {

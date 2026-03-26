@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Plus, Trash2, Clock, User, Calendar, Save } from "lucide-react";
+import { getPrimarySalonId } from "@/services/salonService";
 
 const WEEKDAYS = [
   { value: 0, label: "Domingo" },
@@ -71,9 +72,9 @@ export default function AdminAvailability() {
   }, [selectedProId]);
 
   async function loadProfessionals() {
-    const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
-    if (!salon) return;
-    const { data } = await supabase.from("professionals").select("id, name, photo_url").eq("salon_id", salon.id).eq("active", true).order("name");
+    const salonId = await getPrimarySalonId();
+    if (!salonId) return;
+    const { data } = await supabase.from("professionals").select("id, name, photo_url").eq("salon_id", salonId).eq("active", true).order("name");
     if (data && data.length > 0) {
       setProfessionals(data);
       setSelectedProId(data[0].id);

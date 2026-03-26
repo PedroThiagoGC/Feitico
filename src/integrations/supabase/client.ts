@@ -1,8 +1,23 @@
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from './types';
+import { createClient } from "@supabase/supabase-js";
+import {
+  AUTH_INACTIVITY_TIMEOUT_MS,
+  AUTH_SESSION_MAX_AGE_MS,
+  SUPABASE_AUTH_STORAGE_KEY,
+} from "./authConfig";
+import { createAuthStorage } from "./authStorage";
+import type { Database } from "./types";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+const SUPABASE_PROJECT_ID = (import.meta.env.VITE_SUPABASE_PROJECT_ID as string | undefined)?.trim();
+
+function getProjectRefFromUrl(url: string): string | null {
+  try {
+    return new URL(url).hostname.split(".")[0] || null;
+  } catch {
+    return null;
+  }
+}
 
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   throw new Error(
@@ -10,13 +25,32 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   );
 }
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
+const projectRefFromUrl = getProjectRefFromUrl(SUPABASE_URL);
+if (
+  SUPABASE_PROJECT_ID &&
+  projectRefFromUrl &&
+  SUPABASE_PROJECT_ID !== projectRefFromUrl
+) {
+  const mismatchMessage =
+    `Supabase: VITE_SUPABASE_PROJECT_ID (${SUPABASE_PROJECT_ID}) ` +
+    `não bate com o projeto da VITE_SUPABASE_URL (${projectRefFromUrl}).`;
+
+  if (import.meta.env.DEV) {
+    throw new Error(mismatchMessage);
+  }
+
+  console.error(mismatchMessage);
+}
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storageKey: SUPABASE_AUTH_STORAGE_KEY,
+    storage: createAuthStorage({
+      storageKey: SUPABASE_AUTH_STORAGE_KEY,
+      sessionMaxAgeMs: AUTH_SESSION_MAX_AGE_MS,
+      inactivityTimeoutMs: AUTH_INACTIVITY_TIMEOUT_MS,
+    }),
     persistSession: true,
     autoRefreshToken: true,
-  }
+  },
 });

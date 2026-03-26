@@ -213,8 +213,9 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
       setSelectedDate(undefined);
       setSelectedTime("");
       setShowConfirmation(false);
-    } catch {
-      toast.error("Erro ao realizar agendamento. Tente novamente.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro ao realizar agendamento. Tente novamente.";
+      toast.error(message);
     }
   };
 

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,8 +7,6 @@ import PwaAssistant from "@/components/pwa/PwaAssistant";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Admin from "./pages/Admin";
-import SuperAdmin from "./pages/SuperAdmin";
-import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,8 +26,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<ErrorBoundary><Index /></ErrorBoundary>} />
           <Route path="/admin" element={<ErrorBoundary><Admin /></ErrorBoundary>} />
-          <Route path="/superadmin" element={<ErrorBoundary><SuperAdmin /></ErrorBoundary>} />
-          <Route path="*" element={<NotFound />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
       <PwaAssistant />

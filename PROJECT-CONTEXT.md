@@ -7,8 +7,8 @@
 ## Identidade do Projeto
 
 - **Nome**: Feitico
-- **Tipo**: SaaS B2C multi-tenant — gestão e agendamento de salão de beleza
-- **Descrição**: Plataforma que permite salões de beleza terem landing page pública com agendamento online e painel administrativo completo (serviços, profissionais, agenda, financeiro, galeria, depoimentos). SuperAdmin gerencia tenants, planos e usuários da plataforma.
+- **Tipo**: Aplicação de agendamento para salão único
+- **Descrição**: Plataforma para um salão de beleza com landing page pública e painel administrativo único (serviços, profissionais, agenda, financeiro, galeria e depoimentos).
 - **Idioma da documentação**: Português
 - **Frequência de deploy**: sob demanda (feature-driven, sem CI automático ainda)
 
@@ -32,8 +32,8 @@
 - **ORM**: ⚠️ Nenhum — acesso via Supabase JS client (`@supabase/supabase-js`)
 - **Banco de dados**: ⚠️ PostgreSQL 16 (gerenciado pelo Supabase)
 - **Auth**: Supabase Auth — sessão gerenciada pelo cliente Supabase
-- **Validação**: Zod — schemas em `src/schemas/` (a criar — Fase 1)
-- **Migrations**: Supabase CLI — arquivos em `supabase/migrations/` (timestamp 13 dígitos)
+- **Validação**: Zod — schemas em `src/schemas/` (implementados)
+- **Migrations**: Supabase CLI — arquivos em `supabase/migrations/` (timestamp 14 dígitos)
 - **Seeding**: não configurado ainda
 - **Rate limiting**: Supabase nativo (sem configuração adicional no app)
 - **Logger**: `console` estruturado (sem logger configurado — pendência Fase 3)
@@ -56,8 +56,6 @@ src/
   pages/
     Index.tsx                ← landing page pública (rota /)
     Admin.tsx                ← painel admin do salão (rota /admin)
-    SuperAdmin.tsx           ← painel superadmin da plataforma (rota /superadmin)
-    NotFound.tsx
   components/
     landing/                 ← componentes da landing page pública
       Header.tsx, Hero.tsx, About.tsx, Services.tsx, Booking.tsx
@@ -67,11 +65,6 @@ src/
       AdminProfessionals.tsx, AdminAvailability.tsx, AdminFinancials.tsx
       AdminGallery.tsx, AdminSalon.tsx, AdminTestimonials.tsx
       ImageUpload.tsx, OpeningHoursEditor.tsx
-    superadmin/              ← componentes do painel superadmin
-      SuperAdminLayout.tsx, SuperAdminLogin.tsx, SuperAdminDashboard.tsx
-      SuperAdminTenants.tsx, SuperAdminTenantDetail.tsx, SuperAdminTenantNew.tsx
-      SuperAdminPlans.tsx, SuperAdminUsers.tsx, SuperAdminFinancial.tsx
-      SuperAdminAudit.tsx
     pwa/
       PwaAssistant.tsx
     ui/                      ← shadcn/ui — NÃO modificar diretamente
@@ -87,14 +80,22 @@ src/
     useScrollAnimation.ts
     use-mobile.tsx
     use-toast.ts
-  services/                  ← ⚠️ A CRIAR (Fase 1) — lógica de negócio por domínio
-    bookingService.ts        (pendente)
-    salonService.ts          (pendente)
-    professionalService.ts   (pendente)
-  schemas/                   ← ⚠️ A CRIAR (Fase 1) — schemas Zod por domínio
-    booking.ts               (pendente)
-    salon.ts                 (pendente)
-    professional.ts          (pendente)
+  services/                  ← lógica de negócio por domínio (implementado)
+    bookingService.ts
+    galleryService.ts
+    professionalService.ts
+    salonService.ts
+    servicesService.ts
+    testimonialService.ts
+    index.ts
+  schemas/                   ← schemas Zod por domínio (implementado)
+    booking.ts
+    gallery.ts
+    professional.ts
+    salon.ts
+    service.ts
+    testimonial.ts
+    index.ts
   integrations/
     supabase/
       client.ts              ← instância Supabase — importar daqui sempre
@@ -136,7 +137,7 @@ agents-v3/
 - Services (`src/services/`): funções puras com lógica de negócio, validações, transformações
 
 ### Rotas (frontend)
-- Rotas em inglês curto: `/`, `/admin`, `/superadmin`
+- Rotas em inglês curto: `/`, `/admin`
 - Admin: sub-navegação por tabs dentro do painel (não sub-rotas separadas)
 
 ### Arquivos de teste
@@ -150,25 +151,23 @@ agents-v3/
 
 ---
 
-## ⚠️ Segurança e Multi-tenancy
+## ⚠️ Segurança e Isolamento de Dados
 
-- **Modelo**: Row-level com `salon_id` para dados operacionais, `tenant_id` para configurações de plataforma
-- **Origem do tenant/salon ID**: ⚠️ sempre do contexto autenticado (sessão Supabase) — nunca de params de URL ou body de formulário
-- **Regra de query**: toda query em tabelas operacionais filtra por `salon_id`; tabelas de plataforma filtram por `tenant_id`
+- **Modelo**: Single-tenant (um único salão)
+- **Origem do salon ID**: ⚠️ sempre derivado do contexto interno da aplicação (nunca vindo direto do body/URL)
+- **Regra de query**: toda query operacional deve considerar `salon_id` quando aplicável
 - **RLS**: Supabase Row Level Security habilitado nas tabelas — as policies são a linha de defesa principal
-- **Cross-tenant response**: tratar como 404 para evitar enumeração
-- **SuperAdmin**: acesso via `platform_users.role = 'superadmin'` — verificar em RLS policies
+- **Cross-resource response**: para recursos inexistentes, manter resposta neutra (sem expor detalhe sensível)
 
 ---
 
 ## ⚠️ Banco de Dados
 
-- **Schema**: `public` (único schema — sem separação schema-per-tenant)
-- **Tabelas globais** (sem tenant_id): `tenants`, `subscription_plans`, `audit_logs`
-- **Tabelas de tenant/salon** (com salon_id ou tenant_id):
+- **Schema**: `public` (único schema)
+- **Tabelas globais** (sem salon_id): dados institucionais e auxiliares
+- **Tabelas operacionais** (com salon_id quando aplicável):
   - salon-scoped: `salons`, `services`, `professionals`, `bookings`, `availability`, `gallery_images`
   - professional-scoped: `professional_availability`, `professional_exceptions`, `professional_services`
-  - tenant-scoped: `platform_users`, `tenant_branding`, `tenant_details`, `tenant_settings`
 - **ID strategy**: ⚠️ UUID via `gen_random_uuid()` (padrão Supabase)
 - **Soft delete**: não implementado (delete físico por enquanto)
 - **updated_at**: `updated_at` com default e trigger Supabase onde aplicável
@@ -209,7 +208,6 @@ agents-v3/
 | testimonial | ✅ useTestimonials | ✅ testimonialService | ✅ testimonial.ts | ✅ AdminTestimonials, Testimonials | ❌ |
 | availability | dentro de bookingService | ✅ bookingService | ❌ pendente | ✅ AdminAvailability | ❌ |
 | financials | ❌ (direto no componente) | ❌ pendente | ❌ pendente | ✅ AdminFinancials | ❌ |
-| superadmin | ❌ inline | ❌ pendente | ❌ pendente | ✅ SuperAdmin* | ❌ |
 
 ---
 
@@ -230,8 +228,9 @@ agents-v3/
 - Nunca editar `src/integrations/supabase/types.ts` manualmente
 - Nunca alterar migrations já aplicadas — criar nova migration
 - Nunca logar senhas, tokens ou dados pessoais (PII)
-- Nunca aceitar `salon_id` ou `tenant_id` de body/params sem validar contra sessão autenticada
+- Nunca aceitar `salon_id` de body/params sem validar contra contexto confiável do app
 - Nunca modificar componentes em `src/components/ui/` diretamente — compor sobre eles
+- Nunca criar fluxo, role ou rota de `superadmin` neste projeto
 
 ---
 
@@ -248,7 +247,7 @@ agents-v3/
 | Fase | Descrição | Status |
 |------|-----------|--------|
 | Fase 0 | Hardening: externalizar vars de ambiente, remover hardcodes | ✅ Concluída |
-| Fase 1 | Fundação: criar `src/services/`, `src/schemas/`, eliminar `any` no admin | ✅ Concluída (2026-03-25) |
+| Fase 1 | Fundação: estruturar `src/services/`, `src/schemas/`, eliminar `any` no admin | ✅ Concluída (2026-03-25) |
 | Fase 2 | Confiabilidade: validação de conflito de horário server-side, padronização de erros de agendamento | ⏳ Pendente |
 | Fase 3 | Escalabilidade: split por features, Error Boundaries, suite de testes, logger | ⏳ Pendente |
 
@@ -261,12 +260,11 @@ agents-v3/
   mais modular sem quebrar URLs existentes.
 - O diretório apps/ (apps/api, apps/web) existe mas contém apenas dist/ e
   node_modules/ — são artefatos de build sem código-fonte. Ignorar.
-- Multi-tenancy: cada "salão" é identificado por salon_id. O conceito de
-  "tenant" é mais abrangente e agrupa configurações de plataforma (branding,
-  settings, plans) via tenant_id. A relação tenant→salon é 1:N.
-- SuperAdmin é uma área separada da plataforma que gerencia todos os tenants,
-  planos de assinatura e usuários da plataforma (não usuários de salão).
+- O projeto atual é de salão único: não haverá fluxo de superadmin e nem
+  gestão multi-tenant nesta base de código.
 - PWA está implementado para instalação no mobile com notificações.
 - Não há backend Node.js/NestJS — toda lógica server-side é Supabase
   (RLS policies, functions, triggers).
+- Exemplos de agentes que citam NestJS/organization/tenant devem ser lidos como
+  genéricos e adaptados para este projeto (salão único com `salon_id`).
 ```

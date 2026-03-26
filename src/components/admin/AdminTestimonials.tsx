@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { Star } from "lucide-react";
 import { type Database } from "@/integrations/supabase/types";
+import { getPrimarySalonId } from "@/services/salonService";
 
 type Testimonial = Database["public"]["Tables"]["testimonials"]["Row"];
 
@@ -19,12 +20,12 @@ export default function AdminTestimonials() {
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
-    const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
-    if (salon) {
-      setSalonId(salon.id);
-      const { data } = await supabase.from("testimonials").select("*").eq("salon_id", salon.id);
-      setItems(data || []);
-    }
+    const nextSalonId = await getPrimarySalonId();
+    if (!nextSalonId) return;
+
+    setSalonId(nextSalonId);
+    const { data } = await supabase.from("testimonials").select("*").eq("salon_id", nextSalonId);
+    setItems(data || []);
   }
 
   async function handleAdd(e: React.FormEvent) {

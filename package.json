@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "check:supabase-ref": "node scripts/check-supabase-ref.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",

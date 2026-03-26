@@ -1,1 +1,5 @@
-project_id = "npzpkvvsumfaghshxpyl"
+project_id = "yrnrjbrzlzyvnyccsmcc"
+
+[auth.sessions]
+timebox = "360h"
+inactivity_timeout = "24h"

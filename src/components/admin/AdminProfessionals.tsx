@@ -12,6 +12,7 @@ import { Plus, Pencil, Trash2, Clock, Calendar, Settings2 } from "lucide-react";
 import { MinutesSelect } from "@/components/ui/minutes-select";
 import ImageUpload from "./ImageUpload";
 import { type Database } from "@/integrations/supabase/types";
+import { getPrimarySalonId } from "@/services/salonService";
 
 type Professional = Database["public"]["Tables"]["professionals"]["Row"];
 type Service = Database["public"]["Tables"]["services"]["Row"];
@@ -39,14 +40,14 @@ export default function AdminProfessionals() {
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
-    const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
-    if (salon) {
-      setSalonId(salon.id);
-      const { data: pros } = await supabase.from("professionals").select("*").eq("salon_id", salon.id).order("name");
-      setProfessionals(pros || []);
-      const { data: svcs } = await supabase.from("services").select("*").eq("salon_id", salon.id).order("sort_order");
-      setServices(svcs || []);
-    }
+    const nextSalonId = await getPrimarySalonId();
+    if (!nextSalonId) return;
+
+    setSalonId(nextSalonId);
+    const { data: pros } = await supabase.from("professionals").select("*").eq("salon_id", nextSalonId).order("name");
+    setProfessionals(pros || []);
+    const { data: svcs } = await supabase.from("services").select("*").eq("salon_id", nextSalonId).order("sort_order");
+    setServices(svcs || []);
   }
 
   async function handleSavePro(e: React.FormEvent) {

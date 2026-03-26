@@ -2,13 +2,26 @@ import { z } from "zod";
 
 export const CommissionTypeSchema = z.enum(["percentage", "fixed"]);
 
-export const CreateProfessionalSchema = z.object({
-  name: z.string().trim().min(2).max(100),
-  photo_url: z.string().nullable().optional(),
-  commission_type: CommissionTypeSchema,
-  commission_value: z.coerce.number().min(0).max(100),
-  active: z.boolean().default(true),
-});
+export const CreateProfessionalSchema = z
+  .object({
+    name: z.string().trim().min(2).max(100),
+    photo_url: z.string().nullable().optional(),
+    commission_type: CommissionTypeSchema,
+    commission_value: z.coerce.number().min(0).max(99999),
+    active: z.boolean().default(true),
+  })
+  .superRefine((data, ctx) => {
+    if (data.commission_type === "percentage" && data.commission_value > 100) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.too_big,
+        maximum: 100,
+        type: "number",
+        inclusive: true,
+        message: "Comissão percentual não pode ultrapassar 100%",
+        path: ["commission_value"],
+      });
+    }
+  });
 
 export const UpdateProfessionalSchema = CreateProfessionalSchema.partial();
 

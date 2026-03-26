@@ -1,5 +1,7 @@
 # PROJECT-CONTEXT.md
 # ─────────────────────────────────────────────────────────────────────────────
+# TEMPLATE DE REFERÊNCIA: neste repositório, o contexto ativo é o arquivo raiz
+# `PROJECT-CONTEXT.md`. Use este arquivo apenas como modelo para novos projetos.
 # Preencha este arquivo por projeto. É o ÚNICO arquivo que muda entre projetos.
 # Todos os agentes verificam se ele existe E se está completo antes de agir.
 # Campos marcados com ⚠️ são críticos — agentes bloqueiam sem eles.
@@ -8,7 +10,7 @@
 ## Identidade do Projeto
 
 - **Nome**: [ex: Nexus]
-- **Tipo**: [ex: SaaS B2B multi-tenant]
+- **Tipo**: [ex: SaaS B2B / sistema de salão único]
 - **Descrição**: [1-2 linhas do que o produto faz]
 - **Idioma da documentação**: [Português / English]
 - **Frequência de deploy**: [ex: várias vezes por dia / semanal / mensal]
@@ -98,12 +100,12 @@ packages/
 
 ---
 
-## ⚠️ Segurança e Multi-tenancy
+## ⚠️ Segurança e Isolamento de Dados
 
-- **Modelo**: ⚠️ [ex: Row-level com organization_id / schema-per-tenant / sem multi-tenancy]
-- **Origem do tenant ID**: ⚠️ [ex: JWT — nunca do request body ou URL params]
-- **Regra de query**: ⚠️ [ex: Toda query em tabelas do schema `core` filtra por organization_id]
-- **Cross-tenant response**: [ex: 404 (não 403) para evitar enumeração]
+- **Modelo**: ⚠️ [ex: salão único / Row-level com organization_id]
+- **Origem do contexto de dados**: ⚠️ [ex: JWT/session — nunca do request body ou URL params]
+- **Regra de query**: ⚠️ [ex: Toda query que usa escopo filtra por salon_id/organization_id]
+- **Cross-context response**: [ex: 404 (não 403) para evitar enumeração]
 - **Cross-schema FKs**: [ex: Proibido — weak UUID references; ver ADR-001]
 
 ---

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronLeft, ChevronRight, CalendarDays, CalendarRange, Clock } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths, addWeeks, isSameMonth, isSameDay, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { getPrimarySalonId } from "@/services/salonService";
 
 type ViewMode = "month" | "week" | "day";
 
@@ -62,12 +63,12 @@ export default function AdminCalendar() {
   }, [salonId, currentDate, viewMode]);
 
   async function loadProfessionals() {
-    const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
-    if (salon) {
-      setSalonId(salon.id);
-      const { data } = await supabase.from("professionals").select("id, name").eq("salon_id", salon.id).order("name");
-      setProfessionals(data || []);
-    }
+    const nextSalonId = await getPrimarySalonId();
+    if (!nextSalonId) return;
+
+    setSalonId(nextSalonId);
+    const { data } = await supabase.from("professionals").select("id, name").eq("salon_id", nextSalonId).order("name");
+    setProfessionals(data || []);
   }
 
   async function loadBookings() {

@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, User, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getPrimarySalonId } from "@/services/salonService";
 
 type BookingRow = Database["public"]["Tables"]["bookings"]["Row"]
 type ProfessionalRow = Pick<Database["public"]["Tables"]["professionals"]["Row"], "id" | "name" | "photo_url">
@@ -28,17 +29,17 @@ export default function AdminBookings() {
 
   useEffect(() => {
     (async () => {
-      const { data: salon, error: salonError } = await supabase.from("salons").select("id").limit(1).maybeSingle();
-      if (salonError) { toast.error("Erro ao carregar dados"); return; }
-      if (salon) {
-        setSalonId(salon.id);
-        const { data: pros, error: prosError } = await supabase.from("professionals").select("id, name, photo_url").eq("salon_id", salon.id).eq("active", true).order("name");
-        if (prosError) { toast.error("Erro ao carregar dados"); return; }
-        setProfessionals(pros || []);
-        const { data: avail, error: availError } = await supabase.from("professional_availability").select("*").eq("active", true);
-        if (availError) { toast.error("Erro ao carregar dados"); return; }
-        setAvailability(avail || []);
-      }
+      const nextSalonId = await getPrimarySalonId();
+      if (!nextSalonId) return;
+
+      setSalonId(nextSalonId);
+      const { data: pros, error: prosError } = await supabase.from("professionals").select("id, name, photo_url").eq("salon_id", nextSalonId).eq("active", true).order("name");
+      if (prosError) { toast.error("Erro ao carregar dados"); return; }
+      setProfessionals(pros || []);
+
+      const { data: avail, error: availError } = await supabase.from("professional_availability").select("*").eq("active", true);
+      if (availError) { toast.error("Erro ao carregar dados"); return; }
+      setAvailability(avail || []);
     })();
   }, []);
 

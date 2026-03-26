@@ -1,4 +1,4 @@
-import { MapPin, Phone, Clock, Instagram, Settings } from "lucide-react";
+import { MapPin, Phone, Clock, Instagram, Facebook, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Salon } from "@/hooks/useSalon";
 
@@ -30,9 +30,21 @@ export default function Footer({ salon }: FooterProps) {
                   href={`https://instagram.com/${salon.instagram.replace("@", "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="Instagram"
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   <Instagram className="w-5 h-5" />
+                </a>
+              )}
+              {salon?.facebook && (
+                <a
+                  href={`https://facebook.com/${salon.facebook.replace("@", "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Facebook"
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <Facebook className="w-5 h-5" />
                 </a>
               )}
             </div>
