@@ -52,7 +52,13 @@ export async function createBooking(payload: CreateBookingPayload): Promise<Book
     }])
     .select()
     .single()
-  if (error) throw error
+  if (error) {
+    // Erro de conflito de horário gerado pelo trigger PostgreSQL
+    if (error.message?.includes("BOOKING_CONFLICT")) {
+      throw new Error("Profissional já possui agendamento neste horário. Escolha outro horário.")
+    }
+    throw error
+  }
   return booking as unknown as BookingRow
 }
 

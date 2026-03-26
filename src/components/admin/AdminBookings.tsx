@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { type Json } from "@/integrations/supabase/types";
+import { type Database } from "@/integrations/supabase/types";
 
 type ServiceSnapshot = { name: string; duration: number };
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,37 +14,9 @@ import { ptBR } from "date-fns/locale";
 import { CalendarIcon, User, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface BookingRow {
-  id: string;
-  professional_id: string | null;
-  customer_name: string;
-  customer_phone: string;
-  booking_date: string;
-  booking_time: string | null;
-  booking_type: string;
-  status: string;
-  services: Json;
-  total_price: number;
-  total_duration: number;
-  total_buffer_minutes: number;
-  total_occupied_minutes: number;
-  commission_amount: number;
-  profit_amount: number;
-}
-
-interface ProfessionalRow {
-  id: string;
-  name: string;
-  photo_url: string | null;
-}
-
-interface AvailabilityRow {
-  professional_id: string;
-  weekday: number;
-  start_time: string;
-  end_time: string;
-  active: boolean;
-}
+type BookingRow = Database["public"]["Tables"]["bookings"]["Row"]
+type ProfessionalRow = Pick<Database["public"]["Tables"]["professionals"]["Row"], "id" | "name" | "photo_url">
+type AvailabilityRow = Database["public"]["Tables"]["professional_availability"]["Row"]
 
 export default function AdminBookings() {
   const [bookings, setBookings] = useState<BookingRow[]>([]);
@@ -56,12 +28,15 @@ export default function AdminBookings() {
 
   useEffect(() => {
     (async () => {
-      const { data: salon } = await supabase.from("salons").select("id").limit(1).maybeSingle();
+      const { data: salon, error: salonError } = await supabase.from("salons").select("id").limit(1).maybeSingle();
+      if (salonError) { toast.error("Erro ao carregar dados"); return; }
       if (salon) {
         setSalonId(salon.id);
-        const { data: pros } = await supabase.from("professionals").select("id, name, photo_url").eq("salon_id", salon.id).eq("active", true).order("name");
+        const { data: pros, error: prosError } = await supabase.from("professionals").select("id, name, photo_url").eq("salon_id", salon.id).eq("active", true).order("name");
+        if (prosError) { toast.error("Erro ao carregar dados"); return; }
         setProfessionals(pros || []);
-        const { data: avail } = await supabase.from("professional_availability").select("*").eq("active", true);
+        const { data: avail, error: availError } = await supabase.from("professional_availability").select("*").eq("active", true);
+        if (availError) { toast.error("Erro ao carregar dados"); return; }
         setAvailability(avail || []);
       }
     })();
@@ -76,8 +51,9 @@ export default function AdminBookings() {
     const dateStr = format(selectedDate, "yyyy-MM-dd");
     let query = supabase.from("bookings").select("*").eq("salon_id", salonId).eq("booking_date", dateStr).order("booking_time", { ascending: true });
     if (statusFilter !== "all") query = query.eq("status", statusFilter);
-    const { data } = await query;
-    setBookings((data as BookingRow[]) || []);
+    const { data, error } = await query;
+    if (error) { toast.error("Erro ao carregar dados"); return; }
+    setBookings(data || []);
   }
 
   async function updateStatus(id: string, status: string) {
