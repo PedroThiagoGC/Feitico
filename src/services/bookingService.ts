@@ -26,11 +26,27 @@ export type CreateBookingPayload = {
   profit_amount: number
   booking_date: string
   booking_time: string | null
-  booking_type: "scheduled" | "walk_in"
+  booking_type: "scheduled" | "walk_in" | "waitlist"
+  status?: "pending" | "confirmed" | "completed" | "cancelled"
   notes?: string | null
 }
 
 export async function createBooking(payload: CreateBookingPayload): Promise<BookingRow> {
+  if (payload.booking_time && payload.total_occupied_minutes > 0) {
+    const { data: hasConflict, error: conflictError } = await supabase.rpc("check_booking_conflict", {
+      p_professional_id: payload.professional_id,
+      p_booking_date: payload.booking_date,
+      p_booking_time: payload.booking_time,
+      p_total_occupied_minutes: payload.total_occupied_minutes,
+      p_exclude_id: null,
+    })
+
+    if (conflictError) throw conflictError
+    if (hasConflict) {
+      throw new Error("Profissional já possui agendamento neste horário. Escolha outro horário.")
+    }
+  }
+
   const { data: booking, error } = await supabase
     .from("bookings")
     .insert([{
@@ -48,6 +64,7 @@ export async function createBooking(payload: CreateBookingPayload): Promise<Book
       booking_date: payload.booking_date,
       booking_time: payload.booking_time,
       booking_type: payload.booking_type,
+      status: payload.status ?? "pending",
       notes: payload.notes ?? null,
     }])
     .select()
@@ -123,6 +140,10 @@ export async function getAvailableSlots(
     .in("status", ["pending", "confirmed"])
 
   const OVERTIME_MARGIN = 60
+  const now = new Date()
+  const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+  const isToday = date === todayLocal
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
 
   const slots: string[] = []
 
@@ -131,6 +152,8 @@ export async function getAvailableSlots(
       if (m >= window.end) break
       const slotStart = m
       const slotEnd = m + totalOccupiedMinutes
+
+      if (isToday && slotStart < nowMinutes) continue
 
       const isBlocked = blockedRanges.some(
         (b) => slotStart < b.end && slotEnd > b.start
@@ -185,7 +208,12 @@ function buildBookingWhatsAppText(info: WhatsAppBookingInfo): string {
     .map((s) => `• ${s.name} — R$ ${s.price.toFixed(2)}`)
     .join("\n")
 
-  const bookingTypeLabel = booking.booking_type === "scheduled" ? "Horário marcado" : "Ordem de chegada"
+  const bookingTypeLabel =
+    booking.booking_type === "scheduled"
+      ? "Horário marcado"
+      : booking.booking_type === "waitlist"
+        ? "Fila de espera"
+        : "Na hora / ordem de chegada"
   const dateFormatted = new Date(booking.booking_date + "T12:00:00").toLocaleDateString("pt-BR")
 
   return (

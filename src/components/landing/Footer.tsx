@@ -90,6 +90,14 @@ export default function Footer({ salon }: FooterProps) {
           <p className="font-body text-xs text-muted-foreground">
             © {new Date().getFullYear()} {salon?.name || "Salão"}. Todos os direitos reservados.
           </p>
+          <a
+            href="https://wa.me/5585994334597"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-body text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            Desenvolvido por GM Tech Solution
+          </a>
           <Link
             to="/admin"
             className="font-body text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"

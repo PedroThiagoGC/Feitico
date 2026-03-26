@@ -16,7 +16,7 @@ export const CreateBookingSchema = z.object({
   services: z.array(BookingServiceItemSchema).min(1),
   booking_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
   booking_time: z.string().nullable(),
-  booking_type: z.enum(["scheduled", "walk_in"]),
+  booking_type: z.enum(["scheduled", "walk_in", "waitlist"]),
   notes: z.string().max(500).optional(),
 });
 
