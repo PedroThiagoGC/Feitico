@@ -5,7 +5,18 @@ import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(async ({ mode }: { mode: string }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const supabaseUrl = env.VITE_SUPABASE_URL;
+
+  // Resolve da URL do Supabase: aceita com ou sem prefixo VITE_ (Vercel usa sem prefixo)
+  const resolvedUrl = env.SUPABASE_URL || process.env.SUPABASE_URL || env.VITE_SUPABASE_URL || "";
+  const resolvedKey =
+    env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    env.SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    "";
+
+  const supabaseUrl = resolvedUrl;
   const supabaseApiPattern = supabaseUrl
     ? new RegExp(`^${supabaseUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/rest/v1/.*`, "i")
     : /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*$/i;
@@ -58,8 +69,8 @@ export default defineConfig(async ({ mode }: { mode: string }) => {
       },
     },
     define: {
-      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(env.SUPABASE_URL || env.VITE_SUPABASE_URL),
-      'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify(env.SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_PUBLISHABLE_KEY),
+      "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(resolvedUrl),
+      "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(resolvedKey),
     },
   };
 });

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp \"c:/DEV/GM Tech/Feitico/agents-v3/agents/architect.md\" \"c:/DEV/GM Tech/Feitico/.claude/agents/architect.md\")",
+      "Bash(cp \"c:/DEV/GM Tech/Feitico/agents-v3/agents/backend-dev.md\" \"c:/DEV/GM Tech/Feitico/.claude/agents/backend-dev.md\")",
+      "Bash(cp \"c:/DEV/GM Tech/Feitico/agents-v3/agents/frontend-dev.md\" \"c:/DEV/GM Tech/Feitico/.claude/agents/frontend-dev.md\")",
+      "Bash(cp \"c:/DEV/GM Tech/Feitico/agents-v3/agents/code-reviewer.md\" \"c:/DEV/GM Tech/Feitico/.claude/agents/code-reviewer.md\")",
+      "Bash(cp \"c:/DEV/GM Tech/Feitico/agents-v3/agents/test-writer.md\" \"c:/DEV/GM Tech/Feitico/.claude/agents/test-writer.md\")",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}
