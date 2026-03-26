@@ -6,7 +6,18 @@
       "Bash(cp \"c:/DEV/GM Tech/Feitico/agents-v3/agents/frontend-dev.md\" \"c:/DEV/GM Tech/Feitico/.claude/agents/frontend-dev.md\")",
       "Bash(cp \"c:/DEV/GM Tech/Feitico/agents-v3/agents/code-reviewer.md\" \"c:/DEV/GM Tech/Feitico/.claude/agents/code-reviewer.md\")",
       "Bash(cp \"c:/DEV/GM Tech/Feitico/agents-v3/agents/test-writer.md\" \"c:/DEV/GM Tech/Feitico/.claude/agents/test-writer.md\")",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(npm install:*)",
+      "Bash(npx vitest:*)",
+      "Bash(node -e \"const p = require\\(''./package.json''\\); console.log\\(''vite:'', p.devDependencies?.vite || p.dependencies?.vite\\); console.log\\(''build script:'', p.scripts?.build\\)\")",
+      "Bash(node -e \"const p = require\\(''./node_modules/vite/package.json''\\); console.log\\(''vite real version:'', p.version\\)\")",
+      "Bash(node -e \":*)",
+      "Bash(find node_modules/vite/dist -name *.js)",
+      "Bash(xargs grep:*)",
+      "Bash(SUPABASE_URL=\"https://yrnrjbrzlzyvnyccsmcc.supabase.co\" SUPABASE_PUBLISHABLE_KEY=\"sb_test\" npx vite build --mode production)",
+      "Bash(SUPABASE_URL=\"https://yrnrjbrzlzyvnyccsmcc.supabase.co\" SUPABASE_PUBLISHABLE_KEY=\"sb_publishable_TEST123\" npx vite build --mode production)",
+      "Bash(grep -o 'SUPABASE_URL[^\"\"\"\"]*\\\\|yrnrjbrzlzy\\\\|sb_publishable_TEST\\\\|configure SUPABASE' dist/assets/index-*.js)"
     ]
   }
 }

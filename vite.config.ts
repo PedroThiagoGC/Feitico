@@ -4,24 +4,10 @@ import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(async ({ mode }: { mode: string }) => {
-  const env = loadEnv(mode, process.cwd(), ["VITE_", "SUPABASE_"]);
+  const env = loadEnv(mode, process.cwd(), ["VITE_"]);
 
-  // process.env is available here at build time (Vercel injects all dashboard vars).
-  // We use define to bundle them even without VITE_ prefix.
-  const supabaseUrlValue =
-    process.env.SUPABASE_URL ||
-    env.SUPABASE_URL ||
-    env.VITE_SUPABASE_URL ||
-    "";
-  const supabaseKeyValue =
-    process.env.SUPABASE_PUBLISHABLE_KEY ||
-    env.SUPABASE_PUBLISHABLE_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    env.SUPABASE_ANON_KEY ||
-    env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-    "";
-
-  const supabaseUrl = supabaseUrlValue;
+  // Lê a URL apenas para configurar o padrão de cache do Workbox (build-time only).
+  const supabaseUrl = env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
   const supabaseApiPattern = supabaseUrl
     ? new RegExp(`^${supabaseUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/rest/v1/.*`, "i")
     : /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*$/i;
@@ -68,11 +54,7 @@ export default defineConfig(async ({ mode }: { mode: string }) => {
         },
       }) as any,
     ],
-    envPrefix: ["VITE_", "SUPABASE_"],
-    define: {
-      __SUPABASE_URL__: JSON.stringify(supabaseUrlValue),
-      __SUPABASE_PUBLISHABLE_KEY__: JSON.stringify(supabaseKeyValue),
-    },
+    envPrefix: ["VITE_"],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
