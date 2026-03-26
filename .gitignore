@@ -27,3 +27,16 @@ dist-ssr
 .env
 .env.*
 !.env.example
+# Dependencies
+**/node_modules/
+
+# Build outputs
+**/dist/
+**/build/
+**/.turbo/
+
+# Coverage
+**/coverage/
+
+# Cache
+**/.cache/
