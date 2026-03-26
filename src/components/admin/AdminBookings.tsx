@@ -221,10 +221,13 @@ export default function AdminBookings() {
 
       setServices(serviceList || []);
 
+      const professionalIds = professionalList.map((p) => p.id)
       const { data: availabilityList, error: availabilityError } = await supabase
         .from("professional_availability")
         .select("*")
-        .eq("active", true);
+        .in("professional_id", professionalIds.length > 0 ? professionalIds : [""])
+        .eq("active", true)
+        .limit(500);
 
       if (availabilityError) {
         toast.error("Erro ao carregar disponibilidade");

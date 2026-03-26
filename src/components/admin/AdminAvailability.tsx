@@ -91,10 +91,12 @@ export default function AdminAvailability() {
   }
 
   async function loadExceptions() {
+    const today = new Date().toISOString().split("T")[0];
     const { data } = await supabase
       .from("professional_exceptions")
       .select("*")
       .eq("professional_id", selectedProId)
+      .gte("date", today)
       .order("date");
     setExceptions(data as ExceptionRow[] || []);
   }
@@ -331,6 +333,7 @@ export default function AdminAvailability() {
 
               <div className="space-y-2">
                 {exceptions.length === 0 && <p className="text-muted-foreground font-body text-sm">Nenhuma exceção cadastrada.</p>}
+                <p className="font-body text-xs text-muted-foreground">Exibindo apenas exceções futuras</p>
                 {exceptions.map((exc) => (
                   <div key={exc.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary border border-border">
                     <span className="font-body text-sm">

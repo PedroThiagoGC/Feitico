@@ -4,9 +4,35 @@ import { buildWhatsAppUrl, buildWhatsAppWebUrl, normalizeWhatsAppPhone } from "@
 
 type BookingRow = Database["public"]["Tables"]["bookings"]["Row"]
 
-export async function getBookings(salonId: string, date?: string): Promise<BookingRow[]> {
-  let query = supabase.from("bookings").select("*").eq("salon_id", salonId)
-  if (date) query = query.eq("booking_date", date)
+export type GetBookingsOptions = {
+  date?: string
+  dateFrom?: string
+  dateTo?: string
+  limit?: number
+  offset?: number
+}
+
+const GET_BOOKINGS_DEFAULT_LIMIT = 200
+
+export async function getBookings(salonId: string, options?: GetBookingsOptions | string): Promise<BookingRow[]> {
+  const opts: GetBookingsOptions =
+    typeof options === "string" ? { date: options } : options ?? {}
+
+  const limit = opts.limit ?? GET_BOOKINGS_DEFAULT_LIMIT
+  const offset = opts.offset ?? 0
+
+  let query = supabase
+    .from("bookings")
+    .select("*")
+    .eq("salon_id", salonId)
+    .order("booking_date", { ascending: false })
+    .order("booking_time")
+    .range(offset, offset + limit - 1)
+
+  if (opts.date) query = query.eq("booking_date", opts.date)
+  if (opts.dateFrom) query = query.gte("booking_date", opts.dateFrom)
+  if (opts.dateTo) query = query.lte("booking_date", opts.dateTo)
+
   const { data, error } = await query
   if (error) throw error
   return data as unknown as BookingRow[]
@@ -33,7 +59,7 @@ export type CreateBookingPayload = {
 
 export async function createBooking(payload: CreateBookingPayload): Promise<BookingRow> {
   if (payload.booking_time && payload.total_occupied_minutes > 0) {
-    const { data: hasConflict, error: conflictError } = await supabase.rpc("check_booking_conflict", {
+    const { data: hasConflict, error: conflictError } = await (supabase as any).rpc("check_booking_conflict", {
       p_professional_id: payload.professional_id,
       p_booking_date: payload.booking_date,
       p_booking_time: payload.booking_time,
@@ -141,6 +167,7 @@ export async function getAvailableSlots(
     .eq("professional_id", professionalId)
     .eq("booking_date", date)
     .in("status", ["pending", "confirmed"])
+    .limit(500)
 
   const OVERTIME_MARGIN = 60
   const now = new Date()

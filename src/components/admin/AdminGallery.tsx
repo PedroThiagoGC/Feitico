@@ -11,19 +11,28 @@ import { getPrimarySalonId } from "@/services/salonService";
 
 type GalleryImage = Database["public"]["Tables"]["gallery_images"]["Row"];
 
+const PAGE_SIZE = 20;
+
 export default function AdminGallery() {
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [salonId, setSalonId] = useState("");
   const [form, setForm] = useState({ image_url: "", caption: "", sort_order: "0" });
+  const [page, setPage] = useState(0);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [page]);
 
   async function loadData() {
     const nextSalonId = await getPrimarySalonId();
     if (!nextSalonId) return;
 
     setSalonId(nextSalonId);
-    const { data } = await supabase.from("gallery_images").select("*").eq("salon_id", nextSalonId).order("sort_order");
+    const { data } = await supabase
+      .from("gallery_images")
+      .select("*")
+      .eq("salon_id", nextSalonId)
+      .order("sort_order")
+      .range(0, (page + 1) * PAGE_SIZE - 1)
+      .limit((page + 1) * PAGE_SIZE);
     setImages(data || []);
   }
 
@@ -77,6 +86,13 @@ export default function AdminGallery() {
             </div>
           ))}
         </div>
+        {images.length === (page + 1) * PAGE_SIZE && (
+          <div className="flex justify-center pt-2">
+            <Button variant="outline" className="font-body" onClick={() => setPage((p) => p + 1)}>
+              Carregar mais
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

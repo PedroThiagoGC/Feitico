@@ -8,6 +8,7 @@ import {
   calculateCommission,
   generateWhatsAppMessage,
   generateWhatsAppApiFallback,
+  type GetBookingsOptions,
 } from "@/services/bookingService";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -16,10 +17,10 @@ export type { CreateBookingPayload as CreateBookingData } from "@/services/booki
 export type { WhatsAppBookingInfo } from "@/services/bookingService";
 export { calculateCommission, generateWhatsAppMessage, generateWhatsAppApiFallback };
 
-export function useBookings(salonId: string | undefined, date?: string) {
+export function useBookings(salonId: string | undefined, options?: GetBookingsOptions) {
   return useQuery({
-    queryKey: ["bookings", salonId, date],
-    queryFn: () => getBookings(salonId!, date),
+    queryKey: ["bookings", salonId, options],
+    queryFn: () => getBookings(salonId!, options),
     enabled: !!salonId,
   });
 }
@@ -42,7 +43,7 @@ export function useRealtimeBookings(salonId: string | undefined) {
           filter: `salon_id=eq.${salonId}`,
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ["bookings"] });
+          queryClient.invalidateQueries({ queryKey: ["bookings", salonId] });
           queryClient.invalidateQueries({ queryKey: ["available-slots"] });
         }
       )

@@ -38,6 +38,7 @@ export default function AdminServices() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<ServiceForm>(emptyService);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => { loadData(); }, []);
 
@@ -188,11 +189,19 @@ export default function AdminServices() {
         </Dialog>
       </CardHeader>
       <CardContent>
+        <div className="mb-4">
+          <Input
+            placeholder="Buscar serviço..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-sm bg-secondary border-border font-body"
+          />
+        </div>
         {services.length === 0 ? (
           <p className="text-muted-foreground font-body text-sm">Nenhum serviço cadastrado.</p>
         ) : (
           <div className="space-y-3">
-            {services.map((s) => (
+            {services.filter((s) => s.name.toLowerCase().includes(search.toLowerCase())).map((s) => (
               <div key={s.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary border border-border">
                 <div className="flex-1 min-w-0">
                   <p className="font-body font-medium text-foreground truncate">{s.name}</p>

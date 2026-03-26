@@ -37,6 +37,8 @@ export default function AdminProfessionals() {
     active: true,
   });
 
+  const [search, setSearch] = useState("");
+
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
@@ -145,11 +147,19 @@ export default function AdminProfessionals() {
           </Dialog>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <Input
+              placeholder="Buscar profissional..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="max-w-sm bg-secondary border-border font-body"
+            />
+          </div>
           {professionals.length === 0 ? (
             <p className="text-muted-foreground font-body text-sm">Nenhum profissional cadastrado.</p>
           ) : (
             <div className="space-y-3">
-              {professionals.map((p) => (
+              {professionals.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())).map((p) => (
                 <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary border border-border">
                   <div className="flex items-center gap-3">
                     {p.photo_url && <img src={p.photo_url} alt={p.name} className="w-10 h-10 rounded-full object-cover" />}
