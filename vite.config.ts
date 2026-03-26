@@ -4,19 +4,8 @@ import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(async ({ mode }: { mode: string }) => {
-  const env = loadEnv(mode, process.cwd(), "");
-
-  // Resolve da URL do Supabase: aceita com ou sem prefixo VITE_ (Vercel usa sem prefixo)
-  const resolvedUrl = env.SUPABASE_URL || process.env.SUPABASE_URL || env.VITE_SUPABASE_URL || "";
-  const resolvedKey =
-    env.SUPABASE_PUBLISHABLE_KEY ||
-    process.env.SUPABASE_PUBLISHABLE_KEY ||
-    env.SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-    "";
-
-  const supabaseUrl = resolvedUrl;
+  const env = loadEnv(mode, process.cwd(), ["VITE_", "SUPABASE_"]);
+  const supabaseUrl = env.VITE_SUPABASE_URL || env.SUPABASE_URL || "";
   const supabaseApiPattern = supabaseUrl
     ? new RegExp(`^${supabaseUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/rest/v1/.*`, "i")
     : /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*$/i;
@@ -63,14 +52,11 @@ export default defineConfig(async ({ mode }: { mode: string }) => {
         },
       }) as any,
     ],
+    envPrefix: ["VITE_", "SUPABASE_"],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
       },
-    },
-    define: {
-      "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(resolvedUrl),
-      "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(resolvedKey),
     },
   };
 });
