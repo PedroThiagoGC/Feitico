@@ -1,8 +1,9 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef, useLayoutEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 import { useAvailableSlots, useCreateBooking, useRealtimeBookings, generateWhatsAppMessage, calculateCommission } from "@/hooks/useBooking";
 import { useProfessionals, useProfessionalServices, useProfessionalAvailability } from "@/hooks/useProfessionals";
 import { Button } from "@/components/ui/button";
@@ -113,6 +114,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     resolver: zodResolver(bookingSchema),
     defaultValues: { customer_name: "", customer_phone: "" },
   });
+  const { clearPersisted } = useFormPersistence(form, "booking-customer");
 
   const selectedProfessional = professionals?.find((p) => p.id === selectedProfessionalId);
 
@@ -184,6 +186,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     try {
       await createBooking.mutateAsync(bookingData);
       toast.success("Agendamento realizado com sucesso!");
+      clearPersisted();
 
       const whatsappUrl = generateWhatsAppMessage({
         booking: bookingData,

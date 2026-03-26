@@ -35,12 +35,17 @@ export default function Hero({ salon }: HeroProps) {
         }`}
       >
         <h1 className="font-display text-4xl sm:text-5xl md:text-7xl font-bold mb-6 leading-tight">
-          <span className="text-foreground">Sua beleza merece</span>
+          <span className="text-foreground">
+            {(salon as any)?.hero_title ?? "Sua beleza merece"}
+          </span>
           <br />
-          <span className="text-gradient-gold">excelência</span>
+          <span className="text-gradient-gold">
+            {(salon as any)?.hero_subtitle ?? "excelência"}
+          </span>
         </h1>
         <p className="font-body text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto mb-10">
-          Transforme seu visual com os melhores profissionais. Agende agora e viva uma experiência premium.
+          {(salon as any)?.hero_description ??
+            "Transforme seu visual com os melhores profissionais. Agende agora e viva uma experiência premium."}
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button
