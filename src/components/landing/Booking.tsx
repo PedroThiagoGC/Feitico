@@ -17,7 +17,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import type { Service } from "@/hooks/useServices";
 import type { Salon } from "@/hooks/useSalon";
-import { supabase } from "@/integrations/supabase/client";
+import { lookupClientByPhone } from "@/services/clientService";
 
 const bookingSchema = z.object({
   customer_name: z.string().trim().min(2, "Nome é obrigatório").max(100),
@@ -137,17 +137,11 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
 
   async function handlePhoneLookup(phone: string) {
     if (!salon?.id) return;
-    const normalized = phone.replace(/\D/g, "");
-    if (normalized.length < 10) return;
-    const { data } = await (supabase as any)
-      .from("clients")
-      .select("preferred_name")
-      .eq("salon_id", salon.id)
-      .eq("phone_normalized", normalized)
-      .maybeSingle();
-    if (data?.preferred_name && !form.getValues("customer_name")) {
-      form.setValue("customer_name", data.preferred_name, { shouldValidate: true });
-      toast.info(`Bem-vindo de volta, ${data.preferred_name}! 👋`);
+
+    const client = await lookupClientByPhone(salon.id, phone);
+    if (client?.preferred_name && !form.getValues("customer_name")) {
+      form.setValue("customer_name", client.preferred_name, { shouldValidate: true });
+      toast.info(`Bem-vindo de volta, ${client.preferred_name}!`);
     }
   }
 
@@ -312,7 +306,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                       Este profissional ainda não tem serviços habilitados.
                     </p>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {availableServices.map((service) => {
                         const eff = getEffectiveService(service);
                         const isSelected = selectedServices.some((s) => s.id === service.id);
@@ -328,24 +322,36 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                                 toggleService(service);
                               }
                             }}
-                            className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left font-body text-sm cursor-pointer ${
+                            className={`relative flex items-start gap-3 p-3 rounded-xl border-2 transition-all duration-150 text-left font-body cursor-pointer select-none ${
                               isSelected
-                                ? "border-primary bg-primary/10 text-foreground"
-                                : "border-border bg-secondary hover:border-primary/30 text-muted-foreground"
+                                ? "border-primary bg-primary/10 shadow-sm"
+                                : "border-border/60 bg-card hover:border-primary/40 hover:bg-primary/5"
                             }`}
                           >
-                            <div className={`shrink-0 w-4 h-4 rounded-sm border flex items-center justify-center ${
+                            {/* Checkmark badge */}
+                            <div className={`shrink-0 mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                               isSelected
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-border bg-background text-transparent"
+                                ? "border-primary bg-primary"
+                                : "border-muted-foreground/30 bg-transparent"
                             }`}>
-                              <Check className="w-3 h-3" />
+                              {isSelected && <Check className="w-3 h-3 text-primary-foreground stroke-[3]" />}
                             </div>
+
+                            {/* Content */}
                             <div className="flex-1 min-w-0">
-                              <span className="block font-medium truncate">{service.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                R$ {eff.price.toFixed(2)} · {eff.duration}min
+                              <span className={`block text-sm font-semibold leading-tight ${isSelected ? "text-foreground" : "text-foreground/80"}`}>
+                                {service.name}
                               </span>
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                <span className={`text-sm font-bold ${isSelected ? "text-primary" : "text-muted-foreground"}`}>
+                                  R$ {eff.price.toFixed(2)}
+                                </span>
+                                <span className="text-muted-foreground/40 text-xs">·</span>
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Clock className="w-3 h-3 inline" />
+                                  {eff.duration}min
+                                </span>
+                              </div>
                             </div>
                           </div>
                         );
@@ -353,12 +359,23 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                     </div>
                   )}
                   {selectedServices.length > 0 && (
-                    <div className="mt-3 p-3 rounded-lg bg-primary/5 border border-primary/20 font-body text-sm">
-                      <span className="text-muted-foreground">Selecionados: </span>
-                      <span className="text-foreground font-medium">{effectiveSelected.map(s => s.name).join(", ")}</span>
-                      <span className="text-muted-foreground"> · Total: </span>
-                      <span className="text-primary font-bold">R$ {totalPrice.toFixed(2)}</span>
-                      <span className="text-muted-foreground"> · {totalDuration}min</span>
+                    <div className="mt-3 p-3 rounded-xl bg-primary/8 border border-primary/25 font-body">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="text-xs text-muted-foreground flex-1 min-w-0">
+                          {effectiveSelected.map((s, i) => (
+                            <span key={s.id}>
+                              {i > 0 && <span className="text-muted-foreground/40 mx-1">+</span>}
+                              <span className="text-foreground/80 font-medium">{s.name}</span>
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Clock className="w-3 h-3" />{totalDuration}min
+                          </span>
+                          <span className="text-sm font-bold text-primary">R$ {totalPrice.toFixed(2)}</span>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
