@@ -1,7 +1,7 @@
 ﻿import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Clock, MessageCircle, User } from "lucide-react";
+import { CalendarIcon, Check, ChevronDown, ChevronUp, Clock, MessageCircle, User, X } from "lucide-react";
 import { toast } from "sonner";
 import { calculateCommission, type CreateBookingPayload } from "@/services/bookingService";
 import { buildReminderMessage as buildBookingReminderMessage } from "@/services/notificationService";
@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { formatDuration } from "@/lib/utils";
 
 type ServiceSnapshot = { name: string; duration: number };
 type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
@@ -90,6 +91,8 @@ export default function AdminBookings() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [manualForm, setManualForm] = useState<ManualBookingForm>(() => getDefaultManualForm());
+  const [manualOpen, setManualOpen] = useState(false);
+  const [serviceDropdownOpen, setServiceDropdownOpen] = useState(false);
   const { data: salon, error: salonError, isLoading: isSalonLoading } = useSalon();
   const selectedDateString = format(selectedDate, "yyyy-MM-dd");
   const { data: professionals = [], error: professionalsError, isLoading: professionalsLoading } = useProfessionals(salon?.id);
@@ -432,14 +435,27 @@ export default function AdminBookings() {
           </div>
         ) : null}
 
-        <div className="border border-border rounded-xl p-4 md:p-5 space-y-4 bg-secondary/20">
-          <div>
-            <h3 className="font-display font-semibold text-foreground text-base md:text-lg">Novo Agendamento Manual</h3>
-            <p className="font-body text-xs md:text-sm text-muted-foreground mt-1">
-              Use para registrar atendimento retroativo, na hora ou fila de espera.
-            </p>
-          </div>
+        <div className="border border-border rounded-xl overflow-hidden bg-secondary/20">
+          <button
+            type="button"
+            onClick={() => setManualOpen((v) => !v)}
+            className="w-full flex items-center justify-between p-4 md:p-5 hover:bg-secondary/40 transition-colors"
+          >
+            <div className="text-left">
+              <h3 className="font-display font-semibold text-foreground text-base md:text-lg">Novo Agendamento Manual</h3>
+              <p className="font-body text-xs md:text-sm text-muted-foreground mt-0.5">
+                Registrar atendimento retroativo, na hora ou fila de espera.
+              </p>
+            </div>
+            {manualOpen ? (
+              <ChevronUp className="w-5 h-5 text-muted-foreground shrink-0" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />
+            )}
+          </button>
 
+          {manualOpen && (
+            <div className="px-4 md:px-5 pb-5 border-t border-border pt-4">
           <form onSubmit={handleCreateManualBooking} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="space-y-1.5">
@@ -557,52 +573,97 @@ export default function AdminBookings() {
             </div>
 
             <div className="space-y-2">
-              <p className="font-body text-xs text-muted-foreground">Servicos ({availableManualServices.length})</p>
+              <p className="font-body text-xs text-muted-foreground">Serviços</p>
               {availableManualServices.length === 0 ? (
                 <p className="font-body text-xs text-muted-foreground bg-background border border-border rounded-md p-3">
-                  Este profissional nao possui servicos ativos.
+                  Este profissional não possui serviços ativos.
                 </p>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {availableManualServices.map((service) => {
-                    const selected = manualForm.service_ids.includes(service.id);
-                    const override = professionalServices.find((item) => item.service_id === service.id);
-                    const effectivePrice = override?.custom_price ?? Number(service.price);
-                    const effectiveDuration = override?.custom_duration_minutes ?? service.duration;
-
-                    return (
-                      <button
-                        key={service.id}
-                        type="button"
-                        onClick={() => toggleManualService(service.id)}
-                        className={cn(
-                          "w-full text-left border rounded-lg p-3 transition-all",
-                          selected
-                            ? "border-primary bg-primary/10"
-                            : "border-border bg-background hover:border-primary/30"
-                        )}
-                      >
-                        <p className="font-body text-sm text-foreground font-medium">{service.name}</p>
-                        <p className="font-body text-xs text-muted-foreground">
-                          R$ {effectivePrice.toFixed(2)} - {effectiveDuration}min
-                        </p>
-                      </button>
-                    );
-                  })}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setServiceDropdownOpen((v) => !v)}
+                    className="w-full flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-body text-left hover:border-primary/40 transition-colors"
+                  >
+                    <span className="flex-1 min-w-0">
+                      {manualForm.service_ids.length === 0 ? (
+                        <span className="text-muted-foreground">Selecione os serviços...</span>
+                      ) : (
+                        <span className="flex flex-wrap gap-1">
+                          {selectedManualServices.map((s) => (
+                            <span key={s.id} className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-full border border-primary/20">
+                              {s.name}
+                              <button
+                                type="button"
+                                aria-label={`Remover ${s.name}`}
+                                onClick={(e) => { e.stopPropagation(); toggleManualService(s.id); }}
+                                className="hover:text-destructive"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${serviceDropdownOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  {serviceDropdownOpen && (
+                    <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-card shadow-lg">
+                      <div className="max-h-60 overflow-y-auto divide-y divide-border/50">
+                        {availableManualServices.map((service) => {
+                          const selected = manualForm.service_ids.includes(service.id);
+                          const override = professionalServices.find((item) => item.service_id === service.id);
+                          const effectivePrice = override?.custom_price ?? Number(service.price);
+                          const effectiveDuration = override?.custom_duration_minutes ?? service.duration;
+                          return (
+                            <button
+                              key={service.id}
+                              type="button"
+                              onClick={() => toggleManualService(service.id)}
+                              className={cn(
+                                "w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-secondary/60",
+                                selected && "bg-primary/5"
+                              )}
+                            >
+                              <div className={cn(
+                                "w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors",
+                                selected ? "bg-primary border-primary" : "border-muted-foreground/30"
+                              )}>
+                                {selected && <Check className="w-2.5 h-2.5 text-primary-foreground stroke-[3]" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-body text-sm text-foreground font-medium truncate">{service.name}</p>
+                                <p className="font-body text-xs text-muted-foreground">
+                                  R$ {effectivePrice.toFixed(2)} · {formatDuration(effectiveDuration)}
+                                </p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 border border-border rounded-lg p-3 bg-background">
               <p className="font-body text-xs md:text-sm text-muted-foreground">
-                Total: <span className="text-primary font-semibold">R$ {manualTotals.totalPrice.toFixed(2)}</span> -{" "}
-                {manualTotals.totalDuration}min + {manualTotals.totalBuffer}min buffer
+                Total: <span className="text-primary font-semibold">R$ {manualTotals.totalPrice.toFixed(2)}</span>
+                {manualTotals.totalDuration > 0 && (
+                  <> · <span className="text-foreground">{formatDuration(manualTotals.totalDuration)}</span>
+                  {manualTotals.totalBuffer > 0 && <span className="text-muted-foreground"> + {formatDuration(manualTotals.totalBuffer)} margem</span>}
+                  </>
+                )}
               </p>
               <Button type="submit" disabled={savingManualBooking}>
                 {savingManualBooking ? "Salvando..." : "Salvar Agendamento"}
               </Button>
             </div>
           </form>
+            </div>
+          )}
         </div>
 
         {professionals.length === 0 ? (
@@ -638,10 +699,10 @@ export default function AdminBookings() {
                   {hasAvailability && (
                     <div className="flex gap-2 text-xs font-body shrink-0">
                       <span className="px-2 py-1 rounded bg-green-500/10 text-green-400 border border-green-500/20">
-                        {stats.freeMinutes}min livres
+                        {formatDuration(stats.freeMinutes)} livres
                       </span>
                       <span className="px-2 py-1 rounded bg-primary/10 text-primary border border-primary/20">
-                        {stats.bookedMinutes}min ocupados
+                        {formatDuration(stats.bookedMinutes)} ocupados
                       </span>
                     </div>
                   )}
@@ -730,8 +791,8 @@ export default function AdminBookings() {
                             </p>
                             <div className="flex flex-wrap gap-x-4 gap-y-1">
                               <span>R$ {Number(booking.total_price).toFixed(2)}</span>
-                              <span>{booking.total_duration}min</span>
-                              <span>Ocupacao: {booking.total_occupied_minutes || booking.total_duration}min</span>
+                              <span>{formatDuration(booking.total_duration)}</span>
+                              <span>Ocupação: {formatDuration(booking.total_occupied_minutes || booking.total_duration)}</span>
                             </div>
                             {booking.notes && <p className="truncate">Obs: {booking.notes}</p>}
                           </div>

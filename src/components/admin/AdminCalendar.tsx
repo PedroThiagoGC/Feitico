@@ -3,7 +3,7 @@ import { type Json } from "@/integrations/supabase/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, CalendarDays, CalendarRange, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, CalendarRange, Clock, MessageCircle } from "lucide-react";
 import {
   format,
   startOfMonth,
@@ -21,6 +21,10 @@ import { useBookings, type Booking } from "@/hooks/useBooking";
 import { useProfessionals } from "@/hooks/useProfessionals";
 import { useSalon } from "@/hooks/useSalon";
 import { getErrorMessage } from "@/hooks/useQueryError";
+import { useBookingStatusMutation, useReminderSentMutation } from "@/hooks/useNotifications";
+import { buildReminderMessage } from "@/services/notificationService";
+import { toast } from "sonner";
+import { formatDuration } from "@/lib/utils";
 
 type ServiceSnapshot = { name: string };
 type ViewMode = "month" | "week" | "day";
@@ -56,6 +60,30 @@ export default function AdminCalendar() {
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [filterPro, setFilterPro] = useState("all");
+
+  const updateStatusMutation = useBookingStatusMutation();
+  const reminderSentMutation = useReminderSentMutation();
+
+  async function updateStatus(bookingId: string, status: "confirmed" | "completed" | "cancelled") {
+    try {
+      await updateStatusMutation.mutateAsync({ bookingId, status });
+      toast.success("Status atualizado!");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  }
+
+  async function handleSendReminder(booking: CalendarBooking) {
+    const phone = ((booking as any).customer_phone || "").replace(/\D/g, "");
+    if (!phone) { toast.error("Telefone não disponível"); return; }
+    const message = buildReminderMessage(booking as any);
+    window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, "_blank");
+    try {
+      await reminderSentMutation.mutateAsync({ bookingId: booking.id });
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  }
 
   const range = useMemo(() => {
     if (viewMode === "month") {
@@ -226,6 +254,8 @@ export default function AdminCalendar() {
             getProName={getProName}
             professionals={professionals}
             filterPro={filterPro}
+            onUpdateStatus={updateStatus}
+            onSendReminder={handleSendReminder}
           />
         )}
       </CardContent>
@@ -353,12 +383,16 @@ function DayView({
   getProName,
   professionals,
   filterPro,
+  onUpdateStatus,
+  onSendReminder,
 }: {
   currentDate: Date;
   bookings: CalendarBooking[];
   getProName: (id: string | null) => string;
   professionals: CalendarProfessional[];
   filterPro: string;
+  onUpdateStatus: (id: string, status: "confirmed" | "completed" | "cancelled") => Promise<void>;
+  onSendReminder: (booking: CalendarBooking) => Promise<void>;
 }) {
   const sortedBookings = [...bookings].sort((left, right) => {
     if (!left.booking_time) return 1;
@@ -410,7 +444,23 @@ function DayView({
                             </span>
                           </div>
                           <div className="font-body text-xs text-muted-foreground mt-1">
-                            {services.map((service) => service.name).join(", ")} - {booking.total_duration}min - R$ {Number(booking.total_price).toFixed(2)}
+                            {services.map((s) => s.name).join(", ")} · {formatDuration(booking.total_duration)} · R$ {Number(booking.total_price).toFixed(2)}
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {booking.status === "pending" && (
+                              <>
+                                <Button size="sm" onClick={() => onUpdateStatus(booking.id, "confirmed")} className="bg-green-600 text-white font-body text-xs h-7">Confirmar</Button>
+                                <Button size="sm" variant="destructive" onClick={() => onUpdateStatus(booking.id, "cancelled")} className="font-body text-xs h-7">Cancelar</Button>
+                              </>
+                            )}
+                            {booking.status === "confirmed" && (
+                              <Button size="sm" onClick={() => onUpdateStatus(booking.id, "completed")} className="bg-blue-600 text-white font-body text-xs h-7">Concluir</Button>
+                            )}
+                            {(booking.status === "pending" || booking.status === "confirmed") && (
+                              <Button size="sm" variant="outline" onClick={() => onSendReminder(booking)} className="font-body text-xs h-7 border-border">
+                                <MessageCircle className="w-3 h-3 mr-1" />Lembrar
+                              </Button>
+                            )}
                           </div>
                         </div>
                       );
@@ -438,7 +488,23 @@ function DayView({
                     <span className="text-[10px] font-body font-semibold">{STATUS_LABELS[booking.status] || booking.status}</span>
                   </div>
                   <div className="font-body text-xs text-muted-foreground mt-1">
-                    {getProName(booking.professional_id)} - {services.map((service) => service.name).join(", ")} - {booking.total_duration}min
+                    {getProName(booking.professional_id)} · {services.map((s) => s.name).join(", ")} · {formatDuration(booking.total_duration)}
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {booking.status === "pending" && (
+                      <>
+                        <Button size="sm" onClick={() => onUpdateStatus(booking.id, "confirmed")} className="bg-green-600 text-white font-body text-xs h-7">Confirmar</Button>
+                        <Button size="sm" variant="destructive" onClick={() => onUpdateStatus(booking.id, "cancelled")} className="font-body text-xs h-7">Cancelar</Button>
+                      </>
+                    )}
+                    {booking.status === "confirmed" && (
+                      <Button size="sm" onClick={() => onUpdateStatus(booking.id, "completed")} className="bg-blue-600 text-white font-body text-xs h-7">Concluir</Button>
+                    )}
+                    {(booking.status === "pending" || booking.status === "confirmed") && (
+                      <Button size="sm" variant="outline" onClick={() => onSendReminder(booking)} className="font-body text-xs h-7 border-border">
+                        <MessageCircle className="w-3 h-3 mr-1" />Lembrar
+                      </Button>
+                    )}
                   </div>
                 </div>
               );

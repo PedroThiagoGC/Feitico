@@ -11,13 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Clock, Loader2, User, Check, CheckCircle2 } from "lucide-react";
+import { CalendarIcon, Check, ChevronDown, Clock, Loader2, User, X, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import type { Service } from "@/hooks/useServices";
 import type { Salon } from "@/hooks/useSalon";
 import { lookupClientByPhone } from "@/services/clientService";
+import { cn, formatDuration } from "@/lib/utils";
 
 const bookingSchema = z.object({
   customer_name: z.string().trim().min(2, "Nome é obrigatório").max(100),
@@ -39,6 +40,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [serviceDropdownOpen, setServiceDropdownOpen] = useState(false);
   const createBooking = useCreateBooking();
 
   // Realtime: auto-refresh slots when another person books
@@ -306,56 +308,75 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                       Este profissional ainda não tem serviços habilitados.
                     </p>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {availableServices.map((service) => {
-                        const eff = getEffectiveService(service);
-                        const isSelected = selectedServices.some((s) => s.id === service.id);
-                        return (
-                          <div
-                            key={service.id}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => toggleService(service)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault();
-                                toggleService(service);
-                              }
-                            }}
-                            className={`relative flex items-start gap-3 p-3 rounded-xl border-2 transition-all duration-150 text-left font-body cursor-pointer select-none ${
-                              isSelected
-                                ? "border-primary bg-primary/10 shadow-sm"
-                                : "border-border/60 bg-card hover:border-primary/40 hover:bg-primary/5"
-                            }`}
-                          >
-                            {/* Checkmark badge */}
-                            <div className={`shrink-0 mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                              isSelected
-                                ? "border-primary bg-primary"
-                                : "border-muted-foreground/30 bg-transparent"
-                            }`}>
-                              {isSelected && <Check className="w-3 h-3 text-primary-foreground stroke-[3]" />}
-                            </div>
-
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                              <span className={`block text-sm font-semibold leading-tight ${isSelected ? "text-foreground" : "text-foreground/80"}`}>
-                                {service.name}
-                              </span>
-                              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                <span className={`text-sm font-bold ${isSelected ? "text-primary" : "text-muted-foreground"}`}>
-                                  R$ {eff.price.toFixed(2)}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setServiceDropdownOpen((v) => !v)}
+                        className="w-full flex items-center justify-between gap-2 rounded-xl border-2 border-border/60 bg-card px-4 py-3 text-sm font-body text-left hover:border-primary/40 transition-colors focus:outline-none focus:border-primary"
+                      >
+                        <span className="flex-1 min-w-0">
+                          {selectedServices.length === 0 ? (
+                            <span className="text-muted-foreground">Selecione os serviços desejados...</span>
+                          ) : (
+                            <span className="flex flex-wrap gap-1.5">
+                              {effectiveSelected.map((s) => (
+                                <span key={s.id} className="inline-flex items-center gap-1 bg-primary/15 text-primary text-xs px-2.5 py-1 rounded-full border border-primary/25 font-medium">
+                                  {s.name}
+                                  <button
+                                    type="button"
+                                    aria-label={`Remover ${s.name}`}
+                                    onClick={(e) => { e.stopPropagation(); toggleService(availableServices.find((av) => av.id === s.id)!); }}
+                                    className="hover:text-destructive ml-0.5"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
                                 </span>
-                                <span className="text-muted-foreground/40 text-xs">·</span>
-                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Clock className="w-3 h-3 inline" />
-                                  {eff.duration}min
-                                </span>
-                              </div>
-                            </div>
+                              ))}
+                            </span>
+                          )}
+                        </span>
+                        <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${serviceDropdownOpen ? "rotate-180" : ""}`} />
+                      </button>
+                      {serviceDropdownOpen && (
+                        <div className="absolute z-50 mt-1 w-full rounded-xl border border-border bg-card shadow-xl">
+                          <div className="max-h-64 overflow-y-auto divide-y divide-border/40">
+                            {availableServices.map((service) => {
+                              const eff = getEffectiveService(service);
+                              const isSelected = selectedServices.some((s) => s.id === service.id);
+                              return (
+                                <button
+                                  key={service.id}
+                                  type="button"
+                                  onClick={() => { toggleService(service); }}
+                                  className={cn(
+                                    "w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/60",
+                                    isSelected && "bg-primary/5"
+                                  )}
+                                >
+                                  <div className={cn(
+                                    "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all",
+                                    isSelected ? "bg-primary border-primary" : "border-muted-foreground/30"
+                                  )}>
+                                    {isSelected && <Check className="w-3 h-3 text-primary-foreground stroke-[3]" />}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-body text-sm text-foreground font-semibold">{service.name}</p>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                      <span className={`text-sm font-bold ${isSelected ? "text-primary" : "text-muted-foreground"}`}>
+                                        R$ {eff.price.toFixed(2)}
+                                      </span>
+                                      <span className="text-muted-foreground/40 text-xs">·</span>
+                                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                        <Clock className="w-3 h-3 inline" />{formatDuration(eff.duration)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </button>
+                              );
+                            })}
                           </div>
-                        );
-                      })}
+                        </div>
+                      )}
                     </div>
                   )}
                   {selectedServices.length > 0 && (
@@ -371,7 +392,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="w-3 h-3" />{totalDuration}min
+                            <Clock className="w-3 h-3" />{formatDuration(totalDuration)}
                           </span>
                           <span className="text-sm font-bold text-primary">R$ {totalPrice.toFixed(2)}</span>
                         </div>
@@ -428,7 +449,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                       <h4 className="font-display text-base md:text-lg font-semibold mb-3 md:mb-4 text-foreground flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">4</span>
                         Escolha seu horário
-                        <span className="text-xs font-normal text-muted-foreground ml-auto">{totalDuration}min necessários</span>
+                        <span className="text-xs font-normal text-muted-foreground ml-auto">{formatDuration(totalDuration)} necessários</span>
                       </h4>
                       {slotsLoading ? (
                         <div className="flex items-center gap-2 text-muted-foreground font-body text-sm p-4 bg-secondary rounded-lg">
@@ -487,8 +508,8 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                           <Clock className="w-4 h-4 text-primary" />
                           <span className="text-foreground">
                             <span className="font-bold text-primary">{selectedTime}</span>
-                            {" · "}{totalDuration}min
-                            {totalBuffer > 0 && <span className="text-muted-foreground"> + {totalBuffer}min margem</span>}
+                            {" · "}{formatDuration(totalDuration)}
+                            {totalBuffer > 0 && <span className="text-muted-foreground"> + {formatDuration(totalBuffer)} margem</span>}
                           </span>
                         </div>
                       )}
@@ -555,7 +576,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                       <span className="text-muted-foreground block mb-1">Serviços:</span>
                       {effectiveSelected.map((s) => (
                         <div key={s.id} className="flex justify-between pl-3">
-                          <span className="text-foreground">• {s.name} ({s.duration}min)</span>
+                          <span className="text-foreground">• {s.name} ({formatDuration(s.duration)})</span>
                           <span className="text-foreground">R$ {s.price.toFixed(2)}</span>
                         </div>
                       ))}
