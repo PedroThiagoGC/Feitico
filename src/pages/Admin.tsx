@@ -16,12 +16,15 @@ import AdminTestimonials from "@/components/admin/AdminTestimonials";
 import AdminAvailability from "@/components/admin/AdminAvailability";
 import AdminProfessionals from "@/components/admin/AdminProfessionals";
 import AdminCalendar from "@/components/admin/AdminCalendar";
-import { LogOut, LayoutDashboard, ExternalLink } from "lucide-react";
+import AdminAvisos from "@/components/admin/AdminAvisos";
+import AdminClients from "@/components/admin/AdminClients";
+import { LogOut, LayoutDashboard, ExternalLink, Bell, BellOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getPrimarySalonId } from "@/services/salonService";
 import { useSalon } from "@/hooks/useSalon";
 import { useRealtimeBookings } from "@/hooks/useBooking";
 import { playNotificationSound } from "@/lib/notificationSound";
+import { subscribeToPush, unsubscribeFromPush, getPushStatus, type PushStatus } from "@/lib/pushNotifications";
 
 export default function Admin() {
   const [session, setSession] = useState<Session | null>(null);
@@ -32,6 +35,21 @@ export default function Admin() {
 
   const { data: salon } = useSalon();
   const [newBookingCount, setNewBookingCount] = useState(0);
+  const [pushStatus, setPushStatus] = useState<PushStatus>(() => getPushStatus());
+
+  async function handleTogglePush() {
+    if (!salon?.id) { toast.error("Salão não carregado"); return; }
+    if (pushStatus === "granted") {
+      await unsubscribeFromPush();
+      setPushStatus(getPushStatus());
+      toast.success("Notificações desativadas");
+    } else {
+      const ok = await subscribeToPush(salon.id);
+      setPushStatus(getPushStatus());
+      if (ok) toast.success("Notificações ativadas! Você receberá alertas de novos agendamentos.");
+      else toast.error("Não foi possível ativar notificações. Verifique as permissões do navegador.");
+    }
+  }
 
   const handleNewBooking = useCallback((booking: Record<string, unknown>) => {
     playNotificationSound();
@@ -143,6 +161,14 @@ export default function Admin() {
             <ExternalLink className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Ver Site</span>
           </Link>
+          <Button
+            variant="ghost" size="sm"
+            onClick={handleTogglePush}
+            title={pushStatus === "granted" ? "Notificações ativas — clique para desativar" : "Ativar notificações push"}
+            className={`shrink-0 ${pushStatus === "granted" ? "text-primary" : "text-muted-foreground"}`}
+          >
+            {pushStatus === "granted" ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+          </Button>
           <span className="hidden sm:inline text-sm text-muted-foreground font-body truncate max-w-[200px]">{session.user.email}</span>
           <Button variant="ghost" size="sm" onClick={handleLogout} className="shrink-0">
             <LogOut className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Sair</span>
@@ -154,6 +180,12 @@ export default function Admin() {
         <Tabs defaultValue="dashboard" className="space-y-4 md:space-y-6" onValueChange={() => { setNewBookingCount(0); document.title = "Feitiço Admin"; }}>
           <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
             <TabsList className="bg-secondary border border-border inline-flex w-auto min-w-full md:min-w-0 h-auto gap-1 p-1">
+              <TabsTrigger value="avisos" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3 relative">
+                Avisos
+                {newBookingCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{newBookingCount > 9 ? "9+" : newBookingCount}</span>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="dashboard" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Dashboard</TabsTrigger>
               <TabsTrigger value="calendar" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Agenda</TabsTrigger>
               <TabsTrigger value="salon" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Salão</TabsTrigger>
@@ -163,9 +195,11 @@ export default function Admin() {
               <TabsTrigger value="availability" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Disponibilidade</TabsTrigger>
               <TabsTrigger value="gallery" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Galeria</TabsTrigger>
               <TabsTrigger value="testimonials" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Depoimentos</TabsTrigger>
+              <TabsTrigger value="clients" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Clientes</TabsTrigger>
             </TabsList>
           </div>
 
+          <TabsContent value="avisos"><AdminAvisos /></TabsContent>
           <TabsContent value="dashboard"><DashboardOverview /></TabsContent>
           <TabsContent value="calendar"><AdminCalendar /></TabsContent>
           <TabsContent value="salon"><AdminSalon /></TabsContent>
@@ -175,6 +209,7 @@ export default function Admin() {
           <TabsContent value="availability"><AdminAvailability /></TabsContent>
           <TabsContent value="gallery"><AdminGallery /></TabsContent>
           <TabsContent value="testimonials"><AdminTestimonials /></TabsContent>
+          <TabsContent value="clients"><AdminClients /></TabsContent>
         </Tabs>
       </div>
     </div>

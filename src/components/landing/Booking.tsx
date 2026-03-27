@@ -17,6 +17,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import type { Service } from "@/hooks/useServices";
 import type { Salon } from "@/hooks/useSalon";
+import { supabase } from "@/integrations/supabase/client";
 
 const bookingSchema = z.object({
   customer_name: z.string().trim().min(2, "Nome é obrigatório").max(100),
@@ -132,6 +133,22 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     if (!selectedProfessionalId || !professionals) return { type: "percentage", value: 0 };
     const pro = professionals.find((p) => p.id === selectedProfessionalId);
     return { type: pro?.commission_type || "percentage", value: Number(pro?.commission_value || 0) };
+  }
+
+  async function handlePhoneLookup(phone: string) {
+    if (!salon?.id) return;
+    const normalized = phone.replace(/\D/g, "");
+    if (normalized.length < 10) return;
+    const { data } = await (supabase as any)
+      .from("clients")
+      .select("preferred_name")
+      .eq("salon_id", salon.id)
+      .eq("phone_normalized", normalized)
+      .maybeSingle();
+    if (data?.preferred_name && !form.getValues("customer_name")) {
+      form.setValue("customer_name", data.preferred_name, { shouldValidate: true });
+      toast.info(`Bem-vindo de volta, ${data.preferred_name}! 👋`);
+    }
   }
 
   const customerName = form.watch("customer_name");
@@ -481,7 +498,14 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                     <FormField control={form.control} name="customer_phone" render={({ field }) => (
                       <FormItem>
                         <FormLabel className="font-body">Telefone / WhatsApp</FormLabel>
-                        <FormControl><Input placeholder="(11) 99999-9999" className="bg-secondary border-border font-body h-12" {...field} /></FormControl>
+                        <FormControl>
+                          <Input
+                            placeholder="(11) 99999-9999"
+                            className="bg-secondary border-border font-body h-12"
+                            {...field}
+                            onBlur={(e) => { field.onBlur(); void handlePhoneLookup(e.target.value); }}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />

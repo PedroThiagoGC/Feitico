@@ -105,7 +105,28 @@ export async function createBooking(payload: CreateBookingPayload): Promise<Book
     throw error
   }
 
-  return booking as unknown as BookingRow
+  const createdBooking = booking as unknown as BookingRow
+
+  // Fire-and-forget: upsert client and link client_id to booking
+  void (supabase as any).rpc("upsert_client_by_phone", {
+    p_salon_id: payload.salon_id,
+    p_phone: payload.customer_phone,
+    p_name: payload.customer_name,
+  }).then(({ data: clientId }: { data: string | null }) => {
+    if (clientId && (createdBooking as any).id) {
+      void supabase.from("bookings").update({ client_id: clientId } as any).eq("id", (createdBooking as any).id);
+    }
+  }).catch(() => {});
+
+  // Fire-and-forget: push notification to admin
+  void supabase.functions.invoke("notify-admin-push", {
+    body: {
+      salon_id: payload.salon_id,
+      booking: { customer_name: payload.customer_name, booking_time: payload.booking_time },
+    },
+  }).catch(() => {});
+
+  return createdBooking
 }
 
 export async function getAvailableSlots(

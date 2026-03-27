@@ -1,18 +1,10 @@
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig } from "vite";
 import type { PluginOption } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(async ({ mode }: { mode: string }) => {
-  const env = loadEnv(mode, process.cwd(), ["VITE_"]);
-
-  // Lê a URL apenas para configurar o padrão de cache do Workbox (build-time only).
-  const supabaseUrl = env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
-  const supabaseApiPattern = supabaseUrl
-    ? new RegExp(`^${supabaseUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/rest/v1/.*`, "i")
-    : /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*$/i;
-
   // Avoid hard failure in CI/CD environments that install only production deps.
   const plugins: PluginOption[] = [react()];
   if (mode === "development") {
@@ -35,23 +27,14 @@ export default defineConfig(async ({ mode }: { mode: string }) => {
     plugins: [
       ...plugins,
       VitePWA({
+        strategies: "injectManifest",
+        srcDir: "src",
+        filename: "sw.ts",
         injectRegister: "auto",
         registerType: "autoUpdate",
-        includeAssets: ["favicon.ico", "robots.txt", "manifest.webmanifest"],
         manifest: false,
-        workbox: {
+        injectManifest: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-          navigateFallbackDenylist: [/^\/~oauth/],
-          runtimeCaching: [
-            {
-              urlPattern: supabaseApiPattern,
-              handler: "NetworkFirst",
-              options: {
-                cacheName: "supabase-api",
-                expiration: { maxEntries: 50, maxAgeSeconds: 300 },
-              },
-            },
-          ],
         },
       }),
     ],
