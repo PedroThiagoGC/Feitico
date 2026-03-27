@@ -57,7 +57,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function AdminCalendar() {
   const { data: salon, error: salonError, isLoading: salonLoading } = useSalon();
-  const [viewMode, setViewMode] = useState<ViewMode>("week");
+  const [viewMode, setViewMode] = useState<ViewMode>("day");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [filterPro, setFilterPro] = useState("all");
 

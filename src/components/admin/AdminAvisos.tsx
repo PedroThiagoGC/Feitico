@@ -8,6 +8,7 @@ import { buildReminderMessage } from "@/services/notificationService";
 import type { BookingRecord } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDuration } from "@/lib/utils";
 
 type ServiceSnapshot = { duration: number; name: string };
 
@@ -201,31 +202,47 @@ function Section({
                 ? (booking.services as ServiceSnapshot[])
                 : [];
 
+              const dateLabel = booking.booking_date
+                ? new Date(`${booking.booking_date}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
+                : "";
+              const timeLabel = booking.booking_time ? booking.booking_time.slice(0, 5) : "";
+              const totalDuration = servicesSnapshot.reduce((sum, s) => sum + (s.duration ?? 0), 0);
+
               return (
                 <div
                   key={booking.id}
-                  className="flex items-center justify-between gap-3 p-3 rounded-lg bg-secondary border border-border"
+                  className="p-3 rounded-lg bg-secondary border border-border space-y-2"
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-body font-semibold text-foreground text-sm">
-                        {booking.customer_name}
-                      </span>
-                      <span className="font-body text-xs text-muted-foreground">
-                        {booking.customer_phone}
-                      </span>
-                      {booking.booking_time && (
-                        <span className="font-mono text-xs text-primary font-bold">
-                          {booking.booking_date} {booking.booking_time}
+                  <div className="flex items-start justify-between gap-2 flex-wrap">
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-body font-semibold text-foreground text-sm">
+                          {booking.customer_name}
                         </span>
+                        <span className="font-body text-xs text-muted-foreground">
+                          {booking.customer_phone}
+                        </span>
+                      </div>
+                      {(dateLabel || timeLabel) && (
+                        <div className="flex items-center gap-2">
+                          {dateLabel && (
+                            <span className="font-mono text-xs text-primary font-semibold">{dateLabel}</span>
+                          )}
+                          {timeLabel && (
+                            <span className="font-mono text-xs bg-primary/15 text-primary px-1.5 py-0.5 rounded font-bold">{timeLabel}</span>
+                          )}
+                          {totalDuration > 0 && (
+                            <span className="font-body text-xs text-muted-foreground">{formatDuration(totalDuration)}</span>
+                          )}
+                        </div>
                       )}
+                      <p className="font-body text-xs text-muted-foreground truncate">
+                        {servicesSnapshot.map((s) => s.name).join(", ")}
+                        {booking.total_price ? ` · R$ ${Number(booking.total_price).toFixed(2)}` : ""}
+                      </p>
                     </div>
-                    <p className="font-body text-xs text-muted-foreground truncate">
-                      {servicesSnapshot.map((service) => service.name).join(", ")} - R${" "}
-                      {Number(booking.total_price).toFixed(2)}
-                    </p>
                   </div>
-                  <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+                  <div className="flex gap-2 flex-wrap">
                     {renderActions(booking)}
                   </div>
                 </div>

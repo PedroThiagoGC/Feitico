@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Trash2, Clock, User, Calendar, Save } from "lucide-react";
+import { Plus, Trash2, Clock, User, Calendar, Save, ChevronDown, ChevronUp } from "lucide-react";
 import { getPrimarySalonId } from "@/services/salonService";
 
 const WEEKDAYS = [
@@ -50,6 +50,8 @@ export default function AdminAvailability() {
   const [availability, setAvailability] = useState<AvailabilityRow[]>([]);
   const [exceptions, setExceptions] = useState<ExceptionRow[]>([]);
   const [saving, setSaving] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [exceptionsOpen, setExceptionsOpen] = useState(false);
 
   // Exception form
   const [excForm, setExcForm] = useState({
@@ -231,15 +233,21 @@ export default function AdminAvailability() {
 
       {selectedProId && (
         <>
-          {/* Weekly Schedule */}
+          {/* Weekly Schedule — collapsible */}
           <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="font-display text-lg flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setScheduleOpen((v) => !v)}
+              className="w-full flex items-center justify-between gap-3 px-6 py-4 text-left hover:bg-secondary/40 transition-colors rounded-t-lg"
+            >
+              <span className="font-display text-lg flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-primary" />
                 Horários Semanais — {selectedPro?.name}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+              </span>
+              {scheduleOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+            </button>
+            {scheduleOpen && (
+            <CardContent className="space-y-3 pb-4">
               {WEEKDAYS.map((day) => {
                 const row = weekdayMap.get(day.value);
                 const isActive = row?.active ?? false;
@@ -284,14 +292,21 @@ export default function AdminAvailability() {
                 {saving ? "Salvando..." : "Salvar horários"}
               </Button>
             </CardContent>
+            )}
           </Card>
 
-          {/* Exceptions */}
+          {/* Exceptions — collapsible */}
           <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="font-display text-lg">Exceções / Folgas — {selectedPro?.name}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            <button
+              type="button"
+              onClick={() => setExceptionsOpen((v) => !v)}
+              className="w-full flex items-center justify-between gap-3 px-6 py-4 text-left hover:bg-secondary/40 transition-colors rounded-t-lg"
+            >
+              <span className="font-display text-lg">Exceções / Folgas — {selectedPro?.name}</span>
+              {exceptionsOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+            </button>
+            {exceptionsOpen && (
+            <CardContent className="space-y-4 pb-4">
               <form onSubmit={addException} className="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-wrap gap-3 items-end">
                 <div>
                   <label className="font-body text-sm block mb-1">Data</label>
@@ -351,6 +366,7 @@ export default function AdminAvailability() {
                 ))}
               </div>
             </CardContent>
+            )}
           </Card>
         </>
       )}

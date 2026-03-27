@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,12 +54,22 @@ export default function AdminServices() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<ServiceForm>(emptyService);
   const [search, setSearch] = useState("");
+  const [servicesPage, setServicesPage] = useState(0);
+
+  const PAGE_SIZE = 12;
+
+  useEffect(() => { setServicesPage(0); }, [search]);
 
   const filteredServices = useMemo(() => {
     const normalized = search.trim().toLowerCase();
     if (!normalized) return services;
     return services.filter((service) => service.name.toLowerCase().includes(normalized));
   }, [search, services]);
+
+  const visibleServices = useMemo(
+    () => filteredServices.slice(0, (servicesPage + 1) * PAGE_SIZE),
+    [filteredServices, servicesPage],
+  );
 
   const isSaving = createService.isPending || updateService.isPending;
   const isDeleting = deleteService.isPending;
@@ -302,7 +312,7 @@ export default function AdminServices() {
           <p className="text-muted-foreground font-body text-sm">Nenhum servico cadastrado.</p>
         ) : (
           <div className="space-y-3">
-            {filteredServices.map((service) => (
+            {visibleServices.map((service) => (
               <div key={service.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary border border-border">
                 <div className="flex-1 min-w-0">
                   <p className="font-body font-medium text-foreground truncate">{service.name}</p>
@@ -327,8 +337,13 @@ export default function AdminServices() {
                   </Button>
                 </div>
               </div>
-            ))}
-          </div>
+            ))}            {filteredServices.length > visibleServices.length && (
+              <div className="flex justify-center pt-2">
+                <Button variant="outline" className="font-body" onClick={() => setServicesPage((p) => p + 1)}>
+                  Ver mais ({filteredServices.length - visibleServices.length} restantes)
+                </Button>
+              </div>
+            )}          </div>
         )}
       </CardContent>
     </Card>
