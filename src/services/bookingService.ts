@@ -1,8 +1,15 @@
 import { supabase } from "@/integrations/supabase/client"
 import type { Database } from "@/integrations/supabase/types"
 import { buildWhatsAppUrl, buildWhatsAppWebUrl, normalizeWhatsAppPhone } from "@/lib/phone"
+import type { BookingRecord } from "@/types/domain"
 
-type BookingRow = Database["public"]["Tables"]["bookings"]["Row"]
+type BookingRow = BookingRecord
+type UntypedSupabase = {
+  rpc: (
+    fn: string,
+    args?: Record<string, unknown>
+  ) => Promise<{ data: unknown; error: { message?: string } | null }>
+}
 
 export type GetBookingsOptions = {
   date?: string
@@ -10,9 +17,11 @@ export type GetBookingsOptions = {
   dateTo?: string
   limit?: number
   offset?: number
+  status?: BookingRow["status"]
 }
 
 const GET_BOOKINGS_DEFAULT_LIMIT = 200
+const untypedSupabase = supabase as unknown as UntypedSupabase
 
 export async function getBookings(salonId: string, options?: GetBookingsOptions | string): Promise<BookingRow[]> {
   const opts: GetBookingsOptions =
@@ -32,6 +41,7 @@ export async function getBookings(salonId: string, options?: GetBookingsOptions 
   if (opts.date) query = query.eq("booking_date", opts.date)
   if (opts.dateFrom) query = query.gte("booking_date", opts.dateFrom)
   if (opts.dateTo) query = query.lte("booking_date", opts.dateTo)
+  if (opts.status) query = query.eq("status", opts.status)
 
   const { data, error } = await query
   if (error) throw error
@@ -59,7 +69,7 @@ export type CreateBookingPayload = {
 
 export async function createBooking(payload: CreateBookingPayload): Promise<BookingRow> {
   if (payload.booking_time && payload.total_occupied_minutes > 0) {
-    const { data: hasConflict, error: conflictError } = await (supabase as any).rpc("check_booking_conflict", {
+    const { data: hasConflict, error: conflictError } = await untypedSupabase.rpc("check_booking_conflict", {
       p_professional_id: payload.professional_id,
       p_booking_date: payload.booking_date,
       p_booking_time: payload.booking_time,
@@ -108,13 +118,16 @@ export async function createBooking(payload: CreateBookingPayload): Promise<Book
   const createdBooking = booking as unknown as BookingRow
 
   // Fire-and-forget: upsert client and link client_id to booking
-  void (supabase as any).rpc("upsert_client_by_phone", {
+  void untypedSupabase.rpc("upsert_client_by_phone", {
     p_salon_id: payload.salon_id,
     p_phone: payload.customer_phone,
     p_name: payload.customer_name,
   }).then(({ data: clientId }: { data: string | null }) => {
-    if (clientId && (createdBooking as any).id) {
-      void supabase.from("bookings").update({ client_id: clientId } as any).eq("id", (createdBooking as any).id);
+    if (clientId && createdBooking.id) {
+      void supabase
+        .from("bookings")
+        .update({ client_id: clientId } as Database["public"]["Tables"]["bookings"]["Update"] & Record<string, string>)
+        .eq("id", createdBooking.id);
     }
   }).catch(() => {});
 

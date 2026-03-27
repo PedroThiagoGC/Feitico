@@ -14,6 +14,27 @@ function urlB64ToUint8Array(base64: string): Uint8Array {
 
 export type PushStatus = "granted" | "denied" | "default" | "unsupported";
 
+type PushSubscriptionPayload = {
+  auth: string;
+  device_label: string;
+  endpoint: string;
+  p256dh: string;
+  salon_id: string;
+};
+
+type MutationResult = Promise<{ error: unknown }>;
+
+type PushSubscriptionStore = {
+  from: (table: "push_subscriptions") => {
+    delete: () => {
+      eq: (column: "endpoint", value: string) => MutationResult;
+    };
+    upsert: (payload: PushSubscriptionPayload, options: { onConflict: string }) => MutationResult;
+  };
+};
+
+const pushSubscriptionStore = supabase as unknown as PushSubscriptionStore;
+
 export function getPushStatus(): PushStatus {
   if (!("Notification" in window)) return "unsupported";
   return Notification.permission as PushStatus;
@@ -36,7 +57,7 @@ export async function subscribeToPush(salonId: string): Promise<boolean> {
 
   const json = sub.toJSON();
   const keys = json.keys as { p256dh: string; auth: string };
-  const { error } = await (supabase as any)
+  const { error } = await pushSubscriptionStore
     .from("push_subscriptions")
     .upsert(
       {
@@ -59,5 +80,5 @@ export async function unsubscribeFromPush(): Promise<void> {
   if (!sub) return;
   const endpoint = sub.endpoint;
   await sub.unsubscribe();
-  await (supabase as any).from("push_subscriptions").delete().eq("endpoint", endpoint);
+  await pushSubscriptionStore.from("push_subscriptions").delete().eq("endpoint", endpoint);
 }

@@ -1,6 +1,15 @@
+type AudioWindow = Window & {
+  webkitAudioContext?: typeof AudioContext;
+};
+
 export function playNotificationSound() {
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const AudioContextConstructor =
+      window.AudioContext || (window as AudioWindow).webkitAudioContext;
+
+    if (!AudioContextConstructor) return;
+
+    const ctx = new AudioContextConstructor();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);

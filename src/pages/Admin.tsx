@@ -18,9 +18,10 @@ import AdminProfessionals from "@/components/admin/AdminProfessionals";
 import AdminCalendar from "@/components/admin/AdminCalendar";
 import AdminAvisos from "@/components/admin/AdminAvisos";
 import AdminClients from "@/components/admin/AdminClients";
+import { useAdminDashboard, type AdminDashboardFinancialPro } from "@/hooks/useAdminDashboard";
+import { getErrorMessage } from "@/hooks/useQueryError";
 import { LogOut, LayoutDashboard, ExternalLink, Bell, BellOff } from "lucide-react";
 import { Link } from "react-router-dom";
-import { getPrimarySalonId } from "@/services/salonService";
 import { useSalon } from "@/hooks/useSalon";
 import { useRealtimeBookings } from "@/hooks/useBooking";
 import { playNotificationSound } from "@/lib/notificationSound";
@@ -216,95 +217,18 @@ export default function Admin() {
   );
 }
 
-interface FinancialPro {
-  id: string;
-  name: string;
-  revenue: number;
-  commission: number;
-  profit: number;
-  count: number;
-  ticket: number;
-  occupied: number;
-}
-
 function DashboardOverview() {
-  const [stats, setStats] = useState({ bookings: 0, services: 0, pending: 0, professionals: 0 });
+  const { data: salon, error: salonError, isLoading: isSalonLoading } = useSalon();
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
   });
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split("T")[0]);
-  const [financial, setFinancial] = useState({ revenue: 0, commission: 0, profit: 0, count: 0, pendingRevenue: 0, confirmedCount: 0 });
-  const [proStats, setProStats] = useState<FinancialPro[]>([]);
-
-  useEffect(() => {
-    async function load() {
-      const salonId = await getPrimarySalonId();
-      if (!salonId) {
-        setStats({ bookings: 0, services: 0, pending: 0, professionals: 0 });
-        return;
-      }
-
-      const [{ count: bookings }, { count: services }, { count: pending }, { count: professionals }] = await Promise.all([
-        supabase.from("bookings").select("*", { count: "exact", head: true }).eq("salon_id", salonId),
-        supabase.from("services").select("*", { count: "exact", head: true }).eq("salon_id", salonId),
-        supabase.from("bookings").select("*", { count: "exact", head: true }).eq("salon_id", salonId).eq("status", "pending"),
-        supabase.from("professionals").select("*", { count: "exact", head: true }).eq("salon_id", salonId),
-      ]);
-      setStats({
-        bookings: bookings || 0,
-        services: services || 0,
-        pending: pending || 0,
-        professionals: professionals || 0,
-      });
-    }
-    load();
-  }, []);
-
-  useEffect(() => {
-    async function loadFinancial() {
-      const salonId = await getPrimarySalonId();
-      if (!salonId) return;
-
-      const { data: pros } = await supabase.from("professionals").select("id, name").eq("salon_id", salonId);
-      const { data: bks } = await supabase
-        .from("bookings")
-        .select("professional_id, total_price, commission_amount, profit_amount, total_occupied_minutes, total_duration, status")
-        .eq("salon_id", salonId)
-        .in("status", ["confirmed", "completed"])
-        .gte("booking_date", dateFrom)
-        .lte("booking_date", dateTo);
-
-      const allBookings = bks || [];
-      const completedBookings = allBookings.filter((b) => b.status === "completed");
-      const confirmedBookings = allBookings.filter((b) => b.status === "confirmed");
-
-      const totalRevenue = completedBookings.reduce((a, b) => a + Number(b.total_price), 0);
-      const totalCommission = completedBookings.reduce((a, b) => a + Number(b.commission_amount || 0), 0);
-      const totalProfit = completedBookings.reduce((a, b) => a + Number(b.profit_amount || 0), 0);
-      const pendingRevenue = confirmedBookings.reduce((a, b) => a + Number(b.total_price), 0);
-      setFinancial({
-        revenue: totalRevenue,
-        commission: totalCommission,
-        profit: totalProfit,
-        count: completedBookings.length,
-        pendingRevenue,
-        confirmedCount: confirmedBookings.length,
-      });
-
-      const professionalStats = (pros || []).map((p) => {
-        const pBookings = allBookings.filter((b) => b.professional_id === p.id);
-        const revenue = pBookings.reduce((a, b) => a + Number(b.total_price), 0);
-        const commission = pBookings.reduce((a, b) => a + Number(b.commission_amount || 0), 0);
-        const profit = pBookings.reduce((a, b) => a + Number(b.profit_amount || 0), 0);
-        const count = pBookings.length;
-        const occupied = pBookings.reduce((a, b) => a + (b.total_occupied_minutes || b.total_duration || 0), 0);
-        return { id: p.id, name: p.name, revenue, commission, profit, count, occupied, ticket: count > 0 ? revenue / count : 0 };
-      }).sort((a, b) => b.revenue - a.revenue);
-      setProStats(professionalStats);
-    }
-    loadFinancial();
-  }, [dateFrom, dateTo]);
+  const { data, error, isLoading } = useAdminDashboard(salon?.id, dateFrom, dateTo);
+  const stats = data?.stats ?? { bookings: 0, services: 0, pending: 0, professionals: 0 };
+  const financial = data?.financial ?? { revenue: 0, commission: 0, profit: 0, count: 0, pendingRevenue: 0, confirmedCount: 0 };
+  const proStats = data?.proStats ?? [];
+  const dashboardError = getErrorMessage(salonError ?? error);
 
   const summaryCards = [
     { label: "Agendamentos", value: String(stats.bookings), color: "text-primary" },
@@ -312,6 +236,36 @@ function DashboardOverview() {
     { label: "Serviços", value: String(stats.services), color: "text-foreground" },
     { label: "Pendentes", value: String(stats.pending), color: "text-destructive" },
   ];
+
+  if (isSalonLoading || (!salon && !dashboardError)) {
+    return (
+      <Card className="bg-card border-border">
+        <CardContent className="p-4">
+          <p className="font-body text-sm text-muted-foreground">Carregando salao...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <Card className="bg-card border-border">
+        <CardContent className="p-4">
+          <p className="font-body text-sm text-muted-foreground">Carregando dashboard...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (dashboardError) {
+    return (
+      <Card className="bg-card border-border">
+        <CardContent className="p-4">
+          <p className="font-body text-sm text-destructive">{dashboardError}</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -399,7 +353,7 @@ function DashboardOverview() {
                     </tr>
                   </thead>
                   <tbody>
-                    {proStats.map((p) => (
+                    {proStats.map((p: AdminDashboardFinancialPro) => (
                       <tr key={p.id} className="border-b border-border/50">
                         <td className="py-2 text-foreground font-medium">{p.name}</td>
                         <td className="py-2 text-right">{p.count}</td>

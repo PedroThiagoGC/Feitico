@@ -21,7 +21,7 @@ export default function About({ salon }: AboutProps) {
           <div className="relative">
             <div className="aspect-[4/5] rounded-2xl overflow-hidden border border-border">
               <img
-                src={(salon as any)?.about_image_url || aboutBg}
+                src={salon?.about_image_url || aboutBg}
                 alt="Sobre nós"
                 className="w-full h-full object-cover"
                 loading="lazy"
@@ -32,8 +32,8 @@ export default function About({ salon }: AboutProps) {
 
           <div>
             <h2 className="font-display text-3xl md:text-5xl font-bold mb-6">
-              {(salon as any)?.about_title
-                ? <span>{(salon as any).about_title}</span>
+              {salon?.about_title
+                ? <span>{salon.about_title}</span>
                 : <><span>Sobre </span><span className="text-gradient-gold">Nós</span></>
               }
             </h2>

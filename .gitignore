@@ -40,3 +40,6 @@ dist-ssr
 
 # Cache
 **/.cache/
+
+# Local Claude permissions/config
+.claude/settings.json

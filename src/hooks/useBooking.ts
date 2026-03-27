@@ -10,9 +10,9 @@ import {
   generateWhatsAppApiFallback,
   type GetBookingsOptions,
 } from "@/services/bookingService";
-import type { Database } from "@/integrations/supabase/types";
+import type { BookingRecord } from "@/types/domain";
 
-export type Booking = Database["public"]["Tables"]["bookings"]["Row"];
+export type Booking = BookingRecord;
 export type { CreateBookingPayload as CreateBookingData } from "@/services/bookingService";
 export type { WhatsAppBookingInfo } from "@/services/bookingService";
 export { calculateCommission, generateWhatsAppMessage, generateWhatsAppApiFallback };

@@ -1,4 +1,7 @@
 export * from "./bookingService"
+export * from "./clientService"
+export * from "./adminDashboardService"
+export * from "./notificationService"
 export * from "./salonService"
 export * from "./professionalService"
 export * from "./servicesService"

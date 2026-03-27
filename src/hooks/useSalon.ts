@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { getSalon } from "@/services/salonService";
-import type { Database } from "@/integrations/supabase/types";
+import type { SalonRecord } from "@/types/domain";
 
-export type Salon = Database["public"]["Tables"]["salons"]["Row"];
+export type Salon = SalonRecord;
 
 export function useSalon(salonId?: string) {
   return useQuery({

@@ -11,13 +11,14 @@ import OpeningHoursEditor from "./OpeningHoursEditor";
 import { normalizeWhatsAppPhone, splitWhatsAppPhone } from "@/lib/phone";
 import { type Database } from "@/integrations/supabase/types";
 import { getSalon } from "@/services/salonService";
+import type { SalonRecord } from "@/types/domain";
 
-type SalonRow = Database["public"]["Tables"]["salons"]["Row"];
+type SalonFormState = Partial<SalonRecord>;
 
 const SALON_DRAFT_KEY = "feitico:form:admin-salon";
 
 export default function AdminSalon() {
-  const [salon, setSalon] = useState<Partial<SalonRow> | null>(null);
+  const [salon, setSalon] = useState<SalonFormState | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [whatsappCountryCode, setWhatsappCountryCode] = useState("55");
@@ -46,7 +47,7 @@ export default function AdminSalon() {
     try {
       const draft = localStorage.getItem(SALON_DRAFT_KEY);
       if (draft) {
-        const parsed = JSON.parse(draft) as Partial<SalonRow>;
+        const parsed = JSON.parse(draft) as SalonFormState;
         setSalon({ ...initialSalon, ...parsed });
       } else {
         setSalon(initialSalon);
@@ -77,13 +78,16 @@ export default function AdminSalon() {
       return;
     }
 
-    const payload = {
+    const payload: SalonFormState = {
       ...salon,
       whatsapp: normalizedWhatsapp || null,
     };
 
     if (salon.id) {
-      const { error } = await supabase.from("salons").update(payload).eq("id", salon.id);
+      const { error } = await supabase
+        .from("salons")
+        .update(payload as Database["public"]["Tables"]["salons"]["Update"] & Record<string, unknown>)
+        .eq("id", salon.id);
       if (error) toast.error(error.message);
       else {
         setSalon(payload);
@@ -91,10 +95,17 @@ export default function AdminSalon() {
         toast.success("Salão atualizado!");
       }
     } else {
-      const { data, error } = await supabase.from("salons").insert({ ...payload, active: true } as Database["public"]["Tables"]["salons"]["Insert"]).select().single();
+      const { data, error } = await supabase
+        .from("salons")
+        .insert({
+          ...payload,
+          active: true,
+        } as Database["public"]["Tables"]["salons"]["Insert"] & Record<string, unknown>)
+        .select()
+        .single();
       if (error) toast.error(error.message);
       else {
-        setSalon(data);
+        setSalon(data as SalonFormState);
         try { localStorage.removeItem(SALON_DRAFT_KEY); } catch { /* silencioso */ }
         toast.success("Salão criado!");
       }
@@ -201,8 +212,8 @@ export default function AdminSalon() {
                   <span className="text-muted-foreground font-normal ml-1">(ex: "Sua beleza merece")</span>
                 </label>
                 <Input
-                  value={(salon as any).hero_title || ""}
-                  onChange={(e) => setSalon({ ...salon, hero_title: e.target.value } as any)}
+                  value={salon.hero_title || ""}
+                  onChange={(e) => setSalon({ ...salon, hero_title: e.target.value })}
                   className="bg-secondary border-border font-body"
                   placeholder="Sua beleza merece"
                 />
@@ -213,8 +224,8 @@ export default function AdminSalon() {
                   <span className="text-muted-foreground font-normal ml-1">(ex: "excelência")</span>
                 </label>
                 <Input
-                  value={(salon as any).hero_subtitle || ""}
-                  onChange={(e) => setSalon({ ...salon, hero_subtitle: e.target.value } as any)}
+                  value={salon.hero_subtitle || ""}
+                  onChange={(e) => setSalon({ ...salon, hero_subtitle: e.target.value })}
                   className="bg-secondary border-border font-body"
                   placeholder="excelência"
                 />
@@ -227,8 +238,8 @@ export default function AdminSalon() {
                 <span className="text-muted-foreground font-normal ml-1">(ex: "Agende agora e viva uma experiência premium.")</span>
               </label>
               <Textarea
-                value={(salon as any).hero_description || ""}
-                onChange={(e) => setSalon({ ...salon, hero_description: e.target.value } as any)}
+                value={salon.hero_description || ""}
+                onChange={(e) => setSalon({ ...salon, hero_description: e.target.value })}
                 className="bg-secondary border-border font-body min-h-[80px]"
                 placeholder="Transforme seu visual com os melhores profissionais. Agende agora e viva uma experiência premium."
               />
@@ -241,8 +252,8 @@ export default function AdminSalon() {
                   <span className="text-muted-foreground font-normal ml-1">(ex: "Nossa história")</span>
                 </label>
                 <Input
-                  value={(salon as any).about_title || ""}
-                  onChange={(e) => setSalon({ ...salon, about_title: e.target.value } as any)}
+                  value={salon.about_title || ""}
+                  onChange={(e) => setSalon({ ...salon, about_title: e.target.value })}
                   className="bg-secondary border-border font-body"
                   placeholder="Sobre Nós"
                 />
@@ -253,8 +264,8 @@ export default function AdminSalon() {
                   <span className="text-muted-foreground font-normal ml-1">(ex: "Beleza & Bem-estar")</span>
                 </label>
                 <Input
-                  value={(salon as any).tagline || ""}
-                  onChange={(e) => setSalon({ ...salon, tagline: e.target.value } as any)}
+                  value={salon.tagline || ""}
+                  onChange={(e) => setSalon({ ...salon, tagline: e.target.value })}
                   className="bg-secondary border-border font-body"
                   placeholder="Beleza & Bem-estar"
                 />
@@ -264,8 +275,8 @@ export default function AdminSalon() {
             <div>
               <label className="font-body text-sm font-medium mb-1 block">Foto da seção "Sobre nós"</label>
               <ImageUpload
-                value={(salon as any).about_image_url || ""}
-                onChange={(url) => setSalon({ ...salon, about_image_url: url } as any)}
+                value={salon.about_image_url || ""}
+                onChange={(url) => setSalon({ ...salon, about_image_url: url })}
                 folder="about"
               />
             </div>
@@ -277,8 +288,8 @@ export default function AdminSalon() {
                   <span className="text-muted-foreground font-normal ml-1">(ex: "Salão Feitiço | Agendamento Online")</span>
                 </label>
                 <Input
-                  value={(salon as any).seo_title || ""}
-                  onChange={(e) => setSalon({ ...salon, seo_title: e.target.value } as any)}
+                  value={salon.seo_title || ""}
+                  onChange={(e) => setSalon({ ...salon, seo_title: e.target.value })}
                   className="bg-secondary border-border font-body"
                   placeholder="Nome do Salão | Agendamento Online"
                 />
@@ -289,8 +300,8 @@ export default function AdminSalon() {
                   <span className="text-muted-foreground font-normal ml-1">(aparece nos resultados de busca)</span>
                 </label>
                 <Input
-                  value={(salon as any).seo_description || ""}
-                  onChange={(e) => setSalon({ ...salon, seo_description: e.target.value } as any)}
+                  value={salon.seo_description || ""}
+                  onChange={(e) => setSalon({ ...salon, seo_description: e.target.value })}
                   className="bg-secondary border-border font-body"
                   placeholder="Agende seu horário online no melhor salão da cidade."
                 />

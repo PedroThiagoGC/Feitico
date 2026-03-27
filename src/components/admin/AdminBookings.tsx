@@ -1,12 +1,21 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+﻿import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Clock, MessageCircle, User } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { type Database } from "@/integrations/supabase/types";
-import { getPrimarySalonId } from "@/services/salonService";
-import { calculateCommission, createBooking, type CreateBookingPayload } from "@/services/bookingService";
+import { calculateCommission, type CreateBookingPayload } from "@/services/bookingService";
+import { buildReminderMessage as buildBookingReminderMessage } from "@/services/notificationService";
+import type { BookingRecord } from "@/types/domain";
+import { useCreateBooking, useBookings } from "@/hooks/useBooking";
+import { useBookingStatusMutation, useReminderSentMutation } from "@/hooks/useNotifications";
+import {
+  useAvailabilityForProfessionals,
+  useProfessionalServices,
+  useProfessionals,
+} from "@/hooks/useProfessionals";
+import { useSalon } from "@/hooks/useSalon";
+import { useServices } from "@/hooks/useServices";
+import { getErrorMessage } from "@/hooks/useQueryError";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,15 +27,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 type ServiceSnapshot = { name: string; duration: number };
 type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
+type StatusFilter = BookingStatus | "all";
 
-type BookingRow = Database["public"]["Tables"]["bookings"]["Row"];
-type ServiceRow = Database["public"]["Tables"]["services"]["Row"];
-type ProfessionalServiceRow = Database["public"]["Tables"]["professional_services"]["Row"];
-type AvailabilityRow = Database["public"]["Tables"]["professional_availability"]["Row"];
-type ProfessionalRow = Pick<
-  Database["public"]["Tables"]["professionals"]["Row"],
-  "id" | "name" | "photo_url" | "commission_type" | "commission_value"
->;
+type BookingRow = BookingRecord;
 
 type ManualBookingForm = {
   customer_name: string;
@@ -50,7 +53,7 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pendente",
   confirmed: "Confirmado",
-  completed: "Concluído",
+  completed: "ConcluÃ­do",
   cancelled: "Cancelado",
 };
 
@@ -84,16 +87,48 @@ function parseClockToMinutes(value: string | null): number {
 }
 
 export default function AdminBookings() {
-  const [bookings, setBookings] = useState<BookingRow[]>([]);
-  const [professionals, setProfessionals] = useState<ProfessionalRow[]>([]);
-  const [services, setServices] = useState<ServiceRow[]>([]);
-  const [professionalServices, setProfessionalServices] = useState<ProfessionalServiceRow[]>([]);
-  const [availability, setAvailability] = useState<AvailabilityRow[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [salonId, setSalonId] = useState<string>("");
-  const [savingManualBooking, setSavingManualBooking] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [manualForm, setManualForm] = useState<ManualBookingForm>(() => getDefaultManualForm());
+  const { data: salon, error: salonError, isLoading: isSalonLoading } = useSalon();
+  const selectedDateString = format(selectedDate, "yyyy-MM-dd");
+  const { data: professionals = [], error: professionalsError, isLoading: professionalsLoading } = useProfessionals(salon?.id);
+  const professionalIds = useMemo(() => professionals.map((professional) => professional.id), [professionals]);
+  const { data: services = [], error: servicesError, isLoading: servicesLoading } = useServices(salon?.id);
+  const { data: bookingsData = [], error: bookingsError, isLoading: bookingsLoading } = useBookings(salon?.id, {
+    date: selectedDateString,
+    status: statusFilter === "all" ? undefined : statusFilter,
+  });
+  const {
+    data: professionalServices = [],
+    error: professionalServicesError,
+    isLoading: professionalServicesLoading,
+  } = useProfessionalServices(manualForm.professional_id || undefined);
+  const { data: availability = [], error: availabilityError, isLoading: availabilityLoading } =
+    useAvailabilityForProfessionals(professionalIds);
+  const createBookingMutation = useCreateBooking();
+  const updateStatusMutation = useBookingStatusMutation();
+  const reminderSentMutation = useReminderSentMutation();
+  const savingManualBooking = createBookingMutation.isPending;
+  const bookings = useMemo(
+    () => [...bookingsData].sort((a, b) => parseClockToMinutes(a.booking_time) - parseClockToMinutes(b.booking_time)),
+    [bookingsData]
+  );
+  const loadingState =
+    isSalonLoading ||
+    professionalsLoading ||
+    servicesLoading ||
+    bookingsLoading ||
+    availabilityLoading ||
+    professionalServicesLoading;
+  const errorMessage = getErrorMessage(
+    salonError ??
+      professionalsError ??
+      servicesError ??
+      bookingsError ??
+      professionalServicesError ??
+      availabilityError
+  );
 
   const selectedProfessional = useMemo(
     () => professionals.find((professional) => professional.id === manualForm.professional_id),
@@ -118,7 +153,7 @@ export default function AdminBookings() {
           name: service.name,
           price: override?.custom_price ?? Number(service.price),
           duration: override?.custom_duration_minutes ?? service.duration,
-          buffer: override?.custom_buffer_minutes ?? service.buffer_minutes,
+          buffer: override?.custom_buffer_minutes ?? service.buffer_minutes ?? 0,
         };
       });
   }, [availableManualServices, manualForm.service_ids, professionalServices]);
@@ -135,116 +170,22 @@ export default function AdminBookings() {
     };
   }, [selectedManualServices]);
 
-  const loadBookings = useCallback(async () => {
-    if (!salonId) return;
-
-    const dateStr = format(selectedDate, "yyyy-MM-dd");
-    let query = supabase
-      .from("bookings")
-      .select("*")
-      .eq("salon_id", salonId)
-      .eq("booking_date", dateStr)
-      .order("booking_time", { ascending: true });
-
-    if (statusFilter !== "all") {
-      query = query.eq("status", statusFilter);
-    }
-
-    const { data, error } = await query;
-    if (error) {
-      toast.error("Erro ao carregar agendamentos");
-      return;
-    }
-
-    setBookings((data || []).sort((a, b) => parseClockToMinutes(a.booking_time) - parseClockToMinutes(b.booking_time)));
-  }, [salonId, selectedDate, statusFilter]);
-
-  const loadProfessionalServices = useCallback(async (professionalId: string) => {
-    if (!professionalId) {
-      setProfessionalServices([]);
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("professional_services")
-      .select("*")
-      .eq("professional_id", professionalId)
-      .eq("active", true);
-
-    if (error) {
-      toast.error("Erro ao carregar serviços do profissional");
-      return;
-    }
-
-    setProfessionalServices(data || []);
-  }, []);
-
   useEffect(() => {
-    (async () => {
-      const nextSalonId = await getPrimarySalonId();
-      if (!nextSalonId) return;
+    const firstProfessionalId = professionals[0]?.id || "";
+    if (!firstProfessionalId) return;
 
-      setSalonId(nextSalonId);
-
-      const { data: pros, error: prosError } = await supabase
-        .from("professionals")
-        .select("id, name, photo_url, commission_type, commission_value")
-        .eq("salon_id", nextSalonId)
-        .eq("active", true)
-        .order("name");
-
-      if (prosError) {
-        toast.error("Erro ao carregar profissionais");
-        return;
+    setManualForm((previous) => {
+      if (previous.professional_id && professionals.some((professional) => professional.id === previous.professional_id)) {
+        return previous;
       }
 
-      const professionalList = pros || [];
-      setProfessionals(professionalList);
-
-      const firstProfessionalId = professionalList[0]?.id || "";
-      setManualForm((previous) => ({
+      return {
         ...previous,
-        professional_id: previous.professional_id || firstProfessionalId,
-      }));
-
-      const { data: serviceList, error: servicesError } = await supabase
-        .from("services")
-        .select("*")
-        .eq("salon_id", nextSalonId)
-        .eq("active", true)
-        .order("sort_order");
-
-      if (servicesError) {
-        toast.error("Erro ao carregar serviços");
-        return;
-      }
-
-      setServices(serviceList || []);
-
-      const professionalIds = professionalList.map((p) => p.id)
-      const { data: availabilityList, error: availabilityError } = await supabase
-        .from("professional_availability")
-        .select("*")
-        .in("professional_id", professionalIds.length > 0 ? professionalIds : [""])
-        .eq("active", true)
-        .limit(500);
-
-      if (availabilityError) {
-        toast.error("Erro ao carregar disponibilidade");
-        return;
-      }
-
-      setAvailability(availabilityList || []);
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (!manualForm.professional_id) {
-      setProfessionalServices([]);
-      return;
-    }
-    void loadProfessionalServices(manualForm.professional_id);
-  }, [manualForm.professional_id, loadProfessionalServices]);
+        professional_id: firstProfessionalId,
+        service_ids: [],
+      };
+    });
+  }, [professionals]);
 
   useEffect(() => {
     const allowedIds = new Set(professionalServices.map((item) => item.service_id));
@@ -253,34 +194,6 @@ export default function AdminBookings() {
       service_ids: previous.service_ids.filter((serviceId) => allowedIds.has(serviceId)),
     }));
   }, [professionalServices]);
-
-  useEffect(() => {
-    if (!salonId) return;
-    void loadBookings();
-  }, [salonId, loadBookings]);
-
-  useEffect(() => {
-    if (!salonId) return;
-    const channel = supabase
-      .channel(`admin-bookings-realtime-${salonId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "bookings",
-          filter: `salon_id=eq.${salonId}`,
-        },
-        () => {
-          void loadBookings();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [salonId, loadBookings]);
 
   function setManualFormField<K extends keyof ManualBookingForm>(field: K, value: ManualBookingForm[K]) {
     setManualForm((previous) => ({ ...previous, [field]: value }));
@@ -298,39 +211,36 @@ export default function AdminBookings() {
     });
   }
 
-  function buildReminderMessage(booking: BookingRow): string {
-    const servicesSnapshot = Array.isArray(booking.services) ? (booking.services as ServiceSnapshot[]) : [];
-    const serviceNames = servicesSnapshot.map((s) => s.name).join(", ");
-    const date = booking.booking_date
-      ? new Date(`${booking.booking_date}T12:00:00`).toLocaleDateString("pt-BR")
-      : "";
-    const time = booking.booking_time ? ` às ${booking.booking_time}` : "";
-    return `Olá ${booking.customer_name}! 👋\nLembrando do seu agendamento${date ? ` em ${date}` : ""}${time}.\n✂️ ${serviceNames || "Serviços"}\n\nAté lá! 😊`;
-  }
-
   async function handleSendReminder(booking: BookingRow) {
     const phone = (booking.customer_phone || "").replace(/\D/g, "");
-    if (!phone) { toast.error("Telefone não disponível"); return; }
-    const message = buildReminderMessage(booking);
+    if (!phone) {
+      toast.error("Telefone nao disponivel");
+      return;
+    }
+
+    const message = buildBookingReminderMessage(booking);
     window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, "_blank");
-    const { error } = await (supabase as any).from("bookings").update({ reminder_sent_at: new Date().toISOString() }).eq("id", booking.id);
-    if (!error) void loadBookings();
+
+    try {
+      await reminderSentMutation.mutateAsync({ bookingId: booking.id });
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
   }
 
   async function updateStatus(id: string, status: BookingStatus) {
-    const { error } = await supabase.from("bookings").update({ status }).eq("id", id);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      await updateStatusMutation.mutateAsync({ bookingId: id, status });
+      toast.success("Status atualizado!");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     }
-    toast.success("Status atualizado!");
-    void loadBookings();
   }
 
   async function handleCreateManualBooking(event: FormEvent) {
     event.preventDefault();
-    if (!salonId) {
-      toast.error("Nenhum salão configurado.");
+    if (!salon?.id) {
+      toast.error("Nenhum salao configurado.");
       return;
     }
     if (!manualForm.professional_id) {
@@ -346,11 +256,11 @@ export default function AdminBookings() {
       return;
     }
     if (selectedManualServices.length === 0) {
-      toast.error("Selecione ao menos um serviço.");
+      toast.error("Selecione ao menos um serviÃ§o.");
       return;
     }
     if (manualForm.booking_type !== "waitlist" && !manualForm.booking_time) {
-      toast.error("Informe o horário para este tipo de agendamento.");
+      toast.error("Informe o horÃ¡rio para este tipo de agendamento.");
       return;
     }
 
@@ -362,7 +272,7 @@ export default function AdminBookings() {
     const profitAmount = manualTotals.totalPrice - commissionAmount;
 
     const payload: CreateBookingPayload = {
-      salon_id: salonId,
+      salon_id: salon.id,
       professional_id: manualForm.professional_id,
       customer_name: manualForm.customer_name.trim(),
       customer_phone: manualForm.customer_phone.trim(),
@@ -380,19 +290,15 @@ export default function AdminBookings() {
       notes: manualForm.notes.trim() || null,
     };
 
-    setSavingManualBooking(true);
     try {
-      await createBooking(payload);
+      await createBookingMutation.mutateAsync(payload);
       toast.success("Agendamento manual criado com sucesso.");
       const preservedProfessionalId = manualForm.professional_id;
       setManualForm(getDefaultManualForm(preservedProfessionalId));
       setSelectedDate(new Date(`${payload.booking_date}T12:00:00`));
-      void loadBookings();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Erro ao criar agendamento manual.";
+      const message = getErrorMessage(error) || "Erro ao criar agendamento manual.";
       toast.error(message);
-    } finally {
-      setSavingManualBooking(false);
     }
   }
 
@@ -500,7 +406,7 @@ export default function AdminBookings() {
               />
             </PopoverContent>
           </Popover>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
             <SelectTrigger className="w-32 bg-secondary border-border font-body h-9 text-sm">
               <SelectValue />
             </SelectTrigger>
@@ -516,6 +422,16 @@ export default function AdminBookings() {
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {errorMessage ? (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+            <p className="font-body text-sm text-destructive">{errorMessage}</p>
+          </div>
+        ) : loadingState ? (
+          <div className="rounded-lg border border-border bg-secondary/20 p-4">
+            <p className="font-body text-sm text-muted-foreground">Carregando agendamentos...</p>
+          </div>
+        ) : null}
+
         <div className="border border-border rounded-xl p-4 md:p-5 space-y-4 bg-secondary/20">
           <div>
             <h3 className="font-display font-semibold text-foreground text-base md:text-lg">Novo Agendamento Manual</h3>
@@ -854,11 +770,11 @@ export default function AdminBookings() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleSendReminder(booking)}
-                                title={(booking as any).reminder_sent_at ? `Enviado em ${new Date((booking as any).reminder_sent_at).toLocaleString("pt-BR")}` : "Enviar lembrete por WhatsApp"}
-                                className={`font-body text-xs h-7 ${(booking as any).reminder_sent_at ? "border-green-500 text-green-400" : "border-border"}`}
+                                title={booking.reminder_sent_at ? `Enviado em ${new Date(booking.reminder_sent_at).toLocaleString("pt-BR")}` : "Enviar lembrete por WhatsApp"}
+                                className={`font-body text-xs h-7 ${booking.reminder_sent_at ? "border-green-500 text-green-400" : "border-border"}`}
                               >
                                 <MessageCircle className="w-3 h-3 mr-1" />
-                                {(booking as any).reminder_sent_at ? "Enviado" : "Lembrar"}
+                                {booking.reminder_sent_at ? "Enviado" : "Lembrar"}
                               </Button>
                             )}
                           </div>
@@ -907,11 +823,11 @@ export default function AdminBookings() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleSendReminder(booking)}
-                          title={(booking as any).reminder_sent_at ? `Enviado em ${new Date((booking as any).reminder_sent_at).toLocaleString("pt-BR")}` : "Enviar lembrete por WhatsApp"}
-                          className={`font-body text-xs h-7 ${(booking as any).reminder_sent_at ? "border-green-500 text-green-400" : "border-border"}`}
+                          title={booking.reminder_sent_at ? `Enviado em ${new Date(booking.reminder_sent_at).toLocaleString("pt-BR")}` : "Enviar lembrete por WhatsApp"}
+                          className={`font-body text-xs h-7 ${booking.reminder_sent_at ? "border-green-500 text-green-400" : "border-border"}`}
                         >
                           <MessageCircle className="w-3 h-3 mr-1" />
-                          {(booking as any).reminder_sent_at ? "Enviado" : "Lembrar"}
+                          {booking.reminder_sent_at ? "Enviado" : "Lembrar"}
                         </Button>
                       </div>
                     )}
@@ -925,3 +841,4 @@ export default function AdminBookings() {
     </Card>
   );
 }
+

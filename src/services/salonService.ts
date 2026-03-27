@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client"
-import type { Database } from "@/integrations/supabase/types"
+import type { SalonRecord } from "@/types/domain"
 
-type SalonRow = Database["public"]["Tables"]["salons"]["Row"]
+type SalonRow = SalonRecord
 
 const PRIMARY_SALON_ORDER_COLUMN = "created_at"
 
