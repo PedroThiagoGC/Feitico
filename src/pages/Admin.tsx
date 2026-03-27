@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { type Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { formatAuthErrorMessage } from "@/integrations/supabase/authErrors";
@@ -19,6 +19,9 @@ import AdminCalendar from "@/components/admin/AdminCalendar";
 import { LogOut, LayoutDashboard, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getPrimarySalonId } from "@/services/salonService";
+import { useSalon } from "@/hooks/useSalon";
+import { useRealtimeBookings } from "@/hooks/useBooking";
+import { playNotificationSound } from "@/lib/notificationSound";
 
 export default function Admin() {
   const [session, setSession] = useState<Session | null>(null);
@@ -26,6 +29,28 @@ export default function Admin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+
+  const { data: salon } = useSalon();
+  const [newBookingCount, setNewBookingCount] = useState(0);
+
+  const handleNewBooking = useCallback((booking: Record<string, unknown>) => {
+    playNotificationSound();
+    setNewBookingCount((n) => n + 1);
+    const name = (booking.customer_name as string) || "Cliente";
+    const time = (booking.booking_time as string) || "";
+    toast("Novo agendamento!", {
+      description: `${name}${time ? ` às ${time}` : ""}`,
+      duration: 8000,
+    });
+  }, []);
+
+  useRealtimeBookings(salon?.id, handleNewBooking);
+
+  useEffect(() => {
+    document.title = newBookingCount > 0
+      ? `(${newBookingCount}) Feitiço Admin`
+      : "Feitiço Admin";
+  }, [newBookingCount]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -126,7 +151,7 @@ export default function Admin() {
       </header>
 
       <div className="container py-4 md:py-8 px-3 md:px-4">
-        <Tabs defaultValue="dashboard" className="space-y-4 md:space-y-6">
+        <Tabs defaultValue="dashboard" className="space-y-4 md:space-y-6" onValueChange={() => { setNewBookingCount(0); document.title = "Feitiço Admin"; }}>
           <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
             <TabsList className="bg-secondary border border-border inline-flex w-auto min-w-full md:min-w-0 h-auto gap-1 p-1">
               <TabsTrigger value="dashboard" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Dashboard</TabsTrigger>

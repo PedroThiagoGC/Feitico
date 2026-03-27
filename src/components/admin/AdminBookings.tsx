@@ -1,7 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Clock, User } from "lucide-react";
+import { CalendarIcon, Clock, MessageCircle, User } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { type Database } from "@/integrations/supabase/types";
@@ -296,6 +296,25 @@ export default function AdminBookings() {
           : [...previous.service_ids, serviceId],
       };
     });
+  }
+
+  function buildReminderMessage(booking: BookingRow): string {
+    const servicesSnapshot = Array.isArray(booking.services) ? (booking.services as ServiceSnapshot[]) : [];
+    const serviceNames = servicesSnapshot.map((s) => s.name).join(", ");
+    const date = booking.booking_date
+      ? new Date(`${booking.booking_date}T12:00:00`).toLocaleDateString("pt-BR")
+      : "";
+    const time = booking.booking_time ? ` às ${booking.booking_time}` : "";
+    return `Olá ${booking.customer_name}! 👋\nLembrando do seu agendamento${date ? ` em ${date}` : ""}${time}.\n✂️ ${serviceNames || "Serviços"}\n\nAté lá! 😊`;
+  }
+
+  async function handleSendReminder(booking: BookingRow) {
+    const phone = (booking.customer_phone || "").replace(/\D/g, "");
+    if (!phone) { toast.error("Telefone não disponível"); return; }
+    const message = buildReminderMessage(booking);
+    window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, "_blank");
+    const { error } = await (supabase as any).from("bookings").update({ reminder_sent_at: new Date().toISOString() }).eq("id", booking.id);
+    if (!error) void loadBookings();
   }
 
   async function updateStatus(id: string, status: BookingStatus) {
@@ -828,6 +847,18 @@ export default function AdminBookings() {
                                 className="bg-blue-600 text-white font-body text-xs h-7"
                               >
                                 Concluir
+                              </Button>
+                            )}
+                            {(booking.status === "pending" || booking.status === "confirmed") && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSendReminder(booking)}
+                                title={(booking as any).reminder_sent_at ? `Enviado em ${new Date((booking as any).reminder_sent_at).toLocaleString("pt-BR")}` : "Enviar lembrete por WhatsApp"}
+                                className={`font-body text-xs h-7 ${(booking as any).reminder_sent_at ? "border-green-500 text-green-400" : "border-border"}`}
+                              >
+                                <MessageCircle className="w-3 h-3 mr-1" />
+                                {(booking as any).reminder_sent_at ? "Enviado" : "Lembrar"}
                               </Button>
                             )}
                           </div>

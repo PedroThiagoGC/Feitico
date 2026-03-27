@@ -26,7 +26,10 @@ export function useBookings(salonId: string | undefined, options?: GetBookingsOp
 }
 
 /** Subscribe to realtime booking changes to keep slots/bookings fresh */
-export function useRealtimeBookings(salonId: string | undefined) {
+export function useRealtimeBookings(
+  salonId: string | undefined,
+  onNewBooking?: (payload: Record<string, unknown>) => void
+) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -42,9 +45,12 @@ export function useRealtimeBookings(salonId: string | undefined) {
           table: "bookings",
           filter: `salon_id=eq.${salonId}`,
         },
-        () => {
+        (payload) => {
           queryClient.invalidateQueries({ queryKey: ["bookings", salonId] });
           queryClient.invalidateQueries({ queryKey: ["available-slots"] });
+          if (payload.eventType === "INSERT" && onNewBooking) {
+            onNewBooking(payload.new as Record<string, unknown>);
+          }
         }
       )
       .subscribe();
@@ -52,7 +58,7 @@ export function useRealtimeBookings(salonId: string | undefined) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [salonId, queryClient]);
+  }, [salonId, queryClient, onNewBooking]);
 }
 
 export function useAvailableSlots(
