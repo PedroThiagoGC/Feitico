@@ -1,17 +1,38 @@
 import { MapPin, Phone, Clock, Instagram, Facebook, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Salon } from "@/hooks/useSalon";
+import { generateDirectWhatsAppUrl } from "@/services/bookingService";
 
 interface FooterProps {
   salon: Salon | undefined;
 }
 
 const dayNames: Record<string, string> = {
-  mon: "Segunda", tue: "Terça", wed: "Quarta", thu: "Quinta",
-  fri: "Sexta", sat: "Sábado", sun: "Domingo",
+  mon: "Segunda",
+  tue: "Terça",
+  wed: "Quarta",
+  thu: "Quinta",
+  fri: "Sexta",
+  sat: "Sábado",
+  sun: "Domingo",
 };
 
+const DEVELOPER_WHATSAPP_PHONE = "5585994334597";
+
+function buildDeveloperContactMessage(salonName?: string | null): string {
+  const origin = salonName ? `pelo site do ${salonName}` : "pelo site";
+  return (
+    `Ola! Vim ${origin}.\n\n` +
+    "Gostaria de falar com o desenvolvedor da GM Tech Solution sobre o projeto."
+  );
+}
+
 export default function Footer({ salon }: FooterProps) {
+  const developerWhatsappUrl = generateDirectWhatsAppUrl({
+    message: buildDeveloperContactMessage(salon?.name),
+    whatsappPhone: DEVELOPER_WHATSAPP_PHONE,
+  });
+
   return (
     <footer className="bg-card border-t border-border py-16">
       <div className="container px-4">
@@ -91,7 +112,7 @@ export default function Footer({ salon }: FooterProps) {
             © {new Date().getFullYear()} {salon?.name || "Salão"}. Todos os direitos reservados.
           </p>
           <a
-            href="https://wa.me/5585994334597"
+            href={developerWhatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="font-body text-xs text-muted-foreground hover:text-primary transition-colors"

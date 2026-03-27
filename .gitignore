@@ -43,3 +43,7 @@ dist-ssr
 
 # Local Claude permissions/config
 .claude/settings.json
+.claude/agent-memory/
+
+# Local Supabase CLI state
+supabase/.temp/

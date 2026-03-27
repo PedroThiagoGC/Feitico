@@ -263,6 +263,12 @@ export type WhatsAppBookingInfo = {
   professionalName: string
 }
 
+export type WhatsAppRedirectInfo = {
+  message: string
+  whatsappPhone?: string
+  phoneFallback?: string
+}
+
 function buildBookingWhatsAppText(info: WhatsAppBookingInfo): string {
   const { booking, salonName, salonAddress, professionalName } = info
 
@@ -303,25 +309,32 @@ function isMobileBrowser(): boolean {
   return /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent)
 }
 
-export function generateWhatsAppMessage(info: WhatsAppBookingInfo): string {
-  const message = buildBookingWhatsAppText(info)
-
+export function generateDirectWhatsAppUrl(info: WhatsAppRedirectInfo): string {
   const normalizedPhone =
-    normalizeWhatsAppPhone(info.salonWhatsapp) ||
-    normalizeWhatsAppPhone(info.salonPhone)
+    normalizeWhatsAppPhone(info.whatsappPhone) ||
+    normalizeWhatsAppPhone(info.phoneFallback)
 
   const isMobile = isMobileBrowser()
 
   if (!normalizedPhone) {
-    const encodedMessage = encodeURIComponent(message)
+    const encodedMessage = encodeURIComponent(info.message)
     return isMobile
       ? `https://wa.me/?text=${encodedMessage}`
       : `https://web.whatsapp.com/send?text=${encodedMessage}`
   }
 
   return isMobile
-    ? buildWhatsAppUrl(normalizedPhone, message)
-    : buildWhatsAppWebUrl(normalizedPhone, message)
+    ? buildWhatsAppUrl(normalizedPhone, info.message)
+    : buildWhatsAppWebUrl(normalizedPhone, info.message)
+}
+
+export function generateWhatsAppMessage(info: WhatsAppBookingInfo): string {
+  const message = buildBookingWhatsAppText(info)
+  return generateDirectWhatsAppUrl({
+    message,
+    whatsappPhone: info.salonWhatsapp,
+    phoneFallback: info.salonPhone,
+  })
 }
 
 export function generateWhatsAppApiFallback(info: WhatsAppBookingInfo): string {

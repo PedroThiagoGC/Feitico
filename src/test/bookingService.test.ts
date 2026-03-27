@@ -25,13 +25,19 @@ function createChain(returnValue: ChainReturn) {
     then: (res: Parameters<Promise<ChainReturn>["then"]>[0], rej: Parameters<Promise<ChainReturn>["then"]>[1]) =>
       resolved.then(res, rej),
     catch: (rej: Parameters<Promise<ChainReturn>["catch"]>[0]) => resolved.catch(rej),
+    limit: vi.fn(),
+    order: vi.fn(),
+    range: vi.fn(),
     select: vi.fn(),
     eq: vi.fn(),
     in: vi.fn(),
   }
   ;(chain.select as ReturnType<typeof vi.fn>).mockReturnValue(chain)
   ;(chain.eq as ReturnType<typeof vi.fn>).mockReturnValue(chain)
-  ;(chain.in as ReturnType<typeof vi.fn>).mockReturnValue(resolved)
+  ;(chain.in as ReturnType<typeof vi.fn>).mockReturnValue(chain)
+  ;(chain.limit as ReturnType<typeof vi.fn>).mockReturnValue(chain)
+  ;(chain.order as ReturnType<typeof vi.fn>).mockReturnValue(chain)
+  ;(chain.range as ReturnType<typeof vi.fn>).mockReturnValue(chain)
   return chain
 }
 
