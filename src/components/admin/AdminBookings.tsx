@@ -901,6 +901,20 @@ export default function AdminBookings() {
                       {booking.booking_time || BOOKING_TYPE_LABELS[booking.booking_type] || "Ordem de chegada"} -{" "}
                       {servicesSnapshot.map((service) => service.name).join(", ")} - R$ {Number(booking.total_price).toFixed(2)}
                     </p>
+                    {(booking.status === "pending" || booking.status === "confirmed") && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleSendReminder(booking)}
+                          title={(booking as any).reminder_sent_at ? `Enviado em ${new Date((booking as any).reminder_sent_at).toLocaleString("pt-BR")}` : "Enviar lembrete por WhatsApp"}
+                          className={`font-body text-xs h-7 ${(booking as any).reminder_sent_at ? "border-green-500 text-green-400" : "border-border"}`}
+                        >
+                          <MessageCircle className="w-3 h-3 mr-1" />
+                          {(booking as any).reminder_sent_at ? "Enviado" : "Lembrar"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
