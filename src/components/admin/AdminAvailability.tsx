@@ -244,30 +244,30 @@ export default function AdminAvailability() {
                 const row = weekdayMap.get(day.value);
                 const isActive = row?.active ?? false;
                 return (
-                  <div key={day.value} className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                  <div key={day.value} className={`flex flex-wrap items-center gap-2 p-3 rounded-lg border transition-all ${
                     isActive ? "border-primary/30 bg-primary/5" : "border-border bg-secondary"
                   }`}>
                     <Switch
                       checked={isActive}
                       onCheckedChange={() => toggleWeekday(day.value)}
                     />
-                    <span className={`font-body text-sm w-32 ${isActive ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                    <span className={`font-body text-sm min-w-[90px] flex-1 md:flex-none md:w-28 ${isActive ? "text-foreground font-medium" : "text-muted-foreground"}`}>
                       {day.label}
                     </span>
                     {isActive && row ? (
-                      <div className="flex items-center gap-2 flex-1">
+                      <div className="flex items-center gap-2 w-full sm:w-auto sm:flex-1">
                         <Input
                           type="time"
                           value={row.start_time.slice(0, 5)}
                           onChange={(e) => updateTime(row.id, "start_time", e.target.value)}
-                          className="bg-secondary border-border font-body w-28 h-9 text-sm"
+                          className="bg-secondary border-border font-body flex-1 sm:w-24 h-9 text-sm min-w-0"
                         />
-                        <span className="text-muted-foreground text-sm">até</span>
+                        <span className="text-muted-foreground text-sm shrink-0">até</span>
                         <Input
                           type="time"
                           value={row.end_time.slice(0, 5)}
                           onChange={(e) => updateTime(row.id, "end_time", e.target.value)}
-                          className="bg-secondary border-border font-body w-28 h-9 text-sm"
+                          className="bg-secondary border-border font-body flex-1 sm:w-24 h-9 text-sm min-w-0"
                         />
                         <Button variant="ghost" size="icon" onClick={() => deleteAvailability(row.id)} className="text-destructive shrink-0 h-9 w-9">
                           <Trash2 className="w-4 h-4" />
@@ -292,7 +292,7 @@ export default function AdminAvailability() {
               <CardTitle className="font-display text-lg">Exceções / Folgas — {selectedPro?.name}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <form onSubmit={addException} className="flex flex-wrap gap-3 items-end">
+              <form onSubmit={addException} className="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-wrap gap-3 items-end">
                 <div>
                   <label className="font-body text-sm block mb-1">Data</label>
                   <Input type="date" value={excForm.date} onChange={(e) => setExcForm({ ...excForm, date: e.target.value })} className="bg-secondary border-border font-body" required />

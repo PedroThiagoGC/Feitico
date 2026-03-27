@@ -1,4 +1,4 @@
-﻿import { type FormEvent, useEffect, useMemo, useState } from "react";
+﻿import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Check, ChevronDown, ChevronUp, Clock, MessageCircle, User, X } from "lucide-react";
@@ -93,6 +93,7 @@ export default function AdminBookings() {
   const [manualForm, setManualForm] = useState<ManualBookingForm>(() => getDefaultManualForm());
   const [manualOpen, setManualOpen] = useState(false);
   const [serviceDropdownOpen, setServiceDropdownOpen] = useState(false);
+  const serviceDropdownRef = useRef<HTMLDivElement>(null);
   const { data: salon, error: salonError, isLoading: isSalonLoading } = useSalon();
   const selectedDateString = format(selectedDate, "yyyy-MM-dd");
   const { data: professionals = [], error: professionalsError, isLoading: professionalsLoading } = useProfessionals(salon?.id);
@@ -197,6 +198,17 @@ export default function AdminBookings() {
       service_ids: previous.service_ids.filter((serviceId) => allowedIds.has(serviceId)),
     }));
   }, [professionalServices]);
+
+  // Close service dropdown on outside click
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (serviceDropdownRef.current && !serviceDropdownRef.current.contains(e.target as Node)) {
+        setServiceDropdownOpen(false);
+      }
+    }
+    if (serviceDropdownOpen) document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [serviceDropdownOpen]);
 
   function setManualFormField<K extends keyof ManualBookingForm>(field: K, value: ManualBookingForm[K]) {
     setManualForm((previous) => ({ ...previous, [field]: value }));
@@ -579,7 +591,7 @@ export default function AdminBookings() {
                   Este profissional não possui serviços ativos.
                 </p>
               ) : (
-                <div className="relative">
+                <div className="relative" ref={serviceDropdownRef}>
                   <button
                     type="button"
                     onClick={() => setServiceDropdownOpen((v) => !v)}

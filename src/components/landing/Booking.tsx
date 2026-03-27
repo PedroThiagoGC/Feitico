@@ -41,6 +41,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [serviceDropdownOpen, setServiceDropdownOpen] = useState(false);
+  const serviceDropdownRef = useRef<HTMLDivElement>(null);
   const createBooking = useCreateBooking();
 
   // Realtime: auto-refresh slots when another person books
@@ -62,6 +63,17 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
       setShowConfirmation(false);
     }
   }, [preselectedServices]);
+
+  // Close service dropdown on outside click
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (serviceDropdownRef.current && !serviceDropdownRef.current.contains(e.target as Node)) {
+        setServiceDropdownOpen(false);
+      }
+    }
+    if (serviceDropdownOpen) document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [serviceDropdownOpen]);
 
   // Disabled days based on professional availability
   const disabledDays = useMemo(() => {
@@ -308,7 +320,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                       Este profissional ainda não tem serviços habilitados.
                     </p>
                   ) : (
-                    <div className="relative">
+                    <div className="relative" ref={serviceDropdownRef}>
                       <button
                         type="button"
                         onClick={() => setServiceDropdownOpen((v) => !v)}
@@ -593,7 +605,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Duração total:</span>
-                      <span className="text-foreground">{totalDuration} min</span>
+                      <span className="text-foreground">{formatDuration(totalDuration)}</span>
                     </div>
                     <div className="border-t border-border pt-2 flex justify-between">
                       <span className="font-bold text-foreground">Total:</span>

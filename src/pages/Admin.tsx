@@ -24,7 +24,7 @@ import { LogOut, LayoutDashboard, ExternalLink, Bell, BellOff } from "lucide-rea
 import { Link } from "react-router-dom";
 import { useSalon } from "@/hooks/useSalon";
 import { useRealtimeBookings } from "@/hooks/useBooking";
-import { playNotificationSound } from "@/lib/notificationSound";
+import { playNotificationSound, prewarmAudio } from "@/lib/notificationSound";
 import { subscribeToPush, unsubscribeFromPush, getPushStatus, type PushStatus } from "@/lib/pushNotifications";
 
 export default function Admin() {
@@ -151,52 +151,53 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card px-4 md:px-6 py-3 md:py-4 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-2 md:gap-3">
-          <LayoutDashboard className="w-5 h-5 text-primary" />
-          <h1 className="font-display text-lg md:text-xl font-bold text-gradient-gold">Painel Admin</h1>
+    <div className="min-h-screen bg-background" onClick={prewarmAudio}>
+      <header className="border-b border-border bg-card px-3 md:px-6 py-3 md:py-4 flex items-center justify-between sticky top-0 z-50 overflow-hidden">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+          <LayoutDashboard className="w-5 h-5 text-primary shrink-0" />
+          <h1 className="font-display text-base md:text-xl font-bold text-gradient-gold truncate">Painel Admin</h1>
         </div>
-        <div className="flex items-center gap-2 md:gap-4">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 font-body">
+        <div className="flex items-center gap-1 md:gap-3 shrink-0 ml-2">
+          <Link to="/" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 font-body shrink-0">
             <ExternalLink className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Ver Site</span>
           </Link>
           <Button
-            variant="ghost" size="sm"
+            variant="ghost"
+            size="icon"
             onClick={handleTogglePush}
             title={pushStatus === "granted" ? "Notificações ativas — clique para desativar" : "Ativar notificações push"}
-            className={`shrink-0 ${pushStatus === "granted" ? "text-primary" : "text-muted-foreground"}`}
+            className={`shrink-0 h-8 w-8 rounded-full ${pushStatus === "granted" ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground hover:text-foreground"}`}
           >
             {pushStatus === "granted" ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
           </Button>
-          <span className="hidden sm:inline text-sm text-muted-foreground font-body truncate max-w-[200px]">{session.user.email}</span>
-          <Button variant="ghost" size="sm" onClick={handleLogout} className="shrink-0">
-            <LogOut className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Sair</span>
+          <span className="hidden md:inline text-sm text-muted-foreground font-body truncate max-w-[160px]">{session.user.email}</span>
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="shrink-0 h-8 px-2">
+            <LogOut className="w-4 h-4" /> <span className="hidden sm:inline ml-1">Sair</span>
           </Button>
         </div>
       </header>
 
       <div className="container py-4 md:py-8 px-3 md:px-4">
-        <Tabs defaultValue="dashboard" className="space-y-4 md:space-y-6" onValueChange={() => { setNewBookingCount(0); document.title = "Feitiço Admin"; }}>
-          <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
-            <TabsList className="bg-secondary border border-border inline-flex w-auto min-w-full md:min-w-0 h-auto gap-1 p-1">
-              <TabsTrigger value="avisos" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3 relative">
+        <Tabs defaultValue="avisos" className="space-y-4 md:space-y-6" onValueChange={() => { setNewBookingCount(0); document.title = "Feitiço Admin"; }}>
+          <div className="overflow-x-auto -mx-3 px-3 pb-1 md:mx-0 md:px-0 md:pb-0 scrollbar-hide">
+            <TabsList className="bg-secondary border border-border inline-flex w-max min-w-full md:min-w-0 h-auto gap-0.5 p-1">
+              <TabsTrigger value="avisos" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5 relative">
                 Avisos
                 {newBookingCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{newBookingCount > 9 ? "9+" : newBookingCount}</span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="dashboard" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Dashboard</TabsTrigger>
-              <TabsTrigger value="calendar" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Agenda</TabsTrigger>
-              <TabsTrigger value="salon" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Salão</TabsTrigger>
-              <TabsTrigger value="professionals" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Profissionais</TabsTrigger>
-              <TabsTrigger value="services" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Serviços</TabsTrigger>
-              <TabsTrigger value="bookings" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Agendamentos</TabsTrigger>
-              <TabsTrigger value="availability" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Disponibilidade</TabsTrigger>
-              <TabsTrigger value="gallery" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Galeria</TabsTrigger>
-              <TabsTrigger value="testimonials" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Depoimentos</TabsTrigger>
-              <TabsTrigger value="clients" className="font-body text-xs md:text-sm whitespace-nowrap px-2 md:px-3">Clientes</TabsTrigger>
+              <TabsTrigger value="dashboard" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Dashboard</TabsTrigger>
+              <TabsTrigger value="calendar" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Agenda</TabsTrigger>
+              <TabsTrigger value="salon" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Salão</TabsTrigger>
+              <TabsTrigger value="professionals" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Profissionais</TabsTrigger>
+              <TabsTrigger value="services" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Serviços</TabsTrigger>
+              <TabsTrigger value="bookings" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Agendamentos</TabsTrigger>
+              <TabsTrigger value="availability" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Disponibilidade</TabsTrigger>
+              <TabsTrigger value="gallery" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Galeria</TabsTrigger>
+              <TabsTrigger value="testimonials" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Depoimentos</TabsTrigger>
+              <TabsTrigger value="clients" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Clientes</TabsTrigger>
             </TabsList>
           </div>
 
