@@ -689,18 +689,18 @@ export default function AdminBookings() {
             return (
               <div key={professional.id} className="border border-border rounded-xl overflow-hidden">
                 <div className="bg-secondary p-3 md:p-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     {professional.photo_url ? (
-                      <img src={professional.photo_url} alt={professional.name} className="w-10 h-10 rounded-full object-cover" />
+                      <img src={professional.photo_url} alt={professional.name} className="w-10 h-10 rounded-full object-cover shrink-0" />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
                         <User className="w-5 h-5" />
                       </div>
                     )}
-                    <div>
-                      <h3 className="font-display font-semibold text-foreground text-sm md:text-base">{professional.name}</h3>
+                    <div className="min-w-0">
+                      <h3 className="font-display font-semibold text-foreground text-sm md:text-base truncate">{professional.name}</h3>
                       {hasAvailability ? (
-                        <p className="font-body text-xs text-muted-foreground">
+                        <p className="font-body text-xs text-muted-foreground truncate">
                           {stats.bookingsCount} agendamento{stats.bookingsCount !== 1 ? "s" : ""} - R$ {stats.revenue.toFixed(2)}
                         </p>
                       ) : (
@@ -709,12 +709,12 @@ export default function AdminBookings() {
                     </div>
                   </div>
                   {hasAvailability && (
-                    <div className="flex gap-2 text-xs font-body shrink-0">
-                      <span className="px-2 py-1 rounded bg-green-500/10 text-green-400 border border-green-500/20">
+                    <div className="flex flex-wrap gap-1 text-xs font-body shrink-0">
+                      <span className="px-2 py-1 rounded bg-green-500/10 text-green-400 border border-green-500/20 whitespace-nowrap">
                         {formatDuration(stats.freeMinutes)} livres
                       </span>
-                      <span className="px-2 py-1 rounded bg-primary/10 text-primary border border-primary/20">
-                        {formatDuration(stats.bookedMinutes)} ocupados
+                      <span className="px-2 py-1 rounded bg-primary/10 text-primary border border-primary/20 whitespace-nowrap">
+                        {formatDuration(stats.bookedMinutes)} ocup.
                       </span>
                     </div>
                   )}

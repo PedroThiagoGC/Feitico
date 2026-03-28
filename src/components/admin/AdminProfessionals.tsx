@@ -164,21 +164,22 @@ export default function AdminProfessionals() {
           ) : (
             <div className="space-y-3">
               {professionals.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())).map((p) => (
-                <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary border border-border">
-                  <div className="flex items-center gap-3">
-                    {p.photo_url && <img src={p.photo_url} alt={p.name} className="w-10 h-10 rounded-full object-cover" />}
-                    <div>
-                      <p className="font-body font-medium text-foreground">{p.name}</p>
-                      <p className="font-body text-xs text-muted-foreground">
+                <div
+                  key={p.id}
+                  className={`flex items-center justify-between p-3 rounded-lg bg-secondary border cursor-pointer transition-colors hover:bg-secondary/80 ${selectedPro?.id === p.id ? "border-primary" : "border-border"}`}
+                  onClick={() => setSelectedPro(selectedPro?.id === p.id ? null : p)}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {p.photo_url && <img src={p.photo_url} alt={p.name} className="w-10 h-10 rounded-full object-cover shrink-0" />}
+                    <div className="min-w-0">
+                      <p className="font-body font-medium text-foreground truncate">{p.name}</p>
+                      <p className="font-body text-xs text-muted-foreground truncate">
                         Comissão: {p.commission_type === "percentage" ? `${p.commission_value}%` : `R$ ${Number(p.commission_value).toFixed(2)}`}
                         {!p.active && " · Inativo"}
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => setSelectedPro(selectedPro?.id === p.id ? null : p)} title="Configurar">
-                      <Settings2 className="w-4 h-4" />
-                    </Button>
+                  <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                     <Button variant="ghost" size="icon" onClick={() => openEdit(p)}>
                       <Pencil className="w-4 h-4" />
                     </Button>
@@ -199,12 +200,14 @@ export default function AdminProfessionals() {
           <div className="flex items-center gap-3 mb-2">
             <h3 className="font-display text-lg font-bold text-foreground">{selectedPro.name}</h3>
           </div>
-          <TabsList className="bg-secondary border border-border">
-            <TabsTrigger value="availability" className="font-body text-sm"><Clock className="w-3 h-3 mr-1" />Disponibilidade</TabsTrigger>
-            <TabsTrigger value="exceptions" className="font-body text-sm"><Calendar className="w-3 h-3 mr-1" />Exceções</TabsTrigger>
-            <TabsTrigger value="services" className="font-body text-sm"><Settings2 className="w-3 h-3 mr-1" />Serviços</TabsTrigger>
-            <TabsTrigger value="financeiro" className="font-body text-sm"><TrendingUp className="w-3 h-3 mr-1" />Financeiro</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto pb-1">
+            <TabsList className="bg-secondary border border-border w-max">
+              <TabsTrigger value="availability" className="font-body text-xs sm:text-sm whitespace-nowrap"><Clock className="w-3 h-3 mr-1" />Disponibilidade</TabsTrigger>
+              <TabsTrigger value="exceptions" className="font-body text-xs sm:text-sm whitespace-nowrap"><Calendar className="w-3 h-3 mr-1" />Exceções</TabsTrigger>
+              <TabsTrigger value="services" className="font-body text-xs sm:text-sm whitespace-nowrap"><Settings2 className="w-3 h-3 mr-1" />Serviços</TabsTrigger>
+              <TabsTrigger value="financeiro" className="font-body text-xs sm:text-sm whitespace-nowrap"><TrendingUp className="w-3 h-3 mr-1" />Financeiro</TabsTrigger>
+            </TabsList>
+          </div>
           <TabsContent value="availability">
             <ProfessionalAvailabilityEditor professionalId={selectedPro.id} />
           </TabsContent>
@@ -537,7 +540,7 @@ function ProfessionalServicesEditor({ professionalId, services }: { professional
                 </div>
               </div>
               {isLinked && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pl-12">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pl-0 sm:pl-12">
                   <div>
                     <label className="font-body text-xs text-muted-foreground">Preço custom</label>
                     <Input type="number" step="0.01" placeholder={String(s.price)} value={link.custom_price ?? ""} onChange={(e) => updateOverride(link.id, "custom_price", e.target.value ? parseFloat(e.target.value) : null)} className="bg-background border-border font-body text-xs h-8" />

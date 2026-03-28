@@ -116,45 +116,47 @@ export default function AdminFinanceiro() {
       {/* Filters */}
       <Card className="bg-card border-border">
         <CardContent className="p-4">
-          <div className="flex flex-wrap gap-3 items-end">
-            <div>
-              <label className="font-body text-xs text-muted-foreground block mb-1">De</label>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="bg-secondary border-border font-body h-8 text-xs w-36"
-              />
-            </div>
-            <div>
-              <label className="font-body text-xs text-muted-foreground block mb-1">Até</label>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="bg-secondary border-border font-body h-8 text-xs w-36"
-              />
-            </div>
-            <div>
-              <label className="font-body text-xs text-muted-foreground block mb-1">Profissional</label>
-              <Select value={proFilter} onValueChange={setProFilter}>
-                <SelectTrigger className="bg-secondary border-border font-body h-8 text-xs w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="all">Todos</SelectItem>
-                  {allProStats.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-end">
+            <div className="flex flex-wrap gap-3 items-end">
+              <div>
+                <label className="font-body text-xs text-muted-foreground block mb-1">De</label>
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="bg-secondary border-border font-body h-8 text-xs w-36"
+                />
+              </div>
+              <div>
+                <label className="font-body text-xs text-muted-foreground block mb-1">Até</label>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="bg-secondary border-border font-body h-8 text-xs w-36"
+                />
+              </div>
+              <div>
+                <label className="font-body text-xs text-muted-foreground block mb-1">Profissional</label>
+                <Select value={proFilter} onValueChange={setProFilter}>
+                  <SelectTrigger className="bg-secondary border-border font-body h-8 text-xs w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="all">Todos</SelectItem>
+                    {allProStats.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <Button
               onClick={handleExport}
               disabled={isLoading || !dashData}
-              className="h-8 text-xs gap-1.5 ml-auto"
+              className="h-8 text-xs gap-1.5 w-full sm:w-auto sm:ml-auto"
               variant="outline"
             >
               <Download className="w-3.5 h-3.5" />

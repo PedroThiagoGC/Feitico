@@ -77,7 +77,7 @@ export default function AdminClients() {
         ) : (
           <>
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full font-body text-sm">
+              <table className="w-full min-w-[600px] font-body text-sm">
                 <thead>
                   <tr className="text-left text-muted-foreground border-b border-border text-xs">
                     <th className="pb-2 font-medium">Nome</th>
@@ -155,9 +155,9 @@ export default function AdminClients() {
                       </Button>
                     </div>
                     <div className="grid grid-cols-3 gap-1 mt-2 font-body text-xs text-muted-foreground">
-                      <span>{client.stats.count} agend.</span>
-                      <span className="text-primary">R$ {client.stats.total.toFixed(2)}</span>
-                      <span>ticket R$ {ticket.toFixed(2)}</span>
+                      <span className="truncate">{client.stats.count} agend.</span>
+                      <span className="text-primary truncate">R$ {client.stats.total.toFixed(2)}</span>
+                      <span className="truncate">ticket R$ {ticket.toFixed(2)}</span>
                     </div>
                   </div>
                 );
