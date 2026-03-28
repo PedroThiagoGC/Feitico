@@ -5,7 +5,7 @@ import { z } from "zod";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { useFormPersistence, usePersistentState } from "@/hooks/useFormPersistence";
 import { useAvailableSlots, useCreateBooking, useRealtimeBookings, generateWhatsAppMessage, calculateCommission } from "@/hooks/useBooking";
-import { useProfessionals, useProfessionalServices, useProfessionalAvailability } from "@/hooks/useProfessionals";
+import { useProfessionals, useProfessionalServices, useProfessionalAvailability, useProfessionalExceptions } from "@/hooks/useProfessionals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -85,6 +85,7 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   const { data: professionals } = useProfessionals(salon?.id);
   const { data: proServices } = useProfessionalServices(selectedProfessionalId || undefined);
   const { data: proAvailability } = useProfessionalAvailability(selectedProfessionalId || undefined);
+  const { data: proExceptions } = useProfessionalExceptions(selectedProfessionalId || undefined, { futureOnly: true });
 
   // When preselectedServices changes (user clicked "Agendar" on a service card),
   // find which professional offers it and pre-select that professional
@@ -110,15 +111,21 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
     return () => document.removeEventListener("mousedown", handleOutside);
   }, [serviceDropdownOpen]);
 
-  // Disabled days based on professional availability
+  // Disabled days based on professional availability + exceptions (folgas/bloqueios)
   const disabledDays = useMemo(() => {
     if (!proAvailability || proAvailability.length === 0) return undefined;
     const activeWeekdays = new Set(proAvailability.map((a) => a.weekday));
+    const offDates = new Set(
+      (proExceptions ?? [])
+        .filter((e) => e.type === "day_off" || (e.type === "blocked" && !e.start_time && !e.end_time))
+        .map((e) => e.date)
+    );
     return (date: Date) => {
       if (date < new Date(new Date().setHours(0, 0, 0, 0))) return true;
+      if (offDates.has(format(date, "yyyy-MM-dd"))) return true;
       return !activeWeekdays.has(date.getDay());
     };
-  }, [proAvailability]);
+  }, [proAvailability, proExceptions]);
 
   // Services available for selected professional
   const availableServices = useMemo(() => {

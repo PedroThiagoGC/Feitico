@@ -83,6 +83,18 @@ export async function createBooking(payload: CreateBookingPayload): Promise<Book
     }
   }
 
+  // Validate professional is not on day_off or full-day block
+  const { data: exceptions } = await supabase
+    .from("professional_exceptions")
+    .select("type, start_time, end_time")
+    .eq("professional_id", payload.professional_id)
+    .eq("date", payload.booking_date)
+
+  const isDayOff = (exceptions ?? []).some(
+    (e) => e.type === "day_off" || (e.type === "blocked" && !e.start_time && !e.end_time)
+  )
+  if (isDayOff) throw new Error("Profissional não disponível nesta data.")
+
   const { data: booking, error } = await supabase
     .from("bookings")
     .insert([

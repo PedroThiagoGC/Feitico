@@ -11,13 +11,12 @@ import { toast } from "sonner";
 import AdminServices from "@/components/admin/AdminServices";
 import AdminBookings from "@/components/admin/AdminBookings";
 import AdminSalon from "@/components/admin/AdminSalon";
-import AdminGallery from "@/components/admin/AdminGallery";
-import AdminTestimonials from "@/components/admin/AdminTestimonials";
 import AdminAvailability from "@/components/admin/AdminAvailability";
 import AdminProfessionals from "@/components/admin/AdminProfessionals";
 import AdminCalendar from "@/components/admin/AdminCalendar";
 import AdminAvisos from "@/components/admin/AdminAvisos";
 import AdminClients from "@/components/admin/AdminClients";
+import AdminFinanceiro from "@/components/admin/AdminFinanceiro";
 import { useAdminDashboard, type AdminDashboardFinancialPro } from "@/hooks/useAdminDashboard";
 import { getErrorMessage } from "@/hooks/useQueryError";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -202,7 +201,7 @@ export default function Admin() {
         </Card>
       </div>
     );
-      <Dialog open={sessionExpiredModal} onOpenChange={() => { /* Intentionally empty: prevent user from dismissing the session expiration dialog */ }}>
+  }
 
   if (!isAdminAllowed) {
     return (
@@ -278,28 +277,26 @@ export default function Admin() {
                 )}
               </TabsTrigger>
               <TabsTrigger value="dashboard" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Dashboard</TabsTrigger>
+              <TabsTrigger value="financeiro" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Financeiro</TabsTrigger>
               <TabsTrigger value="calendar" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Agenda</TabsTrigger>
               <TabsTrigger value="salon" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Salão</TabsTrigger>
               <TabsTrigger value="professionals" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Profissionais</TabsTrigger>
               <TabsTrigger value="services" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Serviços</TabsTrigger>
               <TabsTrigger value="bookings" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Agendamentos</TabsTrigger>
               <TabsTrigger value="availability" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Disponibilidade</TabsTrigger>
-              <TabsTrigger value="gallery" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Galeria</TabsTrigger>
-              <TabsTrigger value="testimonials" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Depoimentos</TabsTrigger>
               <TabsTrigger value="clients" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Clientes</TabsTrigger>
             </TabsList>
           </div>
 
           <TabsContent value="avisos"><AdminAvisos /></TabsContent>
           <TabsContent value="dashboard"><DashboardOverview /></TabsContent>
+          <TabsContent value="financeiro"><AdminFinanceiro /></TabsContent>
           <TabsContent value="calendar"><AdminCalendar /></TabsContent>
           <TabsContent value="salon"><AdminSalon /></TabsContent>
           <TabsContent value="professionals"><AdminProfessionals /></TabsContent>
           <TabsContent value="services"><AdminServices /></TabsContent>
           <TabsContent value="bookings"><AdminBookings /></TabsContent>
           <TabsContent value="availability"><AdminAvailability /></TabsContent>
-          <TabsContent value="gallery"><AdminGallery /></TabsContent>
-          <TabsContent value="testimonials"><AdminTestimonials /></TabsContent>
           <TabsContent value="clients"><AdminClients /></TabsContent>
         </Tabs>
       </div>

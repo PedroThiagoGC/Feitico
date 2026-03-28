@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -11,6 +12,31 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.4"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -93,6 +119,7 @@ export type Database = {
           booking_date: string
           booking_time: string | null
           booking_type: string
+          client_id: string | null
           commission_amount: number
           created_at: string
           customer_name: string
@@ -101,6 +128,7 @@ export type Database = {
           notes: string | null
           professional_id: string | null
           profit_amount: number
+          reminder_sent_at: string | null
           salon_id: string
           services: Json
           status: string
@@ -113,6 +141,7 @@ export type Database = {
           booking_date: string
           booking_time?: string | null
           booking_type?: string
+          client_id?: string | null
           commission_amount?: number
           created_at?: string
           customer_name: string
@@ -121,6 +150,7 @@ export type Database = {
           notes?: string | null
           professional_id?: string | null
           profit_amount?: number
+          reminder_sent_at?: string | null
           salon_id: string
           services?: Json
           status?: string
@@ -133,6 +163,7 @@ export type Database = {
           booking_date?: string
           booking_time?: string | null
           booking_type?: string
+          client_id?: string | null
           commission_amount?: number
           created_at?: string
           customer_name?: string
@@ -141,6 +172,7 @@ export type Database = {
           notes?: string | null
           professional_id?: string | null
           profit_amount?: number
+          reminder_sent_at?: string | null
           salon_id?: string
           services?: Json
           status?: string
@@ -151,6 +183,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "bookings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bookings_professional_id_fkey"
             columns: ["professional_id"]
             isOneToOne: false
@@ -159,6 +198,86 @@ export type Database = {
           },
           {
             foreignKeyName: "bookings_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_aliases: {
+        Row: {
+          alias_name: string
+          client_id: string
+          id: string
+          last_used_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          alias_name: string
+          client_id: string
+          id?: string
+          last_used_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          alias_name?: string
+          client_id?: string
+          id?: string
+          last_used_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_aliases_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_seen_at: string | null
+          merged_into_id: string | null
+          phone_normalized: string
+          preferred_name: string
+          salon_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          merged_into_id?: string | null
+          phone_normalized: string
+          preferred_name: string
+          salon_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          merged_into_id?: string | null
+          phone_normalized?: string
+          preferred_name?: string
+          salon_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_merged_into_id_fkey"
+            columns: ["merged_into_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_salon_id_fkey"
             columns: ["salon_id"]
             isOneToOne: false
             referencedRelation: "salons"
@@ -251,6 +370,7 @@ export type Database = {
           end_time: string
           id: string
           professional_id: string
+          salon_id: string | null
           start_time: string
           weekday: number
         }
@@ -259,6 +379,7 @@ export type Database = {
           end_time: string
           id?: string
           professional_id: string
+          salon_id?: string | null
           start_time: string
           weekday: number
         }
@@ -267,6 +388,7 @@ export type Database = {
           end_time?: string
           id?: string
           professional_id?: string
+          salon_id?: string | null
           start_time?: string
           weekday?: number
         }
@@ -276,6 +398,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_availability_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
             referencedColumns: ["id"]
           },
         ]
@@ -406,6 +535,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "professionals_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string | null
+          device_label: string | null
+          endpoint: string
+          id: string
+          p256dh: string
+          salon_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string | null
+          device_label?: string | null
+          endpoint: string
+          id?: string
+          p256dh: string
+          salon_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string | null
+          device_label?: string | null
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          salon_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_salon_id_fkey"
             columns: ["salon_id"]
             isOneToOne: false
             referencedRelation: "salons"
@@ -887,7 +1054,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_booking_conflict: {
+        Args: {
+          p_booking_date: string
+          p_booking_time: string
+          p_exclude_id?: string
+          p_professional_id: string
+          p_total_occupied_minutes: number
+        }
+        Returns: boolean
+      }
+      upsert_client_by_phone: {
+        Args: { p_name: string; p_phone: string; p_salon_id: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
@@ -1016,6 +1196,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

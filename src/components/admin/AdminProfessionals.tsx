@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,11 +9,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Clock, Calendar, Settings2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Clock, Calendar, Settings2, TrendingUp } from "lucide-react";
 import { MinutesSelect } from "@/components/ui/minutes-select";
 import ImageUpload from "./ImageUpload";
 import { type Database } from "@/integrations/supabase/types";
 import { getPrimarySalonId } from "@/services/salonService";
+import { getFinanceiroProfissional, type FinanceiroProfissionalData } from "@/services/adminDashboardService";
+import { STATUS_LABELS, STATUS_TEXT_COLORS } from "@/lib/bookingStatus";
+import { defaultDateFrom } from "@/lib/dateUtils";
 
 type Professional = Database["public"]["Tables"]["professionals"]["Row"];
 type Service = Database["public"]["Tables"]["services"]["Row"];
@@ -199,6 +203,7 @@ export default function AdminProfessionals() {
             <TabsTrigger value="availability" className="font-body text-sm"><Clock className="w-3 h-3 mr-1" />Disponibilidade</TabsTrigger>
             <TabsTrigger value="exceptions" className="font-body text-sm"><Calendar className="w-3 h-3 mr-1" />Exceções</TabsTrigger>
             <TabsTrigger value="services" className="font-body text-sm"><Settings2 className="w-3 h-3 mr-1" />Serviços</TabsTrigger>
+            <TabsTrigger value="financeiro" className="font-body text-sm"><TrendingUp className="w-3 h-3 mr-1" />Financeiro</TabsTrigger>
           </TabsList>
           <TabsContent value="availability">
             <ProfessionalAvailabilityEditor professionalId={selectedPro.id} />
@@ -208,6 +213,9 @@ export default function AdminProfessionals() {
           </TabsContent>
           <TabsContent value="services">
             <ProfessionalServicesEditor professionalId={selectedPro.id} services={services} />
+          </TabsContent>
+          <TabsContent value="financeiro">
+            <ProfessionalFinanceiroTab professionalId={selectedPro.id} salonId={salonId} />
           </TabsContent>
         </Tabs>
       )}
@@ -361,6 +369,119 @@ function ProfessionalExceptionsEditor({ professionalId }: { professionalId: stri
             </div>
           ))}
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Professional Financeiro Tab ---
+function ProfessionalFinanceiroTab({ professionalId, salonId }: { professionalId: string; salonId: string }) {
+  const [dateFrom, setDateFrom] = useState(defaultDateFrom);
+  const [dateTo, setDateTo] = useState(() => new Date().toISOString().split("T")[0]);
+
+  const { data, isLoading, error } = useQuery<FinanceiroProfissionalData>({
+    enabled: !!salonId && !!professionalId,
+    queryFn: () => getFinanceiroProfissional(salonId, professionalId, dateFrom, dateTo),
+    queryKey: ["financeiro-profissional", salonId, professionalId, dateFrom, dateTo],
+  });
+
+  return (
+    <Card className="bg-card border-border">
+      <CardContent className="pt-6 space-y-4">
+        {/* Date filter */}
+        <div className="flex flex-wrap gap-3 items-end">
+          <div>
+            <label className="font-body text-xs text-muted-foreground block mb-1">De</label>
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="bg-secondary border-border font-body h-8 text-xs w-36" />
+          </div>
+          <div>
+            <label className="font-body text-xs text-muted-foreground block mb-1">Até</label>
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="bg-secondary border-border font-body h-8 text-xs w-36" />
+          </div>
+        </div>
+
+        {isLoading && <p className="font-body text-sm text-muted-foreground">Carregando...</p>}
+        {error && <p className="font-body text-sm text-destructive">Erro ao carregar dados.</p>}
+
+        {data && (
+          <>
+            {/* Summary cards */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {[
+                { color: "text-primary", label: "Faturamento", value: `R$ ${data.revenue.toFixed(2)}` },
+                { color: "text-yellow-400", label: "Comissão Recebida", value: `R$ ${data.commission.toFixed(2)}` },
+                { color: "text-green-400", label: "Lucro Salão", value: `R$ ${data.profit.toFixed(2)}` },
+                { color: "text-foreground", label: "Atendimentos", value: String(data.count) },
+                { color: "text-foreground", label: "Ticket Médio", value: `R$ ${data.ticket.toFixed(2)}` },
+                { color: "text-blue-400", label: "Comissão Pendente", value: `R$ ${data.commissionPending.toFixed(2)}` },
+              ].map((c) => (
+                <div key={c.label} className="p-3 rounded-lg bg-secondary border border-border text-center">
+                  <p className="font-body text-xs text-muted-foreground mb-1">{c.label}</p>
+                  <p className={`font-display text-base font-bold ${c.color}`}>{c.value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Bookings table */}
+            {data.bookings.length === 0 ? (
+              <p className="font-body text-sm text-muted-foreground">Nenhum agendamento no período.</p>
+            ) : (
+              <>
+                <h4 className="font-display text-sm font-semibold text-foreground">Histórico de Agendamentos</h4>
+                {/* Mobile */}
+                <div className="md:hidden space-y-2">
+                  {data.bookings.map((b) => (
+                    <div key={b.id} className="p-3 rounded-lg bg-secondary border border-border space-y-1">
+                      <div className="flex items-center justify-between">
+                        <p className="font-body font-semibold text-foreground text-sm">{b.customerName}</p>
+                        <span className={`font-body text-xs font-semibold ${STATUS_TEXT_COLORS[b.status] ?? "text-foreground"}`}>
+                          {STATUS_LABELS[b.status] ?? b.status}
+                        </span>
+                      </div>
+                      <p className="font-body text-xs text-muted-foreground">{b.bookingDate}{b.bookingTime ? ` ${b.bookingTime}` : ""}</p>
+                      <p className="font-body text-xs text-foreground">{b.serviceNames}</p>
+                      <div className="grid grid-cols-2 gap-1 font-body text-xs pt-1">
+                        <span className="text-muted-foreground">Valor:</span>
+                        <span className="text-primary text-right">R$ {b.totalPrice.toFixed(2)}</span>
+                        <span className="text-muted-foreground">Comissão:</span>
+                        <span className="text-yellow-400 text-right">R$ {b.commissionAmount.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Desktop */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full font-body text-sm">
+                    <thead>
+                      <tr className="text-left text-muted-foreground border-b border-border">
+                        <th className="pb-2">Data</th>
+                        <th className="pb-2">Cliente</th>
+                        <th className="pb-2">Serviços</th>
+                        <th className="pb-2 text-right">Valor</th>
+                        <th className="pb-2 text-right">Comissão</th>
+                        <th className="pb-2 text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.bookings.map((b) => (
+                        <tr key={b.id} className="border-b border-border/50">
+                          <td className="py-2 text-muted-foreground text-xs">{b.bookingDate}{b.bookingTime ? ` ${b.bookingTime.slice(0, 5)}` : ""}</td>
+                          <td className="py-2 text-foreground">{b.customerName}</td>
+                          <td className="py-2 text-muted-foreground text-xs">{b.serviceNames}</td>
+                          <td className="py-2 text-right text-primary">R$ {b.totalPrice.toFixed(2)}</td>
+                          <td className="py-2 text-right text-yellow-400">R$ {b.commissionAmount.toFixed(2)}</td>
+                          <td className={`py-2 text-right text-xs font-semibold ${STATUS_TEXT_COLORS[b.status] ?? "text-foreground"}`}>
+                            {STATUS_LABELS[b.status] ?? b.status}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </>
+        )}
       </CardContent>
     </Card>
   );

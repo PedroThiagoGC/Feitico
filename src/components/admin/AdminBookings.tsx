@@ -54,7 +54,7 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pendente",
   confirmed: "Confirmado",
-  completed: "ConcluÃ­do",
+  completed: "Concluído",
   cancelled: "Cancelado",
 };
 
@@ -429,7 +429,7 @@ export default function AdminBookings() {
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="pending">Pendentes</SelectItem>
               <SelectItem value="confirmed">Confirmados</SelectItem>
-              <SelectItem value="completed">Concluidos</SelectItem>
+              <SelectItem value="completed">Concluídos</SelectItem>
               <SelectItem value="cancelled">Cancelados</SelectItem>
             </SelectContent>
           </Select>
@@ -518,7 +518,7 @@ export default function AdminBookings() {
                   <SelectContent className="bg-card border-border">
                     <SelectItem value="pending">Pendente</SelectItem>
                     <SelectItem value="confirmed">Confirmado</SelectItem>
-                    <SelectItem value="completed">Concluido</SelectItem>
+                    <SelectItem value="completed">Concluído</SelectItem>
                     <SelectItem value="cancelled">Cancelado</SelectItem>
                   </SelectContent>
                 </Select>

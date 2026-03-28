@@ -5,9 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Save } from "lucide-react";
+import { Save, ChevronDown, ChevronRight, Image, Star } from "lucide-react";
 import ImageUpload from "./ImageUpload";
 import OpeningHoursEditor from "./OpeningHoursEditor";
+import AdminGallery from "./AdminGallery";
+import AdminTestimonials from "./AdminTestimonials";
 import { normalizeWhatsAppPhone, splitWhatsAppPhone } from "@/lib/phone";
 import { type Database } from "@/integrations/supabase/types";
 import { getSalon } from "@/services/salonService";
@@ -23,6 +25,8 @@ export default function AdminSalon() {
   const [saving, setSaving] = useState(false);
   const [whatsappCountryCode, setWhatsappCountryCode] = useState("55");
   const [whatsappNationalNumber, setWhatsappNationalNumber] = useState("");
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [testimonialsOpen, setTestimonialsOpen] = useState(false);
 
   useEffect(() => { loadSalon(); }, []);
 
@@ -125,6 +129,7 @@ export default function AdminSalon() {
   ];
 
   return (
+    <div className="space-y-4">
     <Card className="bg-card border-border">
       <CardHeader>
         <CardTitle className="font-display text-xl">Configurações do Salão</CardTitle>
@@ -322,5 +327,38 @@ export default function AdminSalon() {
         </form>
       </CardContent>
     </Card>
+
+    {/* Galeria — colapsável */}
+    <Card className="bg-card border-border">
+      <button
+        type="button"
+        onClick={() => setGalleryOpen((v) => !v)}
+        className="w-full flex items-center justify-between p-4 md:p-6 text-left hover:bg-secondary/50 transition-colors rounded-lg"
+      >
+        <div className="flex items-center gap-2">
+          <Image className="w-4 h-4 text-primary" />
+          <span className="font-display text-lg font-semibold text-foreground">Galeria de Fotos</span>
+        </div>
+        {galleryOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+      </button>
+      {galleryOpen && <AdminGallery />}
+    </Card>
+
+    {/* Depoimentos — colapsável */}
+    <Card className="bg-card border-border">
+      <button
+        type="button"
+        onClick={() => setTestimonialsOpen((v) => !v)}
+        className="w-full flex items-center justify-between p-4 md:p-6 text-left hover:bg-secondary/50 transition-colors rounded-lg"
+      >
+        <div className="flex items-center gap-2">
+          <Star className="w-4 h-4 text-primary" />
+          <span className="font-display text-lg font-semibold text-foreground">Depoimentos</span>
+        </div>
+        {testimonialsOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+      </button>
+      {testimonialsOpen && <AdminTestimonials />}
+    </Card>
+    </div>
   );
 }
