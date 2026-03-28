@@ -108,6 +108,9 @@ export function createAuthStorage(options: CreateAuthStorageOptions): SimpleStor
       const now = Date.now();
       if (isSessionExpired(envelope, now)) {
         safeRemoveItem(key);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("feitico:session-expired"));
+        }
         return null;
       }
 

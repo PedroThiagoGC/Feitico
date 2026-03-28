@@ -20,7 +20,8 @@ import AdminAvisos from "@/components/admin/AdminAvisos";
 import AdminClients from "@/components/admin/AdminClients";
 import { useAdminDashboard, type AdminDashboardFinancialPro } from "@/hooks/useAdminDashboard";
 import { getErrorMessage } from "@/hooks/useQueryError";
-import { LogOut, LayoutDashboard, ExternalLink, Bell, BellOff } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { LogOut, LayoutDashboard, ExternalLink, Bell, BellOff, Eye, EyeOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSalon } from "@/hooks/useSalon";
 import { useRealtimeBookings } from "@/hooks/useBooking";
@@ -30,9 +31,13 @@ import { subscribeToPush, unsubscribeFromPush, getPushStatus, type PushStatus } 
 export default function Admin() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    try { return localStorage.getItem("feitico:form:admin-email") ?? ""; } catch { return ""; }
+  });
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [sessionExpiredModal, setSessionExpiredModal] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const { data: salon } = useSalon();
   const [newBookingCount, setNewBookingCount] = useState(0);
@@ -80,8 +85,20 @@ export default function Admin() {
       setSession(session);
       setLoading(false);
     });
-    return () => subscription.unsubscribe();
+
+    const handleSessionExpired = () => setSessionExpiredModal(true);
+    window.addEventListener("feitico:session-expired", handleSessionExpired);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener("feitico:session-expired", handleSessionExpired);
+    };
   }, []);
+
+  const handleSessionExpiredRelogin = async () => {
+    setSessionExpiredModal(false);
+    await supabase.auth.signOut();
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,8 +135,37 @@ export default function Admin() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
-              <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-secondary border-border font-body h-12" required />
-              <Input type="password" placeholder="Senha" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-secondary border-border font-body h-12" required />
+              <Input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => {
+                  const v = e.target.value.trim().toLowerCase();
+                  setEmail(v);
+                  try { localStorage.setItem("feitico:form:admin-email", v); } catch { /* silencioso */ }
+                }}
+                className="bg-secondary border-border font-body h-12"
+                required
+              />
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Senha"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="bg-secondary border-border font-body h-12 pr-12"
+                  required
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
               <Button type="submit" className="w-full bg-primary text-primary-foreground font-body h-12" disabled={authLoading}>
                 {authLoading ? "Entrando..." : "Entrar"}
               </Button>
@@ -152,6 +198,21 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-background" onClick={prewarmAudio}>
+      <Dialog open={sessionExpiredModal} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="font-display text-gradient-gold">Sessão expirada</DialogTitle>
+            <DialogDescription className="font-body text-muted-foreground pt-1">
+              Sua sessão de administrador expirou após 2 dias. Por segurança, você precisa fazer login novamente para continuar.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button className="w-full bg-primary text-primary-foreground font-body h-11" onClick={handleSessionExpiredRelogin}>
+              Fazer login novamente
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <header className="border-b border-border bg-card px-3 md:px-6 py-3 md:py-4 flex items-center justify-between sticky top-0 z-50 overflow-hidden">
         <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
           <LayoutDashboard className="w-5 h-5 text-primary shrink-0" />

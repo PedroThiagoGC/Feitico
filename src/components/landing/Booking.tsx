@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
-import { useFormPersistence } from "@/hooks/useFormPersistence";
+import { useFormPersistence, usePersistentState } from "@/hooks/useFormPersistence";
 import { useAvailableSlots, useCreateBooking, useRealtimeBookings, generateWhatsAppMessage, calculateCommission } from "@/hooks/useBooking";
 import { useProfessionals, useProfessionalServices, useProfessionalAvailability } from "@/hooks/useProfessionals";
 import { Button } from "@/components/ui/button";
@@ -35,8 +35,22 @@ interface BookingProps {
 
 export default function Booking({ salon, services, preselectedServices }: BookingProps) {
   const { ref, isVisible } = useScrollAnimation();
-  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
-  const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>("");
+  const [persistedProfId, setPersistedProfId, clearPersistedProfId] = usePersistentState<string>("booking-professional", "");
+  const [persistedServices, setPersistedServices, clearPersistedServices] = usePersistentState<Service[]>("booking-services", []);
+  const [selectedProfessionalId, setSelectedProfessionalIdState] = useState<string>(persistedProfId);
+  const [selectedServices, setSelectedServicesState] = useState<Service[]>(persistedServices);
+  function setSelectedProfessionalId(id: string) {
+    setSelectedProfessionalIdState(id);
+    if (id) setPersistedProfId(id); else clearPersistedProfId();
+  }
+  function setSelectedServices(arg: Service[] | ((prev: Service[]) => Service[])) {
+    setSelectedServicesState((prev) => {
+      const next = typeof arg === "function" ? arg(prev) : arg;
+      if (next.length > 0) setPersistedServices(next); else clearPersistedServices();
+      return next;
+    });
+  }
+
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -212,6 +226,8 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
       await createBooking.mutateAsync(bookingData);
       toast.success("Agendamento realizado com sucesso!");
       clearPersisted();
+      clearPersistedProfId();
+      clearPersistedServices();
 
       const whatsappUrl = generateWhatsAppMessage({
         booking: bookingData,
@@ -224,8 +240,8 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
       window.location.assign(whatsappUrl);
 
       form.reset();
-      setSelectedServices([]);
-      setSelectedProfessionalId("");
+      setSelectedServicesState([]);
+      setSelectedProfessionalIdState("");
       setSelectedDate(undefined);
       setSelectedTime("");
       setShowConfirmation(false);
