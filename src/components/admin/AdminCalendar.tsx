@@ -454,7 +454,10 @@ function DayView({
                               </>
                             )}
                             {booking.status === "confirmed" && (
-                              <Button size="sm" onClick={() => onUpdateStatus(booking.id, "completed")} className="bg-blue-600 text-white font-body text-xs h-7">Concluir</Button>
+                              <>
+                                <Button size="sm" onClick={() => onUpdateStatus(booking.id, "completed")} className="bg-blue-600 text-white font-body text-xs h-7">Concluir</Button>
+                                <Button size="sm" variant="destructive" onClick={() => onUpdateStatus(booking.id, "cancelled")} className="font-body text-xs h-7">Cancelar</Button>
+                              </>
                             )}
                             {(booking.status === "pending" || booking.status === "confirmed") && (
                               <Button size="sm" variant="outline" onClick={() => onSendReminder(booking)} className="font-body text-xs h-7 border-border">
@@ -498,7 +501,10 @@ function DayView({
                       </>
                     )}
                     {booking.status === "confirmed" && (
-                      <Button size="sm" onClick={() => onUpdateStatus(booking.id, "completed")} className="bg-blue-600 text-white font-body text-xs h-7">Concluir</Button>
+                      <>
+                        <Button size="sm" onClick={() => onUpdateStatus(booking.id, "completed")} className="bg-blue-600 text-white font-body text-xs h-7">Concluir</Button>
+                        <Button size="sm" variant="destructive" onClick={() => onUpdateStatus(booking.id, "cancelled")} className="font-body text-xs h-7">Cancelar</Button>
+                      </>
                     )}
                     {(booking.status === "pending" || booking.status === "confirmed") && (
                       <Button size="sm" variant="outline" onClick={() => onSendReminder(booking)} className="font-body text-xs h-7 border-border">

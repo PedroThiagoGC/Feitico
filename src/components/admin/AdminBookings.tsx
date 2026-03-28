@@ -830,13 +830,23 @@ export default function AdminBookings() {
                               </>
                             )}
                             {booking.status === "confirmed" && (
-                              <Button
-                                size="sm"
-                                onClick={() => updateStatus(booking.id, "completed")}
-                                className="bg-blue-600 text-white font-body text-xs h-7"
-                              >
-                                Concluir
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => updateStatus(booking.id, "completed")}
+                                  className="bg-blue-600 text-white font-body text-xs h-7"
+                                >
+                                  Concluir
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => updateStatus(booking.id, "cancelled")}
+                                  className="font-body text-xs h-7"
+                                >
+                                  Cancelar
+                                </Button>
+                              </>
                             )}
                             {(booking.status === "pending" || booking.status === "confirmed") && (
                               <Button

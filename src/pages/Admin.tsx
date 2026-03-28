@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import AdminServices from "@/components/admin/AdminServices";
 import AdminBookings from "@/components/admin/AdminBookings";
 import AdminSalon from "@/components/admin/AdminSalon";
-import AdminAvailability from "@/components/admin/AdminAvailability";
 import AdminProfessionals from "@/components/admin/AdminProfessionals";
 import AdminCalendar from "@/components/admin/AdminCalendar";
 import AdminAvisos from "@/components/admin/AdminAvisos";
@@ -283,7 +282,6 @@ export default function Admin() {
               <TabsTrigger value="professionals" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Profissionais</TabsTrigger>
               <TabsTrigger value="services" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Serviços</TabsTrigger>
               <TabsTrigger value="bookings" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Agendamentos</TabsTrigger>
-              <TabsTrigger value="availability" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Disponibilidade</TabsTrigger>
               <TabsTrigger value="clients" className="font-body text-xs whitespace-nowrap px-2.5 py-1.5">Clientes</TabsTrigger>
             </TabsList>
           </div>
@@ -296,7 +294,6 @@ export default function Admin() {
           <TabsContent value="professionals"><AdminProfessionals /></TabsContent>
           <TabsContent value="services"><AdminServices /></TabsContent>
           <TabsContent value="bookings"><AdminBookings /></TabsContent>
-          <TabsContent value="availability"><AdminAvailability /></TabsContent>
           <TabsContent value="clients"><AdminClients /></TabsContent>
         </Tabs>
       </div>
