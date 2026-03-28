@@ -33,23 +33,44 @@ interface BookingProps {
   preselectedServices?: Service[];
 }
 
+function usePersistentSelection<T>(
+  key: string,
+  initialValue: T,
+  shouldClear: (value: T) => boolean
+) {
+  const [persistedValue, setPersistedValue, clearPersistedValue] = usePersistentState<T>(key, initialValue);
+  const [value, setValueState] = useState<T>(persistedValue);
+
+  const setValue = useCallback(
+    (next: T | ((prev: T) => T)) => {
+      setValueState((prev) => {
+        const resolved = typeof next === "function" ? (next as (p: T) => T)(prev) : next;
+        if (shouldClear(resolved)) {
+          clearPersistedValue();
+        } else {
+          setPersistedValue(resolved);
+        }
+        return resolved;
+      });
+    },
+    [clearPersistedValue, setPersistedValue, shouldClear]
+  );
+
+  return [value, setValue] as const;
+}
+
 export default function Booking({ salon, services, preselectedServices }: BookingProps) {
   const { ref, isVisible } = useScrollAnimation();
-  const [persistedProfId, setPersistedProfId, clearPersistedProfId] = usePersistentState<string>("booking-professional", "");
-  const [persistedServices, setPersistedServices, clearPersistedServices] = usePersistentState<Service[]>("booking-services", []);
-  const [selectedProfessionalId, setSelectedProfessionalIdState] = useState<string>(persistedProfId);
-  const [selectedServices, setSelectedServicesState] = useState<Service[]>(persistedServices);
-  function setSelectedProfessionalId(id: string) {
-    setSelectedProfessionalIdState(id);
-    if (id) setPersistedProfId(id); else clearPersistedProfId();
-  }
-  function setSelectedServices(arg: Service[] | ((prev: Service[]) => Service[])) {
-    setSelectedServicesState((prev) => {
-      const next = typeof arg === "function" ? arg(prev) : arg;
-      if (next.length > 0) setPersistedServices(next); else clearPersistedServices();
-      return next;
-    });
-  }
+  const [selectedProfessionalId, setSelectedProfessionalId] = usePersistentSelection<string>(
+    "booking-professional",
+    "",
+    (value) => !value
+  );
+  const [selectedServices, setSelectedServices] = usePersistentSelection<Service[]>(
+    "booking-services",
+    [],
+    (value) => value.length === 0
+  );
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTime, setSelectedTime] = useState<string>("");

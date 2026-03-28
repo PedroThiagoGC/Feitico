@@ -28,12 +28,40 @@ import { useRealtimeBookings } from "@/hooks/useBooking";
 import { playNotificationSound, prewarmAudio } from "@/lib/notificationSound";
 import { subscribeToPush, unsubscribeFromPush, getPushStatus, type PushStatus } from "@/lib/pushNotifications";
 
+function useAdminEmailState(storageKey: string) {
+  const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined" && "localStorage" in window) {
+        const storedEmail = window.localStorage.getItem(storageKey);
+        if (storedEmail !== null) {
+          setEmail(storedEmail);
+        }
+      }
+    } catch {
+      // Ignore localStorage errors and fall back to in-memory state
+    }
+  }, [storageKey]);
+
+  const updateEmail = useCallback((value: string) => {
+    setEmail(value);
+    try {
+      if (typeof window !== "undefined" && "localStorage" in window) {
+        window.localStorage.setItem(storageKey, value);
+      }
+    } catch {
+      // Ignore localStorage errors; state is still updated in memory
+    }
+  }, [storageKey]);
+
+  return [email, updateEmail] as const;
+}
+
 export default function Admin() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [email, setEmail] = useState(() => {
-    try { return localStorage.getItem("feitico:form:admin-email") ?? ""; } catch { return ""; }
-  });
+  const [email, setEmail] = useAdminEmailState("feitico:form:admin-email");
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [sessionExpiredModal, setSessionExpiredModal] = useState(false);
@@ -174,7 +202,7 @@ export default function Admin() {
         </Card>
       </div>
     );
-  }
+      <Dialog open={sessionExpiredModal} onOpenChange={() => { /* Intentionally empty: prevent user from dismissing the session expiration dialog */ }}>
 
   if (!isAdminAllowed) {
     return (
