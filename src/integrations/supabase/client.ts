@@ -1,10 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import {
-  AUTH_INACTIVITY_TIMEOUT_MS,
-  AUTH_SESSION_MAX_AGE_MS,
-  SUPABASE_AUTH_STORAGE_KEY,
-} from "./authConfig";
-import { createAuthStorage } from "./authStorage";
+import { SUPABASE_AUTH_STORAGE_KEY } from "./authConfig";
 import type { Database } from "./types";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
@@ -45,11 +40,6 @@ if (
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storageKey: SUPABASE_AUTH_STORAGE_KEY,
-    storage: createAuthStorage({
-      storageKey: SUPABASE_AUTH_STORAGE_KEY,
-      sessionMaxAgeMs: AUTH_SESSION_MAX_AGE_MS,
-      inactivityTimeoutMs: AUTH_INACTIVITY_TIMEOUT_MS,
-    }),
     persistSession: true,
     autoRefreshToken: true,
   },
