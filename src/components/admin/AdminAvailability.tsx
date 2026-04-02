@@ -137,6 +137,11 @@ export default function AdminAvailability() {
     setSaving(true);
     try {
       for (const row of availability) {
+        if (row.start_time >= row.end_time) {
+          toast.error(`Horário inválido: início (${row.start_time}) deve ser antes do fim (${row.end_time})`);
+          setSaving(false);
+          return;
+        }
         const { error } = await supabase
           .from("professional_availability")
           .update({ start_time: row.start_time, end_time: row.end_time })
@@ -175,6 +180,10 @@ export default function AdminAvailability() {
     if (excForm.type !== "day_off") {
       payload.start_time = excForm.start_time || null;
       payload.end_time = excForm.end_time || null;
+      if (payload.start_time && payload.end_time && payload.start_time >= payload.end_time) {
+        toast.error("Horário inválido: início deve ser antes do fim");
+        return;
+      }
     }
     const { error } = await supabase.from("professional_exceptions").insert(payload);
     if (error) toast.error(error.message);

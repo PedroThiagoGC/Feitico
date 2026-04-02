@@ -157,9 +157,12 @@ export async function createBooking(payload: CreateBookingPayload): Promise<Book
 export async function getAvailableSlots(
   professionalId: string,
   date: string,
-  totalOccupiedMinutes: number
+  serviceDuration: number,
+  bufferMinutes = 0
 ): Promise<string[]> {
-  if (!professionalId || !date || totalOccupiedMinutes <= 0) return []
+  if (!professionalId || !date || serviceDuration <= 0) return []
+
+  const totalOccupied = serviceDuration + bufferMinutes
 
   const dayOfWeek = new Date(date + "T12:00:00").getDay()
 
@@ -215,33 +218,53 @@ export async function getAvailableSlots(
     .in("status", ["pending", "confirmed"])
     .limit(500)
 
-  const OVERTIME_MARGIN = 60
   const now = new Date()
   const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
   const isToday = date === todayLocal
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
 
+  // Parse bookings once for efficient next-booking lookup
+  const parsedBookings = (bookings ?? [])
+    .filter((b) => !!b.booking_time)
+    .map((b) => {
+      const [bh, bm] = b.booking_time!.split(":").map(Number)
+      const bStart = bh * 60 + bm
+      const bEnd = bStart + (b.total_occupied_minutes || b.total_duration || 30)
+      return { bStart, bEnd }
+    })
+    .sort((a, b) => a.bStart - b.bStart)
+
   const slots: string[] = []
 
   for (const window of timeWindows) {
-    for (let m = window.start; m + totalOccupiedMinutes <= window.end + OVERTIME_MARGIN; m += 5) {
-      if (m >= window.end) break
+    // Only the service itself (without buffer) needs to fit inside the work window.
+    // The buffer after the last appointment of the day is unnecessary —
+    // there is no one coming after, so no prep/cleanup gap is needed.
+    for (let m = window.start; m + serviceDuration <= window.end; m += 5) {
       const slotStart = m
-      const slotEnd = m + totalOccupiedMinutes
+      const serviceEnd = m + serviceDuration
+      const slotEndWithBuffer = m + totalOccupied
 
       if (isToday && slotStart < nowMinutes) continue
 
-      const isBlocked = blockedRanges.some((b) => slotStart < b.end && slotEnd > b.start)
+      // Blocked ranges: the service itself must not overlap with any blocked period
+      const isBlocked = blockedRanges.some((b) => slotStart < b.end && serviceEnd > b.start)
       if (isBlocked) continue
 
-      const hasConflict = bookings?.some((b) => {
-        if (!b.booking_time) return false
-        const [bh, bm] = b.booking_time.split(":").map(Number)
-        const bStart = bh * 60 + bm
-        const bEnd = bStart + (b.total_occupied_minutes || b.total_duration || 30)
-        return slotStart < bEnd && slotEnd > bStart
-      })
+      // Conflict with existing bookings: the service (without buffer) must not
+      // overlap with any existing booking's occupied time (their duration + buffer).
+      const hasConflict = parsedBookings.some(
+        ({ bStart, bEnd }) => slotStart < bEnd && serviceEnd > bStart
+      )
       if (hasConflict) continue
+
+      // Buffer check: if there is a booking right after this slot, the buffer
+      // must fit between the service end and the next booking start.
+      // If no booking follows, the buffer is not needed (last slot of the day).
+      if (bufferMinutes > 0) {
+        const nextBooking = parsedBookings.find(({ bStart }) => bStart >= serviceEnd)
+        if (nextBooking && slotEndWithBuffer > nextBooking.bStart) continue
+      }
 
       const h = Math.floor(m / 60)
       const min = m % 60

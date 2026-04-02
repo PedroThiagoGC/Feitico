@@ -64,12 +64,13 @@ export function useRealtimeBookings(
 export function useAvailableSlots(
   professionalId: string | undefined,
   date: string | undefined,
-  totalOccupiedMinutes: number
+  serviceDuration: number,
+  bufferMinutes = 0
 ) {
   return useQuery({
-    queryKey: ["available-slots", professionalId, date, totalOccupiedMinutes],
-    queryFn: () => getAvailableSlots(professionalId!, date!, totalOccupiedMinutes),
-    enabled: !!professionalId && !!date && totalOccupiedMinutes > 0,
+    queryKey: ["available-slots", professionalId, date, serviceDuration, bufferMinutes],
+    queryFn: () => getAvailableSlots(professionalId!, date!, serviceDuration, bufferMinutes),
+    enabled: !!professionalId && !!date && serviceDuration > 0,
   });
 }
 

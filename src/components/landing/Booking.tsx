@@ -164,7 +164,8 @@ export default function Booking({ salon, services, preselectedServices }: Bookin
   const { data: slots, isLoading: slotsLoading } = useAvailableSlots(
     selectedProfessionalId || undefined,
     dateStr,
-    totalOccupied
+    totalDuration,
+    totalBuffer
   );
 
   const form = useForm<BookingFormData>({

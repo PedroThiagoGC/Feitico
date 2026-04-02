@@ -94,7 +94,7 @@ export default function AdminServices() {
       salon_id: salon.id,
       name: form.name.trim(),
       description: form.description.trim() || null,
-      price: Number.parseFloat(form.price || "0"),
+      price: Math.round(Number.parseFloat(form.price || "0") * 100) / 100,
       duration,
       buffer_minutes: buffer,
       image_url: form.image_url.trim() || null,

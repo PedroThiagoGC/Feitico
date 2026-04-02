@@ -87,7 +87,7 @@ describe("getAvailableSlots", () => {
     expect(slots).toEqual([])
   })
 
-  it("retorna [] quando totalOccupiedMinutes é 0", async () => {
+  it("retorna [] quando serviceDuration é 0", async () => {
     const slots = await getAvailableSlots(crypto.randomUUID(), "2025-06-09", 0)
     expect(slots).toEqual([])
   })
@@ -174,10 +174,93 @@ describe("getAvailableSlots", () => {
     expect(slots).toContain("09:05")
     expect(slots).toContain("09:10")
 
+    // O último slot deve ser 17:00 (17:00 + 60 = 18:00, cabe exatamente)
+    expect(slots).toContain("17:00")
+    // 17:05 não cabe (17:05 + 60 = 18:05 > 18:00)
+    expect(slots).not.toContain("17:05")
+
     // O intervalo entre slots consecutivos deve ser sempre 5 minutos
     const idx0 = slots.indexOf("09:00")
     const idx1 = slots.indexOf("09:05")
     expect(idx1).toBe(idx0 + 1)
+  })
+
+  it("último slot do dia não precisa de buffer — serviço de 60min + 30min buffer encerra no expediente", async () => {
+    const availChain = createChain({
+      data: [
+        {
+          professional_id: "p1",
+          weekday: 1,
+          start_time: "09:00",
+          end_time: "18:00",
+          active: true,
+        },
+      ],
+      error: null,
+    })
+    const exceptionsChain = createChain({ data: [], error: null })
+    const bookingsChain = createChain({ data: [], error: null })
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "professional_availability") return availChain
+      if (table === "professional_exceptions") return exceptionsChain
+      if (table === "bookings") return bookingsChain
+      return {} as ReturnType<typeof supabase.from>
+    })
+
+    // serviceDuration=60, bufferMinutes=30
+    const slots = await getAvailableSlots(crypto.randomUUID(), "2025-06-09", 60, 30)
+
+    // 17:00 deve estar disponível: serviço 17:00-18:00 cabe, buffer 18:00-18:30 não importa (último do dia)
+    expect(slots).toContain("17:00")
+    // 17:05 não cabe: serviço 17:05-18:05 ultrapassa expediente
+    expect(slots).not.toContain("17:05")
+  })
+
+  it("buffer bloqueia slot quando há booking logo depois", async () => {
+    const availChain = createChain({
+      data: [
+        {
+          professional_id: "p1",
+          weekday: 1,
+          start_time: "09:00",
+          end_time: "18:00",
+          active: true,
+        },
+      ],
+      error: null,
+    })
+    const exceptionsChain = createChain({ data: [], error: null })
+    const bookingsChain = createChain({
+      data: [
+        {
+          booking_time: "11:00",
+          total_occupied_minutes: 60,
+          total_duration: 60,
+        },
+      ],
+      error: null,
+    })
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "professional_availability") return availChain
+      if (table === "professional_exceptions") return exceptionsChain
+      if (table === "bookings") return bookingsChain
+      return {} as ReturnType<typeof supabase.from>
+    })
+
+    // serviceDuration=30, bufferMinutes=15
+    const slots = await getAvailableSlots(crypto.randomUUID(), "2025-06-09", 30, 15)
+
+    // 10:30 ok: serviço 10:30-11:00, cabe antes do booking (exatamente)
+    // Mas buffer 11:00-11:15 invade booking 11:00-12:00 → deve ser bloqueado
+    expect(slots).not.toContain("10:30")
+
+    // 10:15 ok: serviço 10:15-10:45, buffer 10:45-11:00, não invade booking 11:00
+    expect(slots).toContain("10:15")
+
+    // 09:00 válido (sem booking perto)
+    expect(slots).toContain("09:00")
   })
 
   it("booking existente das 10:00 (60 min) → slot das 10:00 ausente, vizinhos presentes", async () => {
@@ -214,13 +297,13 @@ describe("getAvailableSlots", () => {
 
     const slots = await getAvailableSlots(crypto.randomUUID(), "2025-06-09", 60)
 
-    // O slot das 10:00 está ocupado: qualquer início que sobreponha [10:00, 11:00) deve sumir
+    // O slot das 10:00 está ocupado: qualquer início cujo serviço sobreponha [10:00, 11:00) deve sumir
     expect(slots).not.toContain("10:00")
-    expect(slots).not.toContain("09:05") // inicia 09:05, ocupa até 10:05 → conflito com 10:00–11:00
-    expect(slots).not.toContain("09:55") // inicia 09:55, ocupa até 10:55 → conflito
+    expect(slots).not.toContain("09:05") // serviço 09:05-10:05 → conflito com 10:00–11:00
+    expect(slots).not.toContain("09:55") // serviço 09:55-10:55 → conflito
 
     // Slots antes do conflito devem estar presentes
-    expect(slots).toContain("09:00") // ocupa 09:00–10:00, sem sobreposição com 10:00–11:00
+    expect(slots).toContain("09:00") // serviço 09:00-10:00, sem sobreposição com 10:00–11:00
 
     // Slots após o término do booking (≥ 11:00) devem estar presentes
     expect(slots).toContain("11:00")
